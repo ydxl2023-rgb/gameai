@@ -6,13 +6,19 @@ The first implemented command checks the real Unity Editor named-pipe bridge. It
 
 Open **Tools > GameCLI > Window**, then click **Install GameCLI** (or **Reinstall GameCLI**). The window locates the source through Unity Package Manager, runs a Release build asynchronously and installs all required CLI files into `Library/GameCLI`. This requires a .NET 8 SDK or compatible newer SDK on PATH and currently supports the Windows Editor.
 
-Source Project and Installed Executable are read-only labels displaying paths relative to the Unity project root. The window displays build output and errors. **Cancel** or closing the window cancels the current operation. **Ping Unity** runs the installed executable with `unity --ping --project <current project> --format json`. **Show CLI** reveals the executable; **Copy Ping Command** copies a PowerShell command with correctly quoted paths. Installation is project-local and does not change the system PATH or install AI skills.
+Source Project and Installed Executable are read-only labels displaying paths relative to the Unity project root. The window displays build output and errors. **Cancel** or closing the window cancels the current operation. The command toolbar has six pages: **Orchestrator**, **PM**, **Art**, **Development**, **Unity** and **QA**. Unity displays a command table with On, Command, Method, Route, Status and Description columns; other categories currently show their scope and unimplemented status. Ping is invoked from the terminal, not a panel button. Installation is project-local and does not change the system PATH or install AI skills.
 
 From the Unity project root after installation:
 
 ```powershell
 .\Library\GameCLI\GameCLI.exe unity --ping --project . --format json
 ```
+## Command enablement
+
+The first-column toggle in the Unity command table enables or disables PING immediately. It defaults to enabled. Disabled calls return `ok: false`, `error: "command_disabled"` and exit code 3. Re-enable the toggle to accept requests again; no CLI reinstall is required.
+
+Preferences are stored in EditorPrefs separately for each user and project and survive Editor restart. These are local tool settings, not JIRA workflow state. Status displays Enabled/Disabled configuration, not a live connectivity test.
+
 ## Usage
 
 Open `app/client` in Unity 2022.3.62f2 and allow package import/compilation to finish. The project manifest references the local Game CLI package. If Unity was already open, return to its window and refresh assets.

@@ -914,7 +914,7 @@
 </div>
 
 <p>当前已实现最小命令 <code>GameCLI unity --ping --project &lt;Unity工程路径&gt; --format json</code>：通过命名管道连接真实 Unity Editor，返回 pong、工程路径、Unity 版本、PID 和 UTC 时间。该命令验证桥接连接，不代表 JIRA 或游戏功能验证通过。完整流水线命令仍为规划。</p>
-<p>Unity Editor 已提供 <code>Tools &gt; GameCLI &gt; Window</code> 安装窗口：异步构建/重装 CLI 到当前项目的 <code>Library/GameCLI</code>，显示日志并支持取消、打开目录、复制命令及运行 <code>unity --ping</code>。需要可用的 .NET SDK；不修改系统 PATH。</p>
+<p>Unity Editor 已提供 <code>Tools &gt; GameCLI &gt; Window</code> 安装窗口：异步构建/重装 CLI 到当前项目的 <code>Library/GameCLI</code>，显示日志并支持取消；分页 Toolbar 按 Orchestrator、PM、Art、Development、Unity、QA 展示命令分类。Unity 页以 On、Command、Method、Route、Status、Description 列表展示 <code>unity --ping</code>；首列开关实际控制命令，关闭后返回 command_disabled。设置按用户和项目保存在 EditorPrefs，不属于 JIRA 工作流状态。其余分类标明待实现；PING 通过终端执行。需要可用的 .NET SDK；不修改系统 PATH。</p>
 <h2>6.2 命令映射</h2>
 
 <table>

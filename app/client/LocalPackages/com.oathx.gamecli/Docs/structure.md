@@ -40,4 +40,6 @@ Copy the required gameai-* folders into an AI tool's skill root, preserving name
 
 The standalone .csproj and .sln are source files and must be versioned. Unity-generated IDE projects remain ignored, as do bin, obj and .vs. The .NET 8 console project runs outside Unity; its target framework is not the Unity runtime framework.
 
-Editor/GameCliWindow.cs provides Tools > GameCLI > Window. Editor/Services/GameCliInstaller.cs builds the bundled CLI asynchronously into the current project's Library/GameCLI and invokes the installed unity --ping command. Installation outputs remain ignored by Git; no global PATH configuration is modified.
+Editor/GameCliWindow.cs provides Tools > GameCLI > Window. Editor/Services/GameCliInstaller.cs builds the bundled CLI asynchronously into the current project's Library/GameCLI ; the window retains installation and cancellation controls and provides six command-category pages: Orchestrator, PM, Art, Development, Unity and QA. The installed unity --ping command remains available from the terminal. Installation outputs remain ignored by Git; no global PATH configuration is modified.
+
+Editor/Bridge/GameCliCommandSettings.cs stores per-user, per-project command enablement in EditorPrefs and exposes a thread-safe cache to the pipe server. The Unity page lists command metadata with an On toggle; disabled routes return command_disabled.

@@ -32,6 +32,7 @@ namespace Oathx.GameCLI.Editor
             }
 
             string projectPath = Path.GetFullPath(Path.Combine(Application.dataPath, ".."));
+            GameCliCommandSettings.Initialize(projectPath);
             endpointPath = Path.Combine(projectPath, "Library", "GameCLI", "endpoint.json");
             Endpoint endpoint = new Endpoint
             {
@@ -127,6 +128,15 @@ namespace Oathx.GameCLI.Editor
             if (request.method != "GET" || request.path != "/ping")
             {
                 return new Response { error = "invalid_request", message = "Only GET /ping is supported." };
+            }
+
+            if (!GameCliCommandSettings.IsEnabled(request.path))
+            {
+                return new Response
+                {
+                    error = "command_disabled",
+                    message = "GET /ping is disabled. Enable it in Tools > GameCLI > Window > Unity."
+                };
             }
 
             return new Response
