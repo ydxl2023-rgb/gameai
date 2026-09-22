@@ -34,6 +34,8 @@ description: 开发和维护 ugame-ai-cli 的 C# 控制台、JIRA 编排及 Unit
 
 ## CLI 契约与安全配置
 
+- 命令按功能分组：`GameCLI <group> [options]`。当前使用 `GameCLI unity --ping --project <path> --format json`；后续 JIRA 能力归入 `GameCLI jira ...`。Program 只分发命令组，各组自行解析操作与参数；尚未实现的组明确报错，不提供假成功入口。
+
 - 延续纲要退出码：0 成功、1 可重试错误、2 需修复错误、3 不可重试/需人工、4 输入契约错误、5 配置错误。
 - 使用 C# DTO 和 System.Text.Json；显式校验必填字段、枚举、版本和任务依赖，不能仅以反序列化成功判定有效。
 - 机器可读模式 stdout 只输出结构化结果，诊断写 stderr。记录 trace ID、issue key、输入版本和真实证据；不能伪造报告或把 stub 结果当真实验证。

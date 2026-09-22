@@ -1,5 +1,11 @@
 {
   "dependencies": {
+    "com.oathx.gamecli": {
+      "version": "file:../LocalPackages/com.oathx.gamecli",
+      "depth": 0,
+      "source": "local",
+      "dependencies": {}
+    },
     "com.unity.burst": {
       "version": "1.8.21",
       "depth": 1,

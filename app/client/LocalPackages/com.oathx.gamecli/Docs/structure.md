@@ -29,13 +29,15 @@ com.oathx.gamecli/
         |-- GameCLI.sln          Existing VS solution
         `-- GameCLI/
             |-- GameCLI.csproj   Existing .NET 8 console project
-            `-- Program.cs      Existing template entry point
+            `-- Program.cs      CLI entry point
 ```
 
-Planned C# source folders inside the console project: Commands, Core, Contracts, Agents and Services. Future tests belong beside the project. These folders and their business implementations are not created yet. The former Python scaffold has been removed by the project owner and is not restored.
+Program dispatches capability groups. Commands/UnityCommand.cs and Services implement unity --ping; future JIRA commands belong to a separate jira group. Bare ping is not supported. Core, Contracts and Agents remain planned. Tests/GameCLI.Smoke beside the console project contains executable live-bridge smoke checks. The Editor bridge and shared Runtime framing protocol are registered through package.json and assembly definitions. See [PING](ping.md) for usage and validation. The former Python scaffold has been removed by the project owner and is not restored.
 
 JIRA is the sole source of truth for task status, approvals, retries and execution records. No SQLite database or local JIRA state file is planned. Reports and generated artifacts are not an alternative workflow state store.
 
 Copy the required gameai-* folders into an AI tool's skill root, preserving names and sibling layout. Include referenced shared skills; the orchestrator references all four role skills. Copying all nine folders preserves every relative reference. The gameai-cli-development skill governs this repository; root AGENTS.md routes future development to it. It is not another business Agent. No automatic installation is performed.
 
 The standalone .csproj and .sln are source files and must be versioned. Unity-generated IDE projects remain ignored, as do bin, obj and .vs. The .NET 8 console project runs outside Unity; its target framework is not the Unity runtime framework.
+
+Editor/GameCliWindow.cs provides Tools > GameCLI > Window. Editor/Services/GameCliInstaller.cs builds the bundled CLI asynchronously into the current project's Library/GameCLI and invokes the installed unity --ping command. Installation outputs remain ignored by Git; no global PATH configuration is modified.

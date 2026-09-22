@@ -913,6 +913,8 @@
 <div class="caption">图 6-1 gameai 命令树</div>
 </div>
 
+<p>当前已实现最小命令 <code>GameCLI unity --ping --project &lt;Unity工程路径&gt; --format json</code>：通过命名管道连接真实 Unity Editor，返回 pong、工程路径、Unity 版本、PID 和 UTC 时间。该命令验证桥接连接，不代表 JIRA 或游戏功能验证通过。完整流水线命令仍为规划。</p>
+<p>Unity Editor 已提供 <code>Tools &gt; GameCLI &gt; Window</code> 安装窗口：异步构建/重装 CLI 到当前项目的 <code>Library/GameCLI</code>，显示日志并支持取消、打开目录、复制命令及运行 <code>unity --ping</code>。需要可用的 .NET SDK；不修改系统 PATH。</p>
 <h2>6.2 命令映射</h2>
 
 <table>
@@ -1366,12 +1368,12 @@ description: 拆解游戏需求并定义 JIRA 任务与验收标准；用于 PM 
         ├── GameCLI/
         │   ├── GameCLI.csproj   # 已创建，目标 net8.0
         │   ├── Program.cs      # 已创建的控制台入口
-        │   ├── Commands/       # 规划：命令与参数处理
+        │   ├── Commands/       # 已实现：PING 命令与参数处理
         │   ├── Core/           # 规划：状态机、编排、JIRA 执行记录
         │   ├── Contracts/      # 规划：DTO 与输入输出校验
         │   ├── Agents/         # 规划：PM、Art、Dev、QA 调用适配
-        │   └── Services/       # 规划：JIRA、Git、资产与 Unity 执行器
-        ├── Tests/              # 规划：单元、契约、集成测试
+        │   └── Services/       # 已实现：PING 桥接客户端；其他服务待实现
+        ├── Tests/              # 已实现：PING 可执行冒烟验证；其他测试待实现
         └── workspace/          # 规划：仅生成产物，不保存权威流程状态</code></pre>
 
 <!-- ========== 12. MVP ========== -->

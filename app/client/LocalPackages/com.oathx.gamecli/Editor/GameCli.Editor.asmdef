@@ -1,0 +1,10 @@
+{
+  "name": "GameCli.Editor",
+  "rootNamespace": "Oathx.GameCLI.Editor",
+  "references": [
+    "GameCli.Protocol"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ]
+}

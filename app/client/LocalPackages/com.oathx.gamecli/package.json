@@ -1,0 +1,7 @@
+{
+  "name": "com.oathx.gamecli",
+  "version": "0.1.0",
+  "displayName": "Game CLI",
+  "description": "C# CLI bridge for Unity Editor.",
+  "unity": "2022.3"
+}
