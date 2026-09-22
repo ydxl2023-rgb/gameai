@@ -1,0 +1,33 @@
+# Unity caches, local settings and build outputs (including nested projects)
+**/[Ll]ibrary/
+**/[Tt]emp/
+**/[Oo]bj/
+**/[Ll]ogs/
+**/[Uu]ser[Ss]ettings/
+**/[Bb]uild/
+**/[Bb]uilds/
+**/[Mm]emoryCaptures/
+**/[Rr]ecordings/
+**/Artifacts/
+
+# Generated IDE files
+**/.vs/
+**/.idea/
+**/.vsconfig
+*.csproj
+*.sln
+*.slnx
+*.unityproj
+*.suo
+*.user
+*.pidb
+*.booproj
+*.opendb
+*.VC.db
+*.pdb.meta
+*.mdb.meta
+sysinfo.txt
+
+# OS files
+.DS_Store
+Thumbs.db

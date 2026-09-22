@@ -1,0 +1,1700 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>全 AI 游戏开发流水线设计文档 v1.0</title>
+<style>
+  :root {
+    --bg: #ffffff;
+    --fg: #1f2328;
+    --muted: #57606a;
+    --border: #d0d7de;
+    --code-bg: #f6f8fa;
+    --accent: #0969da;
+    --accent-soft: #ddf4ff;
+    --warn: #bf8700;
+    --warn-soft: #fff8c5;
+    --ok: #1a7f37;
+    --ok-soft: #dafbe1;
+    --err: #cf222e;
+    --err-soft: #ffebe9;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: #f6f8fa;
+    color: var(--fg);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+                 "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue",
+                 Arial, sans-serif;
+    font-size: 14px;
+    line-height: 1.7;
+  }
+
+  .page {
+    max-width: 900px;
+    margin: 0 auto;
+    background: var(--bg);
+    padding: 60px 70px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+  }
+
+  /* 封面 */
+  .cover {
+    text-align: center;
+    padding: 80px 0 60px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 48px;
+  }
+  .cover h1 {
+    font-size: 34px;
+    margin: 0 0 16px;
+    letter-spacing: 1px;
+  }
+  .cover .subtitle {
+    font-size: 16px;
+    color: var(--muted);
+    margin-bottom: 30px;
+  }
+  .cover .meta {
+    display: inline-block;
+    text-align: left;
+    font-size: 13px;
+    color: var(--muted);
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    padding: 12px 30px;
+  }
+  .cover .meta span { display: inline-block; min-width: 90px; color: var(--fg); }
+
+  /* 标题 */
+  h1 { font-size: 26px; margin: 48px 0 16px; padding-bottom: 8px; border-bottom: 2px solid var(--fg); }
+  h2 { font-size: 20px; margin: 36px 0 12px; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
+  h3 { font-size: 16px; margin: 24px 0 8px; color: #24292f; }
+  h4 { font-size: 14px; margin: 16px 0 6px; color: var(--muted); }
+
+  p { margin: 8px 0; }
+
+  /* 代码 */
+  code {
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    background: var(--code-bg);
+    padding: 2px 5px;
+    border-radius: 4px;
+    font-size: 12.5px;
+  }
+  pre {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 14px 16px;
+    overflow-x: auto;
+    font-size: 12px;
+    line-height: 1.6;
+    margin: 12px 0;
+  }
+  pre code {
+    background: none;
+    padding: 0;
+    font-size: 12px;
+  }
+
+  /* 表格 */
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 14px 0;
+    font-size: 13px;
+  }
+  th, td {
+    border: 1px solid var(--border);
+    padding: 8px 10px;
+    text-align: left;
+    vertical-align: top;
+  }
+  th { background: #f6f8fa; font-weight: 600; }
+  tr:nth-child(even) td { background: #fafbfc; }
+
+  /* 引用 */
+  blockquote {
+    border-left: 4px solid var(--accent);
+    margin: 12px 0;
+    padding: 6px 14px;
+    background: var(--accent-soft);
+    border-radius: 0 6px 6px 0;
+    color: #0a3069;
+    font-size: 13.5px;
+  }
+
+  /* 提示框 */
+  .callout {
+    padding: 12px 16px;
+    border-radius: 6px;
+    margin: 14px 0;
+    font-size: 13.5px;
+    border-left: 4px solid;
+  }
+  .callout.info { background: var(--accent-soft); border-color: var(--accent); }
+  .callout.warn { background: var(--warn-soft); border-color: var(--warn); }
+  .callout.ok   { background: var(--ok-soft);   border-color: var(--ok); }
+  .callout.err  { background: var(--err-soft);  border-color: var(--err); }
+
+  /* 列表 */
+  ul, ol { padding-left: 24px; margin: 8px 0; }
+  li { margin: 4px 0; }
+
+  /* 图表容器 */
+  .diagram {
+    margin: 24px 0;
+    padding: 20px;
+    background: #fafbfc;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow-x: auto;
+    text-align: center;
+  }
+  .diagram svg { max-width: 100%; height: auto; }
+  .diagram .caption {
+    font-size: 12.5px;
+    color: var(--muted);
+    margin-top: 10px;
+    font-style: italic;
+  }
+
+  /* 目录 */
+  .toc {
+    background: #fafbfc;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px 28px;
+    margin: 24px 0 40px;
+  }
+  .toc h3 { margin-top: 0; }
+  .toc ol { margin: 0; padding-left: 20px; }
+  .toc a { color: var(--accent); text-decoration: none; }
+  .toc a:hover { text-decoration: underline; }
+
+  /* 打印 */
+  @page {
+    size: A4;
+    margin: 18mm 16mm;
+  }
+  @media print {
+    html, body { background: #fff; font-size: 11.5pt; }
+    .page { box-shadow: none; padding: 0; max-width: 100%; }
+    h1 { page-break-before: auto; }
+    h2 { page-break-after: avoid; }
+    pre, table, .diagram { page-break-inside: avoid; }
+    .cover { page-break-after: always; }
+    .no-print { display: none; }
+    a { color: var(--fg); text-decoration: none; }
+  }
+
+  /* 页脚 */
+  .footer {
+    margin-top: 60px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border);
+    text-align: center;
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  .print-btn {
+    position: fixed;
+    right: 24px;
+    bottom: 24px;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 999px;
+    padding: 12px 22px;
+    font-size: 14px;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(9,105,218,0.35);
+    z-index: 100;
+  }
+  .print-btn:hover { background: #0860ca; }
+</style>
+</head>
+<body>
+
+<button class="print-btn no-print" onclick="window.print()">打印 / 导出 PDF</button>
+
+<div class="page">
+
+<!-- ========== 封面 ========== -->
+<div class="cover">
+  <h1>全 AI 游戏开发流水线设计文档</h1>
+  <div class="subtitle">JIRA 控制平面 · Orchestrator 调度 · 4 Agent 执行 · Unity CLI 确定性验证</div>
+  <div class="meta">
+    <div><span>版本</span>v1.0</div>
+    <div><span>日期</span>2026-09-22</div>
+    <div><span>状态</span>设计基线</div>
+    <div><span>目标</span>全 AI 执行 · 人工门禁 · 可追踪 · 可复现</div>
+  </div>
+</div>
+
+<!-- ========== 目录 ========== -->
+<div class="toc">
+  <h3>目录</h3>
+  <ol>
+    <li><a href="#s1">项目概述</a></li>
+    <li><a href="#s2">总体架构</a></li>
+    <li><a href="#s3">角色划分</a></li>
+    <li><a href="#s4">Orchestrator 设计</a></li>
+    <li><a href="#s5">状态机与 JIRA 工作流</a></li>
+    <li><a href="#s6">统一 CLI 设计</a></li>
+    <li><a href="#s7">Skill 体系设计</a></li>
+    <li><a href="#s8">数据契约</a></li>
+    <li><a href="#s9">完整调用流程</a></li>
+    <li><a href="#s10">Unity CLI 确定性要求</a></li>
+    <li><a href="#s11">目录结构</a></li>
+    <li><a href="#s12">MVP 开发计划</a></li>
+    <li><a href="#s13">后续细化路线</a></li>
+  </ol>
+</div>
+
+<!-- ========== 1. 项目概述 ========== -->
+<h1 id="s1">1. 项目概述</h1>
+
+<h2>1.1 目标</h2>
+<p>构建一条以 <strong>JIRA 为控制平面</strong>、<strong>Orchestrator 为调度核心</strong>、<strong>4 个 AI Agent 为执行角色</strong>、<strong>Unity CLI 为确定性验证器</strong>的游戏开发自动化流水线。</p>
+<p>将策划需求自动转化为可执行任务，由 AI 完成需求分解、JIRA 建单、美术生成、代码实现、Unity 编译测试、QA 验收，并通过人工门禁控制合并与发布。</p>
+
+<h2>1.2 核心原则</h2>
+<div class="callout info">
+  <strong>确定性包围不确定性。</strong>状态机、幂等、重试保证流程可靠；LLM 只负责内容生成，不负责流程决策。
+</div>
+
+<table>
+  <tr><th>原则</th><th>含义</th></tr>
+  <tr><td>JIRA 是唯一事实源</td><td>JIRA 是唯一可信来源：任务状态、审批、重试次数、执行记录和幂等键统一保存在 JIRA；调度器每次从 JIRA 读取并写回，不维护独立状态数据库</td></tr>
+  <tr><td>JSON 契约交互</td><td>Agent 之间不直接对话，通过结构化输出协作</td></tr>
+  <tr><td>人工只做门禁</td><td>需求确认、美术抽检、合并发布，其余全自动</td></tr>
+  <tr><td>CLI-first 起步</td><td>单 CLI + 子命令快速跑通闭环，后续再服务化</td></tr>
+  <tr><td>先桩后真</td><td>JIRA 从 MVP 起真实接入；其他外部依赖先用桩函数，再逐个替换</td></tr>
+</table>
+
+<h2>1.3 最终形态</h2>
+<pre><code>策划需求
+  → PM Agent 拆需求建 JIRA
+  → Orchestrator 调度
+  → Art Agent 产资源入库回写 JIRA
+  → Dev Agent 编码开 PR
+  → Unity CLI 确定性验证
+  → QA Agent 验收
+  → 失败自动修复
+  → 成功人工门禁
+  → 合并发布</code></pre>
+
+<!-- ========== 2. 总体架构 ========== -->
+<h1 id="s2">2. 总体架构</h1>
+
+<h2>2.1 系统架构图</h2>
+
+<div class="diagram">
+<svg viewBox="0 0 820 520" xmlns="http://www.w3.org/2000/svg" font-family="sans-serif">
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L9,3 z" fill="#57606a"/>
+    </marker>
+    <marker id="arrowBlue" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L9,3 z" fill="#0969da"/>
+    </marker>
+  </defs>
+
+  <!-- Orchestrator 外框 -->
+  <rect x="60" y="20" width="700" height="110" rx="10" fill="#ddf4ff" stroke="#0969da" stroke-width="2"/>
+  <text x="410" y="46" text-anchor="middle" font-size="16" font-weight="bold" fill="#0a3069">Orchestrator (确定性状态机)</text>
+
+  <!-- 内部子模块 -->
+  <rect x="80"  y="62" width="140" height="50" rx="6" fill="#fff" stroke="#0969da"/>
+  <text x="150" y="92" text-anchor="middle" font-size="12" fill="#0a3069">Webhook 接收器</text>
+
+  <rect x="240" y="62" width="140" height="50" rx="6" fill="#fff" stroke="#0969da"/>
+  <text x="310" y="92" text-anchor="middle" font-size="12" fill="#0a3069">状态机引擎</text>
+
+  <rect x="400" y="62" width="140" height="50" rx="6" fill="#fff" stroke="#0969da"/>
+  <text x="470" y="92" text-anchor="middle" font-size="12" fill="#0a3069">任务队列</text>
+
+  <rect x="560" y="62" width="180" height="50" rx="6" fill="#fff" stroke="#0969da"/>
+  <text x="650" y="92" text-anchor="middle" font-size="12" fill="#0a3069">Agent 调用器</text>
+
+  <!-- 箭头 -->
+  <line x1="220" y1="87" x2="238" y2="87" stroke="#0969da" stroke-width="1.5" marker-end="url(#arrowBlue)"/>
+  <line x1="380" y1="87" x2="398" y2="87" stroke="#0969da" stroke-width="1.5" marker-end="url(#arrowBlue)"/>
+  <line x1="540" y1="87" x2="558" y2="87" stroke="#0969da" stroke-width="1.5" marker-end="url(#arrowBlue)"/>
+
+  <!-- JIRA -->
+  <rect x="640" y="180" width="160" height="60" rx="8" fill="#fff8c5" stroke="#bf8700" stroke-width="2"/>
+  <text x="720" y="215" text-anchor="middle" font-size="14" font-weight="bold" fill="#7a5b00">JIRA</text>
+  <text x="720" y="232" text-anchor="middle" font-size="11" fill="#7a5b00">控制平面 · SSOT</text>
+
+  <line x1="650" y1="130" x2="700" y2="178" stroke="#bf8700" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="700" y="158" font-size="11" fill="#7a5b00">读写</text>
+
+  <!-- 四个 Agent -->
+  <rect x="40"  y="200" width="150" height="70" rx="8" fill="#dafbe1" stroke="#1a7f37" stroke-width="2"/>
+  <text x="115" y="230" text-anchor="middle" font-size="14" font-weight="bold" fill="#0a3a1a">PM Agent</text>
+  <text x="115" y="250" text-anchor="middle" font-size="11" fill="#0a3a1a">需求分解 · 建单</text>
+
+  <rect x="210" y="200" width="150" height="70" rx="8" fill="#dafbe1" stroke="#1a7f37" stroke-width="2"/>
+  <text x="285" y="230" text-anchor="middle" font-size="14" font-weight="bold" fill="#0a3a1a">Art Agent</text>
+  <text x="285" y="250" text-anchor="middle" font-size="11" fill="#0a3a1a">美术生成 · 入库</text>
+
+  <rect x="380" y="200" width="150" height="70" rx="8" fill="#dafbe1" stroke="#1a7f37" stroke-width="2"/>
+  <text x="455" y="230" text-anchor="middle" font-size="14" font-weight="bold" fill="#0a3a1a">Dev Agent</text>
+  <text x="455" y="250" text-anchor="middle" font-size="11" fill="#0a3a1a">编码 · 开 PR</text>
+
+  <rect x="550" y="200" width="150" height="70" rx="8" fill="#dafbe1" stroke="#1a7f37" stroke-width="2"/>
+  <text x="625" y="230" text-anchor="middle" font-size="14" font-weight="bold" fill="#0a3a1a">QA Agent</text>
+  <text x="625" y="250" text-anchor="middle" font-size="11" fill="#0a3a1a">验收 · 分类</text>
+
+  <!-- Orchestrator 到 Agent 的箭头 -->
+  <line x1="115" y1="130" x2="115" y2="198" stroke="#1a7f37" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <line x1="285" y1="130" x2="285" y2="198" stroke="#1a7f37" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <line x1="455" y1="130" x2="455" y2="198" stroke="#1a7f37" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <line x1="625" y1="130" x2="625" y2="198" stroke="#1a7f37" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <!-- 基础设施 -->
+  <rect x="60"  y="330" width="150" height="70" rx="8" fill="#fff" stroke="#57606a" stroke-width="1.5"/>
+  <text x="135" y="360" text-anchor="middle" font-size="13" font-weight="bold">Git</text>
+  <text x="135" y="380" text-anchor="middle" font-size="11" fill="#57606a">代码版本</text>
+
+  <rect x="230" y="330" width="150" height="70" rx="8" fill="#fff" stroke="#57606a" stroke-width="1.5"/>
+  <text x="305" y="360" text-anchor="middle" font-size="13" font-weight="bold">对象存储</text>
+  <text x="305" y="380" text-anchor="middle" font-size="11" fill="#57606a">S3 / MinIO</text>
+
+  <rect x="400" y="330" width="150" height="70" rx="8" fill="#fff" stroke="#57606a" stroke-width="1.5"/>
+  <text x="475" y="360" text-anchor="middle" font-size="13" font-weight="bold">JIRA 执行记录</text>
+  <text x="475" y="380" text-anchor="middle" font-size="11" fill="#57606a">审批 · 重试 · 幂等键</text>
+
+  <rect x="570" y="330" width="170" height="70" rx="8" fill="#ffebe9" stroke="#cf222e" stroke-width="2"/>
+  <text x="655" y="360" text-anchor="middle" font-size="13" font-weight="bold" fill="#82071e">Unity Runner</text>
+  <text x="655" y="380" text-anchor="middle" font-size="11" fill="#82071e">Docker · 确定性执行</text>
+
+  <!-- Agent 到基础设施 -->
+  <line x1="455" y1="270" x2="455" y2="328" stroke="#57606a" stroke-width="1" stroke-dasharray="4,3"/>
+  <line x1="455" y1="270" x2="305" y2="328" stroke="#57606a" stroke-width="1" stroke-dasharray="4,3"/>
+  <line x1="285" y1="270" x2="305" y2="328" stroke="#57606a" stroke-width="1" stroke-dasharray="4,3"/>
+  <line x1="455" y1="270" x2="655" y2="328" stroke="#cf222e" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <!-- 底部说明 -->
+  <text x="410" y="450" text-anchor="middle" font-size="12" fill="#57606a">Orchestrator 调度 4 个 Agent，Agent 通过 Skill 操作基础设施，Unity Runner 提供确定性验证</text>
+  <text x="410" y="475" text-anchor="middle" font-size="12" fill="#57606a">所有状态写入 JIRA，所有产物写入 Git / 对象存储，所有执行带 trace_id 和幂等键</text>
+</svg>
+<div class="caption">图 2-1 系统总体架构</div>
+</div>
+
+<h2>2.2 基础设施职责</h2>
+
+<table>
+  <tr><th>组件</th><th>职责</th><th>MVP</th><th>生产</th></tr>
+  <tr><td>JIRA</td><td>控制平面，唯一事实源，任务状态与产物链接</td><td>JIRA REST API</td><td>JIRA REST API</td></tr>
+  <tr><td>Git</td><td>代码版本，分支与 PR</td><td>本地目录</td><td>Git + PR</td></tr>
+  <tr><td>对象存储</td><td>美术资产、报告、日志</td><td>本地 <code>./assets/</code></td><td>S3 / MinIO</td></tr>
+
+  <tr><td>Unity Runner</td><td>编译、测试、构建</td><td>echo 脚本</td><td>Docker + Unity CLI</td></tr>
+  <tr><td>人工门禁</td><td>需求确认、美术抽检、合并发布</td><td>CLI approve</td><td>JIRA 评论审批</td></tr>
+</table>
+
+<!-- ========== 3. 角色划分 ========== -->
+<h1 id="s3">3. 角色划分</h1>
+
+<h2>3.1 逻辑 5 角色，工程 4+1</h2>
+<div class="callout info">
+  逻辑上是 5 个角色：<strong>4 个业务 Agent + 1 个 Orchestrator</strong>。<br>
+  工程实现上推荐：<strong>4 个 LLM 业务 Agent + 1 个确定性编排服务</strong>。Orchestrator 不是自由发挥的 LLM，而是状态机。
+</div>
+
+<table>
+  <tr><th>角色</th><th>类型</th><th>是否 LLM</th><th>核心职责</th></tr>
+  <tr><td>PM Agent</td><td>业务 Agent</td><td>是</td><td>策划文档分解、JIRA 建单、验收标准、美术 Manifest</td></tr>
+  <tr><td>Art Agent</td><td>业务 Agent</td><td>是</td><td>美术资源生成、入库、回写 JIRA</td></tr>
+  <tr><td>Dev Agent</td><td>业务 Agent</td><td>是</td><td>编码、开 PR、跑 Unity CLI、修复</td></tr>
+  <tr><td>QA Agent</td><td>业务 Agent</td><td>是</td><td>验收、失败分类、回写 JIRA</td></tr>
+  <tr><td>Orchestrator</td><td>调度器</td><td>否（或仅异常决策）</td><td>状态机、调度、重试、幂等、人工门禁</td></tr>
+</table>
+
+<h2>3.2 PM Agent（产品经理）</h2>
+
+<h4>输入</h4>
+<ul>
+  <li>策划文档、参考图、竞品、目标平台、约束</li>
+  <li>人工补充说明</li>
+</ul>
+
+<h4>输出</h4>
+<ul>
+  <li><code>spec.json</code>：结构化需求</li>
+  <li>JIRA Epic / Story / Task</li>
+  <li>每个任务的验收标准</li>
+  <li>任务依赖 DAG</li>
+  <li>美术 Manifest</li>
+  <li>待确认问题列表</li>
+</ul>
+
+<h4>JIRA 动作</h4>
+<p>创建 Epic / Story / Task，写入字段：<code>AISpec</code>、<code>AITaskType</code>、<code>Acceptance</code>、<code>DependsOn</code>、<code>ArtManifest</code>、<code>HumanGate</code>。</p>
+
+<h4>失败处理</h4>
+<ul>
+  <li>需求模糊 → 生成问题列表，状态改为"待策划确认"</li>
+  <li>无法拆分 → 阻塞并通知人工</li>
+</ul>
+
+<h2>3.3 Art Agent（美术）</h2>
+
+<h4>输入</h4>
+<ul>
+  <li>JIRA 美术任务</li>
+  <li><code>ArtManifest</code>：尺寸、格式、风格、透明通道、用途</li>
+  <li>参考图、风格约束、Unity 导入规范</li>
+</ul>
+
+<h4>输出</h4>
+<ul>
+  <li>原图、模型、音频、UI 资源</li>
+  <li>预览图、<code>.meta</code> 或导入设置</li>
+  <li>Prompt、Seed、模型版本</li>
+  <li>资产 Hash</li>
+</ul>
+
+<h4>JIRA 动作</h4>
+<p>更新：<code>AssetURL</code>、<code>AssetHash</code>、<code>PreviewURL</code>、<code>Prompt</code>、<code>Seed</code>、<code>ModelVersion</code>、<code>ImportSettings</code>。状态改为"待美术确认"或"待编码"。</p>
+
+<h4>失败处理</h4>
+<p>重新生成；记录失败原因；超过重试次数转人工。</p>
+
+<h2>3.4 Dev Agent（程序）</h2>
+
+<h4>输入</h4>
+<ul>
+  <li>JIRA 代码任务</li>
+  <li><code>AISpec</code>、验收标准</li>
+  <li>资产 URL + Hash</li>
+  <li>Git 基线 Commit</li>
+  <li>Unity 版本、环境镜像</li>
+</ul>
+
+<h4>输出</h4>
+<ul>
+  <li>Git 分支：<code>ai/GAME-123</code></li>
+  <li>Commit、PR</li>
+  <li>代码、Prefab、Scene、ScriptableObject、Shader</li>
+  <li>测试代码、构建产物</li>
+</ul>
+
+<h4>JIRA 动作</h4>
+<p>更新：<code>RepoBranch</code>、<code>RepoCommit</code>、<code>PRLink</code>、<code>BuildID</code>、<code>TestReport</code>。状态改为"CI 验证中"或"QA 验证中"。</p>
+
+<h4>失败处理</h4>
+<p>读取 Unity 日志和测试报告，自动修复 1–3 次，超过次数转人工。</p>
+
+<h2>3.5 QA Agent（验收）</h2>
+
+<h4>输入</h4>
+<ul>
+  <li>PR、BuildID</li>
+  <li>Unity 日志、测试报告、截图</li>
+  <li>验收标准、资产 Hash、代码 Commit</li>
+</ul>
+
+<h4>输出</h4>
+<ul>
+  <li>QA 报告</li>
+  <li>通过 / 失败</li>
+  <li>失败分类：代码错误、资产错误、需求不清、环境错误、测试失败</li>
+  <li>修复建议</li>
+</ul>
+
+<h4>JIRA 动作</h4>
+<p>更新：<code>QAStatus</code>、<code>QAReport</code>、<code>RetryCount</code>。状态改为：<code>待人工验收</code>、<code>验证失败</code>、<code>修复中</code>。</p>
+
+<h4>失败处理</h4>
+<table>
+  <tr><th>失败分类</th><th>触发对象</th></tr>
+  <tr><td>代码问题</td><td>Dev Agent</td></tr>
+  <tr><td>美术问题</td><td>Art Agent</td></tr>
+  <tr><td>需求问题</td><td>PM Agent</td></tr>
+  <tr><td>环境问题</td><td>通知运维/人工</td></tr>
+</table>
+
+<!-- ========== 4. Orchestrator ========== -->
+<h1 id="s4">4. Orchestrator 设计</h1>
+
+<h2>4.1 核心职责</h2>
+<p>Orchestrator 的核心是：<strong>用确定性的状态机来驱动不确定性的 AI Agent</strong>。</p>
+
+<ol>
+  <li>监听 JIRA Webhook 或轮询 JIRA</li>
+  <li>读取任务状态和字段</li>
+  <li>决定下一步调用哪个 Agent</li>
+  <li>组装上下文，传入任务包</li>
+  <li>设置超时、重试、幂等键</li>
+  <li>写回 JIRA</li>
+  <li>控制人工门禁</li>
+  <li>记录全链路 Trace</li>
+</ol>
+
+<h2>4.2 技术选型</h2>
+
+<table>
+  <tr><th>引擎</th><th>适用场景</th><th>说明</th></tr>
+  <tr><td>Temporal</td><td>长时运行、持久化状态</td><td>推荐生产使用</td></tr>
+  <tr><td>LangGraph</td><td>Agent 编排为主</td><td>适合内层 Agent 调用</td></tr>
+  <tr><td>Prefect</td><td>Python 工作流</td><td>上手快</td></tr>
+  <tr><td>Airflow</td><td>定时批处理</td><td>不适合循环</td></tr>
+</table>
+
+<div class="callout warn">
+  推荐组合：<strong>Temporal + LangGraph</strong>；MVP 阶段可先用 <strong>CLI + JIRA + 纯函数状态机</strong>。
+</div>
+
+<h2>4.3 状态迁移表</h2>
+
+<pre><code>TRANSITIONS = [
+    Transition(BACKLOG,          "pm_analyze",    PM_ANALYZING,        "pm",  None),
+    Transition(PM_ANALYZING,     "pm_done",       PENDING_PM_REVIEW,   None,  None),
+    Transition(PENDING_PM_REVIEW,"human_approved",PENDING_ART,         None,  None,
+               guard=lambda ctx: ctx["has_art_tasks"]),
+    Transition(PENDING_ART,      "art_start",     ART_GENERATING,      "art", None),
+    Transition(ART_GENERATING,   "art_done",      PENDING_ART_REVIEW,  None,  "verify_assets"),
+    Transition(PENDING_ART_REVIEW,"art_approved", PENDING_DEV,         None,  None),
+    Transition(PENDING_DEV,      "dev_start",     DEV_CODING,          "dev", None),
+    Transition(DEV_CODING,       "dev_done",      CI_VERIFYING,        None,  "run_unity_cli"),
+    Transition(CI_VERIFYING,     "ci_passed",     QA_VERIFYING,        "qa",  None),
+    Transition(CI_VERIFYING,     "ci_failed",     FIXING,              "dev", None),
+    Transition(QA_VERIFYING,     "qa_passed",     PENDING_HUMAN,       None,  None),
+    Transition(QA_VERIFYING,     "qa_failed_code",FIXING,              "dev", None),
+    Transition(QA_VERIFYING,     "qa_failed_art", FIXING,              "art", None),
+    Transition(QA_VERIFYING,     "qa_failed_spec",FIXING,              "pm",  None),
+    Transition(FIXING,           "fix_done",      CI_VERIFYING,        None,  "run_unity_cli"),
+    Transition(PENDING_HUMAN,    "human_approved",DONE,                None,  "merge_pr"),
+]</code></pre>
+
+<h2>4.4 幂等与重试</h2>
+
+<h3>幂等键</h3>
+<pre><code>{issue_key}:{from_status}:{to_status}:{content_hash}</code></pre>
+<p>幂等键与执行结果统一记录在 JIRA。执行副作用前读取 JIRA 中的记录，完成后回写结果；崩溃恢复时先核对目标系统中的已有产物，再决定重试或补写 JIRA。JIRA 不可用时暂停推进流程，不使用本地状态代替 JIRA。</p>
+
+<h3>重试策略</h3>
+<pre><code>RETRY_POLICY = {
+    "max_attempts": 3,
+    "backoff": "exponential",   # 1s, 2s, 4s
+    "retryable_errors": [
+        "NETWORK_TIMEOUT",
+        "RATE_LIMITED",
+        "UNITY_CRASH",
+        "CI_INFRA_ERROR",
+    ],
+    "non_retryable_errors": [
+        "SPEC_INVALID",
+        "AUTH_FAILED",
+        "HUMAN_REJECTED",
+    ],
+}</code></pre>
+
+<h3>错误分类处理</h3>
+<table>
+  <tr><th>错误类型</th><th>处理方式</th></tr>
+  <tr><td>可重试（网络超时、限流）</td><td>指数退避自动重试</td></tr>
+  <tr><td>可修复（代码错误、资产错误）</td><td>触发对应 Agent 修复</td></tr>
+  <tr><td>不可重试（需求无效、权限失败）</td><td>转人工</td></tr>
+</table>
+
+<h2>4.5 可观测性</h2>
+
+<h3>Trace 记录</h3>
+<pre><code>{
+  "trace_id": "trace-20260922-001",
+  "issue_key": "GAME-123",
+  "timestamp": "2026-09-22T10:00:00Z",
+  "event": "transition",
+  "from_status": "待编码",
+  "to_status": "编码中",
+  "agent": "dev",
+  "idempotency_key": "GAME-123:待编码:编码中:abc123",
+  "duration_ms": 45200,
+  "result": "success"
+}</code></pre>
+
+<h3>关键指标</h3>
+<ul>
+  <li>Agent 调用成功率</li>
+  <li>状态迁移耗时 P99</li>
+  <li>自动重试成功率</li>
+  <li>人工介入率</li>
+  <li>Unity CLI 失败原因分布</li>
+</ul>
+
+<!-- ========== 5. 状态机 ========== -->
+<h1 id="s5">5. 状态机与 JIRA 工作流</h1>
+
+<h2>5.1 主状态机图</h2>
+
+<div class="diagram">
+<svg viewBox="0 0 900 560" xmlns="http://www.w3.org/2000/svg" font-family="sans-serif">
+  <defs>
+    <marker id="a2" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L9,3 z" fill="#0969da"/>
+    </marker>
+    <marker id="a3" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L9,3 z" fill="#cf222e"/>
+    </marker>
+    <marker id="a4" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L9,3 z" fill="#1a7f37"/>
+    </marker>
+  </defs>
+
+  <!-- 主流程状态 -->
+  <g font-size="12">
+    <!-- Backlog -->
+    <rect x="20" y="40" width="110" height="44" rx="22" fill="#f6f8fa" stroke="#57606a" stroke-width="1.5"/>
+    <text x="75" y="67" text-anchor="middle" fill="#24292f">Backlog</text>
+
+    <!-- PM分析中 -->
+    <rect x="170" y="40" width="120" height="44" rx="22" fill="#dafbe1" stroke="#1a7f37" stroke-width="1.5"/>
+    <text x="230" y="67" text-anchor="middle" fill="#0a3a1a">PM分析中</text>
+
+    <!-- 待策划确认 -->
+    <rect x="330" y="40" width="120" height="44" rx="22" fill="#fff8c5" stroke="#bf8700" stroke-width="1.5"/>
+    <text x="390" y="67" text-anchor="middle" fill="#7a5b00">待策划确认</text>
+
+    <!-- 待美术 -->
+    <rect x="490" y="40" width="110" height="44" rx="22" fill="#f6f8fa" stroke="#57606a" stroke-width="1.5"/>
+    <text x="545" y="67" text-anchor="middle" fill="#24292f">待美术</text>
+
+    <!-- 美术生成中 -->
+    <rect x="640" y="40" width="120" height="44" rx="22" fill="#dafbe1" stroke="#1a7f37" stroke-width="1.5"/>
+    <text x="700" y="67" text-anchor="middle" fill="#0a3a1a">美术生成中</text>
+
+    <!-- 箭头 1 -->
+    <line x1="130" y1="62" x2="168" y2="62" stroke="#0969da" stroke-width="1.5" marker-end="url(#a2)"/>
+    <text x="149" y="55" text-anchor="middle" font-size="10" fill="#0969da">pm_analyze</text>
+
+    <line x1="290" y1="62" x2="328" y2="62" stroke="#0969da" stroke-width="1.5" marker-end="url(#a2)"/>
+    <text x="309" y="55" text-anchor="middle" font-size="10" fill="#0969da">pm_done</text>
+
+    <line x1="450" y1="62" x2="488" y2="62" stroke="#1a7f37" stroke-width="1.5" marker-end="url(#a4)"/>
+    <text x="469" y="55" text-anchor="middle" font-size="10" fill="#1a7f37">approved</text>
+
+    <line x1="600" y1="62" x2="638" y2="62" stroke="#0969da" stroke-width="1.5" marker-end="url(#a2)"/>
+    <text x="619" y="55" text-anchor="middle" font-size="10" fill="#0969da">art_start</text>
+
+    <!-- 第二行 -->
+    <!-- 待美术确认 -->
+    <rect x="640" y="140" width="120" height="44" rx="22" fill="#fff8c5" stroke="#bf8700" stroke-width="1.5"/>
+    <text x="700" y="167" text-anchor="middle" fill="#7a5b00">待美术确认</text>
+
+    <!-- 待编码 -->
+    <rect x="490" y="140" width="110" height="44" rx="22" fill="#f6f8fa" stroke="#57606a" stroke-width="1.5"/>
+    <text x="545" y="167" text-anchor="middle" fill="#24292f">待编码</text>
+
+    <!-- 编码中 -->
+    <rect x="330" y="140" width="110" height="44" rx="22" fill="#dafbe1" stroke="#1a7f37" stroke-width="1.5"/>
+    <text x="385" y="167" text-anchor="middle" fill="#0a3a1a">编码中</text>
+
+    <!-- CI验证中 -->
+    <rect x="170" y="140" width="120" height="44" rx="22" fill="#ddf4ff" stroke="#0969da" stroke-width="1.5"/>
+    <text x="230" y="167" text-anchor="middle" fill="#0a3069">CI验证中</text>
+
+    <!-- 箭头 2 -->
+    <line x1="700" y1="84" x2="700" y2="138" stroke="#0969da" stroke-width="1.5" marker-end="url(#a2)"/>
+    <text x="710" y="112" font-size="10" fill="#0969da">art_done</text>
+
+    <line x1="640" y1="162" x2="602" y2="162" stroke="#1a7f37" stroke-width="1.5" marker-end="url(#a4)"/>
+    <text x="621" y="155" text-anchor="middle" font-size="10" fill="#1a7f37">approved</text>
+
+    <line x1="490" y1="162" x2="442" y2="162" stroke="#0969da" stroke-width="1.5" marker-end="url(#a2)"/>
+    <text x="466" y="155" text-anchor="middle" font-size="10" fill="#0969da">dev_start</text>
+
+    <line x1="330" y1="162" x2="292" y2="162" stroke="#0969da" stroke-width="1.5" marker-end="url(#a2)"/>
+    <text x="311" y="155" text-anchor="middle" font-size="10" fill="#0969da">dev_done</text>
+
+    <!-- 第三行 -->
+    <!-- QA验证中 -->
+    <rect x="170" y="240" width="120" height="44" rx="22" fill="#ddf4ff" stroke="#0969da" stroke-width="1.5"/>
+    <text x="230" y="267" text-anchor="middle" fill="#0a3069">QA验证中</text>
+
+    <!-- 修复中 -->
+    <rect x="330" y="240" width="110" height="44" rx="22" fill="#ffebe9" stroke="#cf222e" stroke-width="1.5"/>
+    <text x="385" y="267" text-anchor="middle" fill="#82071e">修复中</text>
+
+    <!-- 待人工验收 -->
+    <rect x="490" y="240" width="130" height="44" rx="22" fill="#fff8c5" stroke="#bf8700" stroke-width="1.5"/>
+    <text x="555" y="267" text-anchor="middle" fill="#7a5b00">待人工验收</text>
+
+    <!-- Done -->
+    <rect x="660" y="240" width="100" height="44" rx="22" fill="#dafbe1" stroke="#1a7f37" stroke-width="3"/>
+    <text x="710" y="267" text-anchor="middle" font-weight="bold" fill="#0a3a1a">Done</text>
+
+    <!-- 箭头 3 -->
+    <line x1="230" y1="184" x2="230" y2="238" stroke="#0969da" stroke-width="1.5" marker-end="url(#a2)"/>
+    <text x="240" y="214" font-size="10" fill="#0969da">ci_passed</text>
+
+    <line x1="290" y1="262" x2="328" y2="262" stroke="#cf222e" stroke-width="1.5" marker-end="url(#a3)"/>
+    <text x="309" y="255" text-anchor="middle" font-size="10" fill="#cf222e">qa_failed</text>
+
+    <line x1="440" y1="262" x2="488" y2="262" stroke="#1a7f37" stroke-width="1.5" marker-end="url(#a4)"/>
+    <text x="464" y="255" text-anchor="middle" font-size="10" fill="#1a7f37">qa_passed</text>
+
+    <line x1="620" y1="262" x2="658" y2="262" stroke="#1a7f37" stroke-width="1.5" marker-end="url(#a4)"/>
+    <text x="639" y="255" text-anchor="middle" font-size="10" fill="#1a7f37">approved</text>
+
+    <!-- 修复回路 -->
+    <path d="M 385 240 L 385 210 L 230 210 L 230 184"
+          fill="none" stroke="#cf222e" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#a3)"/>
+    <text x="310" y="205" text-anchor="middle" font-size="10" fill="#cf222e">fix_done → 重新验证</text>
+
+    <!-- CI失败回路 -->
+    <path d="M 230 140 L 230 110 L 385 110 L 385 138"
+          fill="none" stroke="#cf222e" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#a3)"/>
+    <text x="310" y="105" text-anchor="middle" font-size="10" fill="#cf222e">ci_failed → 修复</text>
+
+    <!-- 重试回路 -->
+    <path d="M 385 284 L 385 320 L 230 320 L 230 284"
+          fill="none" stroke="#bf8700" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#a2)"/>
+    <text x="310" y="336" text-anchor="middle" font-size="10" fill="#bf8700">重试 &lt; 3 次</text>
+  </g>
+
+  <!-- 图例 -->
+  <g transform="translate(20, 400)" font-size="11">
+    <text x="0" y="0" font-weight="bold" fill="#24292f">图例：</text>
+    <rect x="60" y="-12" width="20" height="14" rx="7" fill="#f6f8fa" stroke="#57606a"/>
+    <text x="88" y="0" fill="#57606a">初始/等待</text>
+    <rect x="160" y="-12" width="20" height="14" rx="7" fill="#dafbe1" stroke="#1a7f37"/>
+    <text x="188" y="0" fill="#57606a">Agent 执行中</text>
+    <rect x="290" y="-12" width="20" height="14" rx="7" fill="#ddf4ff" stroke="#0969da"/>
+    <text x="318" y="0" fill="#57606a">系统验证中</text>
+    <rect x="410" y="-12" width="20" height="14" rx="7" fill="#fff8c5" stroke="#bf8700"/>
+    <text x="438" y="0" fill="#57606a">人工门禁</text>
+    <rect x="520" y="-12" width="20" height="14" rx="7" fill="#ffebe9" stroke="#cf222e"/>
+    <text x="548" y="0" fill="#57606a">修复/失败</text>
+  </g>
+
+  <text x="450" y="460" text-anchor="middle" font-size="12" fill="#57606a">主路径：Backlog → PM → Art → Dev → CI → QA → 人工验收 → Done</text>
+  <text x="450" y="482" text-anchor="middle" font-size="12" fill="#57606a">失败路径：CI/QA 失败 → 修复中 → 回到 CI 重新验证（最多 3 次）</text>
+  <text x="450" y="504" text-anchor="middle" font-size="12" fill="#57606a">超出重试：任意状态 → 阻塞 → 人工介入</text>
+</svg>
+<div class="caption">图 5-1 完整状态机</div>
+</div>
+
+<h2>5.2 JIRA 自定义字段</h2>
+
+<table>
+  <tr><th>字段</th><th>用途</th><th>写入者</th></tr>
+  <tr><td>AISpec</td><td>结构化需求</td><td>PM Agent</td></tr>
+  <tr><td>AITaskType</td><td>PM / Art / Dev / QA</td><td>PM Agent</td></tr>
+  <tr><td>Acceptance</td><td>验收标准</td><td>PM Agent</td></tr>
+  <tr><td>DependsOn</td><td>依赖任务</td><td>PM Agent</td></tr>
+  <tr><td>ArtManifest</td><td>美术需求</td><td>PM Agent</td></tr>
+  <tr><td>AssetURL</td><td>资产地址</td><td>Art Agent</td></tr>
+  <tr><td>AssetHash</td><td>资产哈希</td><td>Art Agent</td></tr>
+  <tr><td>PreviewURL</td><td>预览图</td><td>Art Agent</td></tr>
+  <tr><td>Prompt</td><td>生成提示词</td><td>Art Agent</td></tr>
+  <tr><td>Seed</td><td>随机种子</td><td>Art Agent</td></tr>
+  <tr><td>ModelVersion</td><td>模型版本</td><td>Art Agent</td></tr>
+  <tr><td>RepoBranch</td><td>AI 分支</td><td>Dev Agent</td></tr>
+  <tr><td>RepoCommit</td><td>代码 Commit</td><td>Dev Agent</td></tr>
+  <tr><td>PRLink</td><td>PR 链接</td><td>Dev Agent</td></tr>
+  <tr><td>BuildID</td><td>Unity 构建 ID</td><td>Orchestrator</td></tr>
+  <tr><td>TestReport</td><td>测试报告</td><td>Orchestrator</td></tr>
+  <tr><td>UnityVersion</td><td>Unity 精确版本</td><td>Orchestrator</td></tr>
+  <tr><td>EnvImage</td><td>Runner 镜像</td><td>Orchestrator</td></tr>
+  <tr><td>QAStatus</td><td>QA 结果</td><td>QA Agent</td></tr>
+  <tr><td>QAReport</td><td>QA 报告</td><td>QA Agent</td></tr>
+  <tr><td>RetryCount</td><td>自动重试次数</td><td>Orchestrator</td></tr>
+  <tr><td>HumanGate</td><td>是否需要人工</td><td>PM Agent</td></tr>
+</table>
+
+<div class="callout warn">
+  <strong>JIRA 不存大文件。</strong>美术资源上传对象存储，JIRA 只存 URL、Hash、预览图链接。
+</div>
+
+<!-- ========== 6. CLI 设计 ========== -->
+<h1 id="s6">6. 统一 CLI 设计</h1>
+
+<h2>6.1 从多 CLI 到单 CLI</h2>
+
+<p>原来 5 个 CLI 的问题是：用户要记住 5 个命令、5 套参数、5 套环境变量、5 套退出码约定。合并成<strong>一个 CLI + 子命令</strong>，门槛立刻降下来。</p>
+
+<div class="diagram">
+<svg viewBox="0 0 820 480" xmlns="http://www.w3.org/2000/svg" font-family="sans-serif">
+  <!-- 根节点 -->
+  <rect x="320" y="20" width="180" height="50" rx="8" fill="#0969da" stroke="#0969da"/>
+  <text x="410" y="50" text-anchor="middle" font-size="16" font-weight="bold" fill="#fff">gameai</text>
+
+  <!-- 一级命令 -->
+  <g font-size="12">
+    <!-- 流程控制 -->
+    <rect x="40" y="120" width="130" height="40" rx="6" fill="#ddf4ff" stroke="#0969da"/>
+    <text x="105" y="145" text-anchor="middle" fill="#0a3069">流程控制</text>
+
+    <rect x="200" y="120" width="130" height="40" rx="6" fill="#ddf4ff" stroke="#0969da"/>
+    <text x="265" y="145" text-anchor="middle" fill="#0a3069">运维</text>
+
+    <rect x="360" y="120" width="130" height="40" rx="6" fill="#dafbe1" stroke="#1a7f37"/>
+    <text x="425" y="145" text-anchor="middle" fill="#0a3a1a">Agent</text>
+
+    <rect x="520" y="120" width="130" height="40" rx="6" fill="#ffebe9" stroke="#cf222e"/>
+    <text x="585" y="145" text-anchor="middle" fill="#82071e">执行器</text>
+
+    <rect x="680" y="120" width="100" height="40" rx="6" fill="#f6f8fa" stroke="#57606a"/>
+    <text x="730" y="145" text-anchor="middle" fill="#24292f">配置</text>
+  </g>
+
+  <!-- 连线 -->
+  <line x1="410" y1="70" x2="105" y2="118" stroke="#57606a" stroke-width="1"/>
+  <line x1="410" y1="70" x2="265" y2="118" stroke="#57606a" stroke-width="1"/>
+  <line x1="410" y1="70" x2="425" y2="118" stroke="#57606a" stroke-width="1"/>
+  <line x1="410" y1="70" x2="585" y2="118" stroke="#57606a" stroke-width="1"/>
+  <line x1="410" y1="70" x2="730" y2="118" stroke="#57606a" stroke-width="1"/>
+
+  <!-- 二级命令 -->
+  <g font-size="11">
+    <!-- 流程控制 -->
+    <rect x="20" y="200" width="80" height="32" rx="4" fill="#fff" stroke="#0969da"/>
+    <text x="60" y="221" text-anchor="middle" fill="#0a3069">start</text>
+    <rect x="110" y="200" width="80" height="32" rx="4" fill="#fff" stroke="#0969da"/>
+    <text x="150" y="221" text-anchor="middle" fill="#0a3069">watch</text>
+
+    <!-- 运维 -->
+    <rect x="200" y="200" width="80" height="32" rx="4" fill="#fff" stroke="#0969da"/>
+    <text x="240" y="221" text-anchor="middle" fill="#0a3069">serve</text>
+    <rect x="290" y="200" width="80" height="32" rx="4" fill="#fff" stroke="#0969da"/>
+    <text x="330" y="221" text-anchor="middle" fill="#0a3069">status</text>
+    <rect x="200" y="240" width="80" height="32" rx="4" fill="#fff" stroke="#0969da"/>
+    <text x="240" y="261" text-anchor="middle" fill="#0a3069">approve</text>
+    <rect x="290" y="240" width="80" height="32" rx="4" fill="#fff" stroke="#0969da"/>
+    <text x="330" y="261" text-anchor="middle" fill="#0a3069">retry</text>
+
+    <!-- Agent -->
+    <rect x="390" y="200" width="70" height="32" rx="4" fill="#fff" stroke="#1a7f37"/>
+    <text x="425" y="221" text-anchor="middle" fill="#0a3a1a">pm</text>
+    <rect x="470" y="200" width="70" height="32" rx="4" fill="#fff" stroke="#1a7f37"/>
+    <text x="505" y="221" text-anchor="middle" fill="#0a3a1a">art</text>
+    <rect x="390" y="240" width="70" height="32" rx="4" fill="#fff" stroke="#1a7f37"/>
+    <text x="425" y="261" text-anchor="middle" fill="#0a3a1a">dev</text>
+    <rect x="470" y="240" width="70" height="32" rx="4" fill="#fff" stroke="#1a7f37"/>
+    <text x="505" y="261" text-anchor="middle" fill="#0a3a1a">qa</text>
+
+    <!-- 执行器 -->
+    <rect x="550" y="200" width="80" height="32" rx="4" fill="#fff" stroke="#cf222e"/>
+    <text x="590" y="221" text-anchor="middle" fill="#82071e">unity</text>
+
+    <!-- 配置 -->
+    <rect x="690" y="200" width="90" height="32" rx="4" fill="#fff" stroke="#57606a"/>
+    <text x="735" y="221" text-anchor="middle" fill="#24292f">config</text>
+  </g>
+
+  <!-- 三级：示例 -->
+  <g font-size="10" fill="#57606a">
+    <text x="60" y="300" text-anchor="middle">--spec</text>
+    <text x="60" y="315" text-anchor="middle">--project</text>
+
+    <text x="505" y="300" text-anchor="middle">generate</text>
+    <text x="505" y="315" text-anchor="middle">verify</text>
+
+    <text x="425" y="300" text-anchor="middle">implement</text>
+    <text x="425" y="315" text-anchor="middle">fix</text>
+  </g>
+
+  <!-- 示例命令 -->
+  <rect x="60" y="360" width="700" height="100" rx="6" fill="#f6f8fa" stroke="#d0d7de"/>
+  <text x="80" y="385" font-family="monospace" font-size="12" fill="#24292f">$ gameai start --spec ./docs/game.md --project GAME</text>
+  <text x="80" y="405" font-family="monospace" font-size="12" fill="#24292f">$ gameai status --epic GAME-100</text>
+  <text x="80" y="425" font-family="monospace" font-size="12" fill="#24292f">$ gameai approve --issue GAME-102</text>
+  <text x="80" y="445" font-family="monospace" font-size="12" fill="#24292f">$ gameai art generate --issue GAME-101</text>
+</svg>
+<div class="caption">图 6-1 gameai 命令树</div>
+</div>
+
+<h2>6.2 命令映射</h2>
+
+<table>
+  <tr><th>原命令</th><th>新命令</th></tr>
+  <tr><td><code>orchestrator-cli start</code></td><td><code>gameai start</code></td></tr>
+  <tr><td><code>orchestrator-cli watch</code></td><td><code>gameai watch</code></td></tr>
+  <tr><td><code>orchestrator-cli handle-event</code></td><td><code>gameai serve</code></td></tr>
+  <tr><td><code>orchestrator-cli status</code></td><td><code>gameai status</code></td></tr>
+  <tr><td><code>orchestrator-cli approve</code></td><td><code>gameai approve</code></td></tr>
+  <tr><td><code>orchestrator-cli retry</code></td><td><code>gameai retry</code></td></tr>
+  <tr><td><code>pm-cli analyze</code></td><td><code>gameai pm analyze</code></td></tr>
+  <tr><td><code>art-cli generate</code></td><td><code>gameai art generate</code></td></tr>
+  <tr><td><code>dev-cli implement</code></td><td><code>gameai dev implement</code></td></tr>
+  <tr><td><code>dev-cli fix</code></td><td><code>gameai dev fix</code></td></tr>
+  <tr><td><code>qa-cli verify</code></td><td><code>gameai qa verify</code></td></tr>
+  <tr><td><code>unity-runner run</code></td><td><code>gameai unity run</code></td></tr>
+</table>
+
+<h2>6.3 统一退出码</h2>
+
+<table>
+  <tr><th>退出码</th><th>含义</th></tr>
+  <tr><td>0</td><td>成功</td></tr>
+  <tr><td>1</td><td>可重试错误</td></tr>
+  <tr><td>2</td><td>需修复错误</td></tr>
+  <tr><td>3</td><td>不可重试，转人工</td></tr>
+  <tr><td>4</td><td>输入契约错误</td></tr>
+  <tr><td>5</td><td>配置错误</td></tr>
+</table>
+
+<h2>6.4 配置集中</h2>
+
+<pre><code>gameai config init   # 生成 ~/.gameai/config.yaml</code></pre>
+
+<pre><code>jira:
+  url: https://your-domain.atlassian.net
+  project: GAME
+  token: ${JIRA_TOKEN}
+
+git:
+  repo: ./Game
+  base_branch: main
+  branch_prefix: ai/
+
+storage:
+  type: s3
+  bucket: game-assets
+
+unity:
+  version: 2022.3.XX
+  image: unity-runner:2022.3.XX
+  project_path: ./Game
+
+orchestrator:
+  max_retry: 3
+  poll_interval: 10
+
+agents:
+  pm:  { model: gpt-4 }
+  art: { model: image-model-v3 }
+  dev: { model: claude-3.5 }
+  qa:  { model: gpt-4 }</code></pre>
+
+<!-- ========== 7. Skill 体系 ========== -->
+<h1 id="s7">7. Skill 体系设计</h1>
+
+<div class="callout info">
+  <strong>Skill 是 Agent 的"原子能力"。</strong>Agent 负责决策"做什么"，Skill 负责"怎么做"。<br>
+  Skill 只做单一职责；每个 Skill 有明确输入输出契约；确定性 Skill 与 LLM Skill 分离；Skill 可独立测试、可被多个 Agent 复用。
+</div>
+
+<h2>7.1 Skill 分类</h2>
+
+<div class="diagram">
+<svg viewBox="0 0 820 380" xmlns="http://www.w3.org/2000/svg" font-family="sans-serif">
+  <!-- 四层 -->
+  <g font-size="12">
+    <!-- Pure -->
+    <rect x="40" y="40" width="740" height="70" rx="8" fill="#dafbe1" stroke="#1a7f37" stroke-width="2"/>
+    <text x="60" y="68" font-size="14" font-weight="bold" fill="#0a3a1a">Pure Skill</text>
+    <text x="60" y="88" font-size="11" fill="#0a3a1a">无副作用 · 纯函数 · 最易测试</text>
+    <text x="220" y="68" font-size="11" fill="#0a3a1a">例：common.sha256 · art.resize · qa.parse_junit</text>
+    <text x="220" y="88" font-size="11" fill="#0a3a1a">特点：确定性 · 可缓存 · 可重放</text>
+
+    <!-- Tool -->
+    <rect x="40" y="125" width="740" height="70" rx="8" fill="#ddf4ff" stroke="#0969da" stroke-width="2"/>
+    <text x="60" y="153" font-size="14" font-weight="bold" fill="#0a3069">Tool Skill</text>
+    <text x="60" y="173" font-size="11" fill="#0a3069">有副作用 · 必须幂等 · 带幂等键</text>
+    <text x="220" y="153" font-size="11" fill="#0a3069">例：jira.update_field · art.upload · dev.git_branch</text>
+    <text x="220" y="173" font-size="11" fill="#0a3069">特点：可重试 · 失败分类 · trace 记录</text>
+
+    <!-- LLM -->
+    <rect x="40" y="210" width="740" height="70" rx="8" fill="#fff8c5" stroke="#bf8700" stroke-width="2"/>
+    <text x="60" y="238" font-size="14" font-weight="bold" fill="#7a5b00">LLM Skill</text>
+    <text x="60" y="258" font-size="11" fill="#7a5b00">有创造力 · 必须结构化输出 · Schema 校验</text>
+    <text x="220" y="238" font-size="11" fill="#7a5b00">例：pm.split_tasks · dev.gen_code · qa.classify</text>
+    <text x="220" y="258" font-size="11" fill="#7a5b00">特点：temperature=0 · 失败重试 2 次 · 转人工</text>
+
+    <!-- Composite -->
+    <rect x="40" y="295" width="740" height="70" rx="8" fill="#f6f8fa" stroke="#57606a" stroke-width="2"/>
+    <text x="60" y="323" font-size="14" font-weight="bold" fill="#24292f">Composite Skill</text>
+    <text x="60" y="343" font-size="11" fill="#57606a">编排多个 Skill · 只做编排不写业务逻辑</text>
+    <text x="220" y="323" font-size="11" fill="#57606a">例：art.generate_asset = gen + resize + upload + 回写</text>
+    <text x="220" y="343" font-size="11" fill="#57606a">特点：可追踪每步 · 失败可定位</text>
+  </g>
+</svg>
+<div class="caption">图 7-1 Skill 四层分类</div>
+</div>
+
+<h2>7.2 Skill 统一契约</h2>
+
+<h3>函数签名</h3>
+<pre><code>from pydantic import BaseModel
+
+class ResizeInput(BaseModel):
+    src_url: str
+    width: int
+    height: int
+    keep_alpha: bool = True
+
+class ResizeOutput(BaseModel):
+    dst_url: str
+    width: int
+    height: int
+    hash: str
+
+def resize_image(inp: ResizeInput, ctx: SkillContext) -> ResizeOutput:
+    ...</code></pre>
+
+<h3>SkillContext 统一注入</h3>
+<pre><code>@dataclass
+class SkillContext:
+    trace_id: str
+    idempotency_key: str
+    config: dict
+    jira: JiraClient
+    storage: StorageClient
+    git: GitClient
+    llm: LLMClient
+    logger: Logger</code></pre>
+
+<h3>Skill 装饰器</h3>
+<pre><code>@skill(
+    name="art.resize_image",
+    description="按尺寸和透明通道要求缩放图像，输出新图和哈希",
+    input_model=ResizeInput,
+    output_model=ResizeOutput,
+    deterministic=True,
+    side_effects=["storage_write"],
+    idempotent=True,
+    tags=["art", "image"],
+)
+def resize_image(inp, ctx): ...</code></pre>
+
+<h2>7.3 Skill 注册表</h2>
+
+<pre><code>class SkillRegistry:
+    def __init__(self):
+        self._skills = {}
+
+    def register(self, meta, fn):
+        self._skills[meta.name] = (meta, fn)
+
+    def get(self, name):
+        return self._skills[name]
+
+    def list_for(self, agent: str):
+        return [s for s in self._skills.values() if agent in s[0].tags]
+
+    def describe_for_llm(self, agent: str) -> str:
+        """生成给 LLM 的工具描述"""
+        lines = []
+        for meta, _ in self.list_for(agent):
+            lines.append(f"- {meta.name}: {meta.description}")
+            lines.append(f"  input: {meta.input_model.schema()}")
+        return "\n".join(lines)</code></pre>
+
+<h2>7.4 Skill 目录结构</h2>
+
+<pre><code>gameai/skills/
+├── registry.py          # Skill 注册表
+├── common/              # 通用
+│   ├── hash.py
+│   ├── json_io.py
+│   └── trace.py
+├── jira/                # JIRA
+│   ├── create_issue.py
+│   ├── update_field.py
+│   └── transition.py
+├── art/                 # 美术
+│   ├── gen_image.py
+│   ├── resize.py
+│   ├── make_meta.py
+│   └── upload_asset.py
+├── dev/                 # 开发
+│   ├── gen_code.py
+│   ├── gen_test.py
+│   ├── git_branch.py
+│   └── open_pr.py
+├── unity/               # Unity
+│   ├── run_cli.py
+│   ├── parse_log.py
+│   └── parse_junit.py
+└── qa/                  # 验收
+    ├── check_acceptance.py
+    ├── classify_failure.py
+    └── diff_screenshot.py</code></pre>
+
+<h2>7.5 Skill 编写规范清单</h2>
+
+<ol>
+  <li><strong>单一职责</strong>：一个 Skill 做一件事</li>
+  <li><strong>明确输入输出</strong>：用 Pydantic 定义</li>
+  <li><strong>幂等</strong>：有副作用的 Skill 带幂等键</li>
+  <li><strong>可测试</strong>：不依赖全局状态，依赖注入</li>
+  <li><strong>可观测</strong>：写 trace，记录耗时、结果、失败原因</li>
+  <li><strong>可描述</strong>：元数据给 LLM 用</li>
+  <li><strong>可版本化</strong>：带 version</li>
+  <li><strong>错误分类</strong>：抛可重试 / 可修复 / 不可重试异常</li>
+  <li><strong>不直接调 Agent</strong>：Skill 只被 Agent 调用</li>
+  <li><strong>不硬编码配置</strong>：通过 <code>ctx.config</code> 注入</li>
+</ol>
+
+<!-- ========== 8. 数据契约 ========== -->
+<h1 id="s8">8. 数据契约</h1>
+
+<h2>8.1 PM Agent 输出</h2>
+<pre><code>{
+  "epic": "GAME-100",
+  "tasks": [
+    {
+      "type": "art",
+      "title": "主角图标",
+      "acceptance": ["512x512", "透明背景", "Q版科幻"],
+      "art_manifest": {
+        "size": "512x512",
+        "format": "png",
+        "style": "Q版科幻"
+      }
+    },
+    {
+      "type": "code",
+      "title": "实现主角移动",
+      "depends_on": ["GAME-101"],
+      "acceptance": ["Unity编译通过", "PlayMode测试通过"]
+    }
+  ]
+}</code></pre>
+
+<h2>8.2 Art Agent 输出</h2>
+<pre><code>{
+  "asset_url": "s3://game-assets/GAME-101/hero.png",
+  "asset_hash": "sha256:...",
+  "preview_url": "s3://game-assets/GAME-101/hero_preview.png",
+  "prompt": "...",
+  "seed": 12345,
+  "model_version": "image-model-v3",
+  "import_settings": {
+    "texture_type": "Sprite",
+    "max_size": 512,
+    "compression": "None"
+  }
+}</code></pre>
+
+<h2>8.3 Dev Agent 输出</h2>
+<pre><code>{
+  "branch": "ai/GAME-102",
+  "commit": "abc123",
+  "pr_url": "https://git/pr/102",
+  "build_id": "build-20260922-001",
+  "test_report": "s3://reports/GAME-102/junit.xml"
+}</code></pre>
+
+<h2>8.4 QA Agent 输出</h2>
+<pre><code>{
+  "status": "fail",
+  "category": "code",
+  "evidence": ["NullReferenceException at Player.cs:42"],
+  "next_action": "trigger_dev_fix",
+  "retry_count": 1
+}</code></pre>
+
+<!-- ========== 9. 完整调用流程 ========== -->
+<h1 id="s9">9. 完整调用流程</h1>
+
+<h2>9.1 时序图</h2>
+
+<div class="diagram">
+<svg viewBox="0 0 900 720" xmlns="http://www.w3.org/2000/svg" font-family="sans-serif">
+  <defs>
+    <marker id="seqArrow" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L7,3 z" fill="#24292f"/>
+    </marker>
+    <marker id="seqArrowRed" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L7,3 z" fill="#cf222e"/>
+    </marker>
+  </defs>
+
+  <!-- 泳道头 -->
+  <g font-size="12" font-weight="bold">
+    <rect x="30"  y="20" width="90" height="34" rx="6" fill="#f6f8fa" stroke="#57606a"/>
+    <text x="75"  y="42" text-anchor="middle">人工</text>
+
+    <rect x="140" y="20" width="110" height="34" rx="6" fill="#ddf4ff" stroke="#0969da"/>
+    <text x="195" y="42" text-anchor="middle" fill="#0a3069">Orchestrator</text>
+
+    <rect x="270" y="20" width="90" height="34" rx="6" fill="#dafbe1" stroke="#1a7f37"/>
+    <text x="315" y="42" text-anchor="middle" fill="#0a3a1a">PM Agent</text>
+
+    <rect x="380" y="20" width="90" height="34" rx="6" fill="#dafbe1" stroke="#1a7f37"/>
+    <text x="425" y="42" text-anchor="middle" fill="#0a3a1a">Art Agent</text>
+
+    <rect x="490" y="20" width="90" height="34" rx="6" fill="#dafbe1" stroke="#1a7f37"/>
+    <text x="535" y="42" text-anchor="middle" fill="#0a3a1a">Dev Agent</text>
+
+    <rect x="600" y="20" width="90" height="34" rx="6" fill="#ffebe9" stroke="#cf222e"/>
+    <text x="645" y="42" text-anchor="middle" fill="#82071e">Unity</text>
+
+    <rect x="710" y="20" width="90" height="34" rx="6" fill="#dafbe1" stroke="#1a7f37"/>
+    <text x="755" y="42" text-anchor="middle" fill="#0a3a1a">QA Agent</text>
+
+    <rect x="810" y="20" width="70" height="34" rx="6" fill="#fff8c5" stroke="#bf8700"/>
+    <text x="845" y="42" text-anchor="middle" fill="#7a5b00">JIRA</text>
+  </g>
+
+  <!-- 泳道竖线 -->
+  <g stroke="#d0d7de" stroke-width="1" stroke-dasharray="3,3">
+    <line x1="75"  y1="54" x2="75"  y2="690"/>
+    <line x1="195" y1="54" x2="195" y2="690"/>
+    <line x1="315" y1="54" x2="315" y2="690"/>
+    <line x1="425" y1="54" x2="425" y2="690"/>
+    <line x1="535" y1="54" x2="535" y2="690"/>
+    <line x1="645" y1="54" x2="645" y2="690"/>
+    <line x1="755" y1="54" x2="755" y2="690"/>
+    <line x1="845" y1="54" x2="845" y2="690"/>
+  </g>
+
+  <!-- 消息 -->
+  <g font-size="11">
+    <!-- 1. 人工启动 -->
+    <line x1="75" y1="90" x2="193" y2="90" stroke="#24292f" marker-end="url(#seqArrow)"/>
+    <text x="134" y="84" text-anchor="middle">gameai start</text>
+
+    <!-- 2. Orchestrator 调 PM -->
+    <line x1="195" y1="130" x2="313" y2="130" stroke="#24292f" marker-end="url(#seqArrow)"/>
+    <text x="254" y="124" text-anchor="middle">pm.analyze</text>
+
+    <!-- 3. PM 写 JIRA -->
+    <line x1="315" y1="170" x2="843" y2="170" stroke="#24292f" marker-end="url(#seqArrow)"/>
+    <text x="579" y="164" text-anchor="middle">create_issue × N</text>
+
+    <!-- 4. PM 返回 -->
+    <line x1="313" y1="200" x2="197" y2="200" stroke="#24292f" marker-end="url(#seqArrow)"/>
+    <text x="254" y="194" text-anchor="middle">tasks.json</text>
+
+    <!-- 5. Orchestrator 调 Art -->
+    <line x1="195" y1="250" x2="423" y2="250" stroke="#24292f" marker-end="url(#seqArrow)"/>
+    <text x="309" y="244" text-anchor="middle">art.generate(GAME-101)</text>
+
+    <!-- 6. Art 写 JIRA -->
+    <line x1="425" y1="290" x2="843" y2="290" stroke="#24292f" marker-end="url(#seqArrow)"/>
+    <text x="634" y="284" text-anchor="middle">AssetURL / AssetHash</text>
+
+    <!-- 7. Art 返回 -->
+    <line x1="423" y1="320" x2="197" y2="320" stroke="#24292f" marker-end="url(#seqArrow)"/>
+    <text x="309" y="314" text-anchor="middle">asset.json</text>
+
+    <!-- 8. Orchestrator 调 Dev -->
+    <line x1="195" y1="370" x2="533" y2="370" stroke="#24292f" marker-end="url(#seqArrow)"/>
+    <text x="364" y="364" text-anchor="middle">dev.implement(GAME-102)</text>
+
+    <!-- 9. Dev 写 JIRA -->
+    <line x1="535" y1="410" x2="843" y2="410" stroke="#24292f" marker-end="url(#seqArrow)"/>
+    <text x="689" y="404" text-anchor="middle">RepoBranch / PRLink</text>
+
+    <!-- 10. Dev 返回 -->
+    <line x1="533" y1="440" x2="197" y2="440" stroke="#24292f" marker-end="url(#seqArrow)"/>
+    <text x="364" y="434" text-anchor="middle">pr.json</text>
+
+    <!-- 11. Orchestrator 调 Unity -->
+    <line x1="195" y1="490" x2="643" y2="490" stroke="#24292f" marker-end="url(#seqArrow)"/>
+    <text x="419" y="484" text-anchor="middle">unity.run(commit)</text>
+
+    <!-- 12. Unity 返回 -->
+    <line x1="643" y1="530" x2="197" y2="530" stroke="#24292f" marker-end="url(#seqArrow)"/>
+    <text x="419" y="524" text-anchor="middle">test_report.json</text>
+
+    <!-- 13. Orchestrator 调 QA -->
+    <line x1="195" y1="580" x2="753" y2="580" stroke="#24292f" marker-end="url(#seqArrow)"/>
+    <text x="474" y="574" text-anchor="middle">qa.verify(build_id)</text>
+
+    <!-- 14. QA 写 JIRA -->
+    <line x1="755" y1="620" x2="843" y2="620" stroke="#24292f" marker-end="url(#seqArrow)"/>
+    <text x="799" y="614" text-anchor="middle">QAStatus</text>
+
+    <!-- 15. QA 返回 -->
+    <line x1="753" y1="650" x2="197" y2="650" stroke="#24292f" marker-end="url(#seqArrow)"/>
+    <text x="474" y="644" text-anchor="middle">qa.json</text>
+
+    <!-- 16. Orchestrator 通知人工 -->
+    <line x1="195" y1="685" x2="77" y2="685" stroke="#cf222e" marker-end="url(#seqArrowRed)"/>
+    <text x="134" y="679" text-anchor="middle" fill="#cf222e">待人工验收</text>
+  </g>
+</svg>
+<div class="caption">图 9-1 完整时序图</div>
+</div>
+
+<h2>9.2 数据流图</h2>
+
+<div class="diagram">
+<svg viewBox="0 0 820 300" xmlns="http://www.w3.org/2000/svg" font-family="sans-serif">
+  <defs>
+    <marker id="dfArrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L9,3 z" fill="#0969da"/>
+    </marker>
+  </defs>
+
+  <!-- 数据源 -->
+  <rect x="30" y="120" width="120" height="60" rx="8" fill="#fff8c5" stroke="#bf8700" stroke-width="2"/>
+  <text x="90" y="155" text-anchor="middle" font-size="13" font-weight="bold" fill="#7a5b00">策划文档</text>
+
+  <!-- 中间产物 -->
+  <rect x="210" y="40" width="130" height="55" rx="8" fill="#ddf4ff" stroke="#0969da"/>
+  <text x="275" y="62" text-anchor="middle" font-size="12" fill="#0a3069">spec.json</text>
+  <text x="275" y="80" text-anchor="middle" font-size="10" fill="#57606a">结构化需求</text>
+
+  <rect x="210" y="120" width="130" height="55" rx="8" fill="#ddf4ff" stroke="#0969da"/>
+  <text x="275" y="142" text-anchor="middle" font-size="12" fill="#0a3069">tasks.json</text>
+  <text x="275" y="160" text-anchor="middle" font-size="10" fill="#57606a">任务清单</text>
+
+  <rect x="210" y="200" width="130" height="55" rx="8" fill="#ddf4ff" stroke="#0969da"/>
+  <text x="275" y="222" text-anchor="middle" font-size="12" fill="#0a3069">asset.json</text>
+  <text x="275" y="240" text-anchor="middle" font-size="10" fill="#57606a">资产元数据</text>
+
+  <!-- 最终产物 -->
+  <rect x="410" y="40" width="140" height="55" rx="8" fill="#dafbe1" stroke="#1a7f37"/>
+  <text x="480" y="62" text-anchor="middle" font-size="12" fill="#0a3a1a">Git</text>
+  <text x="480" y="80" text-anchor="middle" font-size="10" fill="#57606a">代码 + PR</text>
+
+  <rect x="410" y="120" width="140" height="55" rx="8" fill="#dafbe1" stroke="#1a7f37"/>
+  <text x="480" y="142" text-anchor="middle" font-size="12" fill="#0a3a1a">对象存储</text>
+  <text x="480" y="160" text-anchor="middle" font-size="10" fill="#57606a">资产 + 报告 + 日志</text>
+
+  <rect x="410" y="200" width="140" height="55" rx="8" fill="#dafbe1" stroke="#1a7f37"/>
+  <text x="480" y="222" text-anchor="middle" font-size="12" fill="#0a3a1a">Unity Build</text>
+  <text x="480" y="240" text-anchor="middle" font-size="10" fill="#57606a">构建产物</text>
+
+  <!-- 控制平面 -->
+  <rect x="610" y="120" width="170" height="60" rx="8" fill="#ffebe9" stroke="#cf222e" stroke-width="2"/>
+  <text x="695" y="148" text-anchor="middle" font-size="14" font-weight="bold" fill="#82071e">JIRA</text>
+  <text x="695" y="166" text-anchor="middle" font-size="11" fill="#82071e">唯一事实源 · 状态 + 链接</text>
+
+  <!-- 箭头 -->
+  <line x1="150" y1="150" x2="208" y2="70" stroke="#0969da" stroke-width="1.5" marker-end="url(#dfArrow)"/>
+  <line x1="150" y1="150" x2="208" y2="145" stroke="#0969da" stroke-width="1.5" marker-end="url(#dfArrow)"/>
+  <line x1="150" y1="150" x2="208" y2="225" stroke="#0969da" stroke-width="1.5" marker-end="url(#dfArrow)"/>
+
+  <line x1="340" y1="70" x2="408" y2="70" stroke="#0969da" stroke-width="1.5" marker-end="url(#dfArrow)"/>
+  <line x1="340" y1="145" x2="408" y2="145" stroke="#0969da" stroke-width="1.5" marker-end="url(#dfArrow)"/>
+  <line x1="340" y1="225" x2="408" y2="225" stroke="#0969da" stroke-width="1.5" marker-end="url(#dfArrow)"/>
+
+  <!-- 产物链接写回 JIRA -->
+  <line x1="550" y1="70" x2="608" y2="140" stroke="#cf222e" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#dfArrow)"/>
+  <line x1="550" y1="150" x2="608" y2="150" stroke="#cf222e" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#dfArrow)"/>
+  <line x1="550" y1="225" x2="608" y2="165" stroke="#cf222e" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#dfArrow)"/>
+
+  <text x="410" y="285" text-anchor="middle" font-size="11" fill="#57606a">所有产物写回 JIRA 只存 URL / Hash / BuildID，大文件存对象存储</text>
+</svg>
+<div class="caption">图 9-2 数据流图</div>
+</div>
+
+<h2>9.3 逐步调用清单</h2>
+
+<table>
+  <tr><th>步骤</th><th>触发</th><th>调用</th><th>产出</th><th>状态变化</th></tr>
+  <tr><td>0</td><td>人工</td><td><code>gameai start</code></td><td>trace_id</td><td>Backlog → PM分析中</td></tr>
+  <tr><td>1</td><td>Orchestrator</td><td>pm.analyze</td><td>spec.json + tasks</td><td>→ 待美术 / 待编码</td></tr>
+  <tr><td>2</td><td>Orchestrator</td><td>art.generate</td><td>asset.json</td><td>→ 待编码</td></tr>
+  <tr><td>3</td><td>Orchestrator</td><td>dev.implement</td><td>pr.json</td><td>→ CI验证中</td></tr>
+  <tr><td>4</td><td>Orchestrator</td><td>unity.run</td><td>test_report.json</td><td>→ QA验证中</td></tr>
+  <tr><td>5</td><td>Orchestrator</td><td>qa.verify</td><td>qa.json</td><td>→ 待人工验收 / 修复中</td></tr>
+  <tr><td>6a</td><td>失败</td><td>dev.fix / art.fix</td><td>new commit</td><td>→ CI验证中（循环）</td></tr>
+  <tr><td>6b</td><td>成功</td><td>人工 approve</td><td>merged</td><td>→ Done</td></tr>
+</table>
+
+<!-- ========== 10. Unity CLI ========== -->
+<h1 id="s10">10. Unity CLI 确定性要求</h1>
+
+<h2>10.1 固定项</h2>
+
+<ul>
+  <li>Unity 精确版本，例如 <code>2022.3.XX</code></li>
+  <li>Docker 镜像 digest</li>
+  <li><code>Packages/manifest.json</code> 和 <code>packages-lock.json</code></li>
+  <li>资产 Hash</li>
+  <li>代码 Commit</li>
+  <li>随机种子</li>
+  <li>构建脚本</li>
+  <li>输入 Hash：需求 Hash + 资产 Hash + 代码 Commit</li>
+  <li>输出：测试报告、Build Hash、日志、截图</li>
+</ul>
+
+<h2>10.2 执行命令</h2>
+
+<pre><code>docker run --rm \
+  -v $PWD:/workspace \
+  unity-runner:2022.3.XX \
+  Unity -batchmode -nographics -quit \
+  -projectPath /workspace/Game \
+  -executeMethod Automation.CI.RunAll \
+  -logFile /workspace/Logs/ci.log</code></pre>
+
+<h2>10.3 确定性定义</h2>
+
+<div class="callout ok">
+  <strong>确定性</strong> = 相同输入、相同环境、相同版本，得到相同的测试结果和可验证产物，而不是 bit-for-bit 完全一致的二进制。
+</div>
+
+<!-- ========== 11. 目录结构 ========== -->
+<h1 id="s11">11. 目录结构</h1>
+
+<h2>11.1 生产结构</h2>
+
+<pre><code>game-ai/
+├── gameai/                      # 单 CLI 包
+│   ├── main.py                  # CLI 入口
+│   ├── config.py                # 全局配置
+│   │
+│   ├── commands/                # 子命令层（薄）
+│   │   ├── start.py
+│   │   ├── watch.py
+│   │   ├── serve.py
+│   │   ├── status.py
+│   │   ├── approve.py
+│   │   ├── retry.py
+│   │   ├── pm.py
+│   │   ├── art.py
+│   │   ├── dev.py
+│   │   ├── qa.py
+│   │   └── unity.py
+│   │
+│   ├── core/                    # 核心逻辑
+│   │   ├── fsm.py               # 状态机
+│   │   ├── execution.py         # 通过 JIRA 读写执行记录与幂等键
+│   │   ├── jira.py              # 唯一可信来源的读写客户端
+│   │   ├── runner.py            # Unity CLI 调用
+│   │   ├── orchestrator.py      # 主循环
+│   │   └── contracts.py         # JSON 契约
+│   │
+│   ├── agents/                  # Agent 业务逻辑（纯 Python）
+│   │   ├── pm_agent.py
+│   │   ├── art_agent.py
+│   │   ├── dev_agent.py
+│   │   └── qa_agent.py
+│   │
+│   └── skills/                  # Skill 包
+│       ├── registry.py
+│       ├── common/
+│       ├── jira/
+│       ├── art/
+│       ├── dev/
+│       ├── unity/
+│       └── qa/
+│
+├── unity-runner/
+│   └── Dockerfile
+│
+├── tests/
+│   ├── unit/
+│   ├── contract/
+│   └── integration/
+│
+├── workspace/                   # 产物工作区，不保存流程状态
+│   ├── assets/
+│   ├── repo/
+│   └── builds/
+│
+├── pyproject.toml
+└── README.md</code></pre>
+
+<!-- ========== 12. MVP ========== -->
+<h1 id="s12">12. MVP 开发计划</h1>
+
+<div class="callout info">
+  <strong>先跑通链路，再细化肌肉。</strong>不要一上来就上 Temporal、K8s、多 Agent 编排框架。<br>
+  目标：3 天内端到端跑通一次 <code>策划文档 → Done</code>，JIRA 从 MVP 起真实接入，其他外部调用和 LLM 先用桩函数。
+</div>
+
+<h2>12.1 MVP 范围</h2>
+
+<table>
+  <tr><th>组件</th><th>MVP 选型</th><th>生产替换</th></tr>
+  <tr><td>CLI</td><td>Python + Typer</td><td>不变</td></tr>
+  <tr><td>数据校验</td><td>Pydantic</td><td>不变</td></tr>
+
+  <tr><td>调度</td><td>轮询循环</td><td>Temporal / LangGraph</td></tr>
+  <tr><td>JIRA</td><td>JIRA REST API</td><td>不变</td></tr>
+  <tr><td>资产</td><td>本地目录</td><td>S3 / MinIO</td></tr>
+  <tr><td>Git</td><td>本地目录</td><td>Git + PR</td></tr>
+  <tr><td>Unity</td><td>echo 脚本</td><td>Unity CLI + Docker</td></tr>
+  <tr><td>LLM</td><td>桩函数</td><td>GPT / Claude</td></tr>
+  <tr><td>日志</td><td>logging</td><td>OpenTelemetry</td></tr>
+</table>
+
+<h2>12.2 MVP 不做什么</h2>
+
+<ul>
+  <li>不做 Webhook</li>
+  <li>不做并发</li>
+  <li>不做 Temporal</li>
+  <li>不做 OpenTelemetry</li>
+  <li>不做真美术生成</li>
+  <li>不做真代码生成</li>
+  <li>不做真 QA 分析</li>
+</ul>
+
+<h2>12.3 分步实施</h2>
+
+<table>
+  <tr><th>步骤</th><th>目标</th><th>时间</th></tr>
+  <tr><td>Step 1</td><td>搭骨架，<code>gameai --help</code> 能跑</td><td>0.5 天</td></tr>
+  <tr><td>Step 2</td><td>JIRA 状态契约 + 纯函数状态机</td><td>0.5 天</td></tr>
+  <tr><td>Step 3</td><td>接入 JIRA 状态、执行记录与审批</td><td>0.5 天</td></tr>
+  <tr><td>Step 4</td><td>四个 Agent 桩版本</td><td>0.5 天</td></tr>
+  <tr><td>Step 5</td><td>模拟 Unity CLI</td><td>0.5 天</td></tr>
+  <tr><td>Step 6</td><td>Orchestrator 主循环</td><td>0.5 天</td></tr>
+  <tr><td>Step 7</td><td>端到端验证</td><td>0.5 天</td></tr>
+  <tr><td colspan="2"><strong>合计</strong></td><td><strong>3 天</strong></td></tr>
+</table>
+
+<h2>12.4 MVP 完成标准</h2>
+
+<ul>
+  <li>☐ <code>gameai --help</code> 正常</li>
+  <li>☐ <code>gameai start</code> 能创建 3 个 issue</li>
+  <li>☐ Art Agent 能生成本地假资产</li>
+  <li>☐ Dev Agent 能生成本地假代码</li>
+  <li>☐ Unity 模拟器能返回测试报告</li>
+  <li>☐ QA Agent 能写 <code>QAStatus</code></li>
+  <li>☐ <code>gameai status</code> 能看状态</li>
+  <li>☐ <code>gameai approve</code> 能推到 Done</li>
+  <li>☐ 所有产物在 <code>workspace/</code> 可查</li>
+</ul>
+
+<h2>12.5 关键原则</h2>
+
+<ol>
+  <li><strong>先桩后真</strong>：JIRA 从 MVP 起真实接入；其他外部依赖先用桩，链路先通</li>
+  <li><strong>接口先行</strong>：通过统一 JiraClient 读写 JIRA，测试替身仅用于隔离测试</li>
+  <li><strong>状态唯一源</strong>：JIRA 是唯一可信来源；任务状态、审批、重试和执行记录均从 JIRA 读取并写回</li>
+  <li><strong>契约优先</strong>：Agent 和 Skill 都用 Pydantic 定义输入输出</li>
+  <li><strong>CLI 薄</strong>：命令层只解析参数，逻辑在 <code>agents/</code> 和 <code>core/</code></li>
+  <li><strong>可回放</strong>：<code>workspace/</code> 里所有产物可查、可复现</li>
+  <li><strong>不提前优化</strong>：不上 Temporal、不上 K8s、不上多进程</li>
+</ol>
+
+<!-- ========== 13. 路线图 ========== -->
+<h1 id="s13">13. 后续细化路线</h1>
+
+<h2>13.1 阶段划分</h2>
+
+<div class="diagram">
+<svg viewBox="0 0 820 340" xmlns="http://www.w3.org/2000/svg" font-family="sans-serif">
+  <!-- 时间轴 -->
+  <line x1="40" y1="170" x2="780" y2="170" stroke="#57606a" stroke-width="2"/>
+  <polygon points="780,165 795,170 780,175" fill="#57606a"/>
+
+  <!-- 阶段 -->
+  <g font-size="11">
+    <!-- Phase 1 -->
+    <circle cx="120" cy="170" r="10" fill="#0969da"/>
+    <text x="120" y="120" text-anchor="middle" font-size="13" font-weight="bold" fill="#0a3069">Phase 1</text>
+    <text x="120" y="140" text-anchor="middle" fill="#57606a">MVP 闭环</text>
+    <text x="120" y="200" text-anchor="middle" fill="#57606a">1–2 周</text>
+    <text x="120" y="220" text-anchor="middle" font-size="10" fill="#57606a">CLI + JIRA</text>
+    <text x="120" y="235" text-anchor="middle" font-size="10" fill="#57606a">桩 Agent</text>
+
+    <!-- Phase 2 -->
+    <circle cx="270" cy="170" r="10" fill="#1a7f37"/>
+    <text x="270" y="120" text-anchor="middle" font-size="13" font-weight="bold" fill="#0a3a1a">Phase 2</text>
+    <text x="270" y="140" text-anchor="middle" fill="#57606a">替换真实组件</text>
+    <text x="270" y="200" text-anchor="middle" fill="#57606a">2–4 周</text>
+    <text x="270" y="220" text-anchor="middle" font-size="10" fill="#57606a">真实资产与 Git</text>
+    <text x="270" y="235" text-anchor="middle" font-size="10" fill="#57606a">真 Unity</text>
+
+    <!-- Phase 3 -->
+    <circle cx="420" cy="170" r="10" fill="#bf8700"/>
+    <text x="420" y="120" text-anchor="middle" font-size="13" font-weight="bold" fill="#7a5b00">Phase 3</text>
+    <text x="420" y="140" text-anchor="middle" fill="#57606a">Skill 注册表</text>
+    <text x="420" y="200" text-anchor="middle" fill="#57606a">2 周</text>
+    <text x="420" y="220" text-anchor="middle" font-size="10" fill="#57606a">抽象 Skill</text>
+    <text x="420" y="235" text-anchor="middle" font-size="10" fill="#57606a">LLM 工具化</text>
+
+    <!-- Phase 4 -->
+    <circle cx="570" cy="170" r="10" fill="#cf222e"/>
+    <text x="570" y="120" text-anchor="middle" font-size="13" font-weight="bold" fill="#82071e">Phase 4</text>
+    <text x="570" y="140" text-anchor="middle" fill="#57606a">幂等与重试</text>
+    <text x="570" y="200" text-anchor="middle" fill="#57606a">2 周</text>
+    <text x="570" y="220" text-anchor="middle" font-size="10" fill="#57606a">错误分类</text>
+    <text x="570" y="235" text-anchor="middle" font-size="10" fill="#57606a">自动修复</text>
+
+    <!-- Phase 5 -->
+    <circle cx="720" cy="170" r="10" fill="#57606a"/>
+    <text x="720" y="120" text-anchor="middle" font-size="13" font-weight="bold" fill="#24292f">Phase 5</text>
+    <text x="720" y="140" text-anchor="middle" fill="#57606a">生产强化</text>
+    <text x="720" y="200" text-anchor="middle" fill="#57606a">4–8 周</text>
+    <text x="720" y="220" text-anchor="middle" font-size="10" fill="#57606a">Webhook + 并发</text>
+    <text x="720" y="235" text-anchor="middle" font-size="10" fill="#57606a">可观测性</text>
+  </g>
+
+  <text x="410" y="300" text-anchor="middle" font-size="12" fill="#57606a">每个阶段结束都必须能端到端跑通一次，不允许"半成品阶段"</text>
+</svg>
+<div class="caption">图 13-1 实施路线图</div>
+</div>
+
+<h2>13.2 各阶段替换清单</h2>
+
+<table>
+  <tr><th>阶段</th><th>桩</th><th>替换为</th></tr>
+  <tr><td rowspan="4">Phase 2</td><td>本地资产目录</td><td>S3 / MinIO</td></tr>
+  <tr><td>本地 repo</td><td>Git + 分支 + PR</td></tr>
+  <tr><td>模拟 Unity</td><td>真 Unity CLI + Docker</td></tr>
+  <tr><td>桩 Agent</td><td>LLM 驱动 Agent</td></tr>
+  <tr><td rowspan="3">Phase 3</td><td>Agent 内联逻辑</td><td>Skill 注册表</td></tr>
+  <tr><td>硬编码调用</td><td>Registry 动态发现</td></tr>
+  <tr><td>无描述</td><td>LLM 工具描述</td></tr>
+  <tr><td rowspan="3">Phase 4</td><td>无幂等</td><td>JIRA 幂等键 + 执行记录</td></tr>
+  <tr><td>无分类</td><td>可重试 / 可修复 / 不可重试</td></tr>
+  <tr><td>无上限</td><td>重试 3 次后转人工</td></tr>
+  <tr><td rowspan="3">Phase 5</td><td>轮询</td><td>Webhook + 队列</td></tr>
+  <tr><td>单进程</td><td>多 Worker + 并发</td></tr>
+  <tr><td>logging</td><td>OpenTelemetry + 指标面板</td></tr>
+</table>
+
+<!-- ========== 总结 ========== -->
+<h1>14. 总结</h1>
+
+<div class="callout ok">
+  <strong>本方案以 JIRA 为控制平面，Orchestrator 为调度核心，4 个 AI Agent 为执行角色，Unity CLI 为确定性验证器，形成完整闭环。</strong>
+</div>
+
+<h2>14.1 核心架构</h2>
+
+<pre><code>策划需求
+  → PM Agent 拆需求建 JIRA
+  → Orchestrator 调度
+  → Art Agent 产资源入库回写 JIRA
+  → Dev Agent 编码开 PR
+  → Unity CLI 确定性验证
+  → QA Agent 验收
+  → 失败自动修复
+  → 成功人工门禁
+  → 合并发布</code></pre>
+
+<h2>14.2 核心原则</h2>
+
+<table>
+  <tr><th>原则</th><th>说明</th></tr>
+  <tr><td>确定性包围不确定性</td><td>状态机、幂等、重试保证流程可靠；LLM 只负责内容生成</td></tr>
+  <tr><td>JIRA 是唯一事实源</td><td>所有状态、执行记录和产物链接统一写回 JIRA；不维护第二套状态源</td></tr>
+  <tr><td>JSON 契约交互</td><td>Agent 之间不直接对话，通过结构化输出协作</td></tr>
+  <tr><td>人工只做门禁</td><td>需求确认、美术抽检、合并发布</td></tr>
+  <tr><td>CLI-first 起步</td><td>单 CLI 快速跑通闭环，后续再服务化</td></tr>
+  <tr><td>先桩后真</td><td>JIRA 真实接入，其他外部依赖先用桩函数</td></tr>
+  <tr><td>Skill 越确定，流水线越稳</td><td>Agent 负责"想"，Skill 负责"做"</td></tr>
+</table>
+
+<h2>14.3 最终形态</h2>
+
+<div class="callout info">
+  <strong>5 个逻辑角色，1 个 CLI，4 个 Agent，1 个调度器，1 条闭环。</strong><br>
+  <code>gameai start --spec ./docs/game.md --project GAME</code> 即可启动全流程。
+</div>
+
+<div class="footer">
+  全 AI 游戏开发流水线设计文档 · v1.0 · 2026-09-22<br>
+  本文档可直接通过浏览器打印导出为 PDF
+</div>
+
+</div>
+
+</body>
+</html>
