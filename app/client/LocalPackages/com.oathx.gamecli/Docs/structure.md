@@ -1,43 +1,41 @@
 # Game CLI package structure
 
-This scaffold combines the reference `com.oathx.unitycli` package layout with the AI workflow outline. It contains directories only; no CLI, Unity bridge, or package registration is implemented yet.
+All executable development uses C#. The existing standalone console project targets .NET 8. Standard Markdown skills remain portable instructions for AI tools; they are not executable Agent implementations.
 
 ```text
 com.oathx.gamecli/
-|-- Docs/                        Package documentation
-|-- Editor/                      Unity Editor integration
-|   |-- Bridge/                  External CLI communication
-|   |-- Commands/                Unity command handlers
-|   |-- Plugins/                 Editor extensions
-|   `-- Services/                Import, validation and build services
-|-- Runtime/                     Shared runtime contracts, when needed
-|-- game-cli/                    Agent-facing usage resources
+|-- Docs/
+|-- Editor/                      Unity Editor C# integration
+|   |-- Bridge/
+|   |-- Commands/
+|   |-- Plugins/
+|   `-- Services/
+|-- Runtime/                     Unity runtime C# contracts, as needed
+|-- game-cli/                    Portable standard skills
+|   |-- gameai-cli-development/SKILL.md
+|   |-- gameai-pm/SKILL.md
+|   |-- gameai-art/SKILL.md
+|   |-- gameai-dev/SKILL.md
+|   |-- gameai-qa/SKILL.md
+|   |-- gameai-orchestrator/SKILL.md
+|   |-- gameai-common/SKILL.md
+|   |-- gameai-jira/SKILL.md
+|   |-- gameai-unity/SKILL.md
 |   |-- examples/
 |   |-- references/
 |   `-- scripts/
-`-- GameCLI~/                    Standalone CLI workspace, excluded from Unity asset import
-    |-- gameai/                  Python CLI package
-    |   |-- commands/            Thin command entry points
-    |   |-- core/                State machine, JIRA execution records and orchestration
-    |   |-- agents/              PM, Art, Dev and QA implementations
-    |   `-- skills/              Executable Python skills, distinct from usage resources
-    |       |-- common/
-    |       |-- jira/
-    |       |-- art/
-    |       |-- dev/
-    |       |-- unity/
-    |       `-- qa/
-    |-- unity-runner/            Unity runner configuration
-    |-- tests/
-    |   |-- unit/
-    |   |-- contract/
-    |   `-- integration/
-    `-- workspace/              Generated artifacts only, never authoritative workflow state
-        |-- assets/
-        |-- repo/
-        `-- builds/
+`-- GameCLI~/                    Excluded from Unity asset import
+    `-- GameCLI/
+        |-- GameCLI.sln          Existing VS solution
+        `-- GameCLI/
+            |-- GameCLI.csproj   Existing .NET 8 console project
+            `-- Program.cs      Existing template entry point
 ```
 
-JIRA is the sole source of truth for task status, approvals, retries and execution records. No SQLite database or local JIRA state file is planned.
+Planned C# source folders inside the console project: Commands, Core, Contracts, Agents and Services. Future tests belong beside the project. These folders and their business implementations are not created yet. The former Python scaffold has been removed by the project owner and is not restored.
 
-`.gitkeep` files preserve empty directories in Git. Generated workspace contents are ignored. Entry-point files, `pyproject.toml`, Unity assembly definitions and `package.json` will be added when their implementations are introduced.
+JIRA is the sole source of truth for task status, approvals, retries and execution records. No SQLite database or local JIRA state file is planned. Reports and generated artifacts are not an alternative workflow state store.
+
+Copy the required gameai-* folders into an AI tool's skill root, preserving names and sibling layout. Include referenced shared skills; the orchestrator references all four role skills. Copying all nine folders preserves every relative reference. The gameai-cli-development skill governs this repository; root AGENTS.md routes future development to it. It is not another business Agent. No automatic installation is performed.
+
+The standalone .csproj and .sln are source files and must be versioned. Unity-generated IDE projects remain ignored, as do bin, obj and .vs. The .NET 8 console project runs outside Unity; its target framework is not the Unity runtime framework.

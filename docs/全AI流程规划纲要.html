@@ -542,40 +542,37 @@
 </ol>
 
 <h2>4.2 技术选型</h2>
-
 <table>
-  <tr><th>引擎</th><th>适用场景</th><th>说明</th></tr>
-  <tr><td>Temporal</td><td>长时运行、持久化状态</td><td>推荐生产使用</td></tr>
-  <tr><td>LangGraph</td><td>Agent 编排为主</td><td>适合内层 Agent 调用</td></tr>
-  <tr><td>Prefect</td><td>Python 工作流</td><td>上手快</td></tr>
-  <tr><td>Airflow</td><td>定时批处理</td><td>不适合循环</td></tr>
+  <tr><th>模块</th><th>实现路线</th><th>约束</th></tr>
+  <tr><td>CLI</td><td>C# / .NET 8 控制台工程</td><td>复用已创建的 GameCLI.csproj，命令层保持轻量</td></tr>
+  <tr><td>编排器</td><td>C# 纯函数状态机与异步任务调度</td><td>JIRA 是唯一可信来源，不引入第二套权威状态库</td></tr>
+  <tr><td>数据契约</td><td>C# DTO、System.Text.Json 与显式校验</td><td>结构化输入输出，缺失或无效数据不得推进流程</td></tr>
+  <tr><td>外部集成</td><td>C# JIRA 客户端与 Unity 进程执行器</td><td>超时、重试、幂等执行记录统一关联 JIRA</td></tr>
+  <tr><td>Skill</td><td>标准 SKILL.md</td><td>放在 game-cli/，供对应 AI 工具加载</td></tr>
 </table>
-
-<div class="callout warn">
-  推荐组合：<strong>Temporal + LangGraph</strong>；MVP 阶段可先用 <strong>CLI + JIRA + 纯函数状态机</strong>。
-</div>
-
+<div class="callout warn">统一使用 C# 开发 CLI、调度器、集成与验证工具；Skill 保持 Markdown 指令格式。MVP 使用 C# CLI + JIRA + 纯函数状态机。</div>
 <h2>4.3 状态迁移表</h2>
 
-<pre><code>TRANSITIONS = [
-    Transition(BACKLOG,          "pm_analyze",    PM_ANALYZING,        "pm",  None),
-    Transition(PM_ANALYZING,     "pm_done",       PENDING_PM_REVIEW,   None,  None),
-    Transition(PENDING_PM_REVIEW,"human_approved",PENDING_ART,         None,  None,
-               guard=lambda ctx: ctx["has_art_tasks"]),
-    Transition(PENDING_ART,      "art_start",     ART_GENERATING,      "art", None),
-    Transition(ART_GENERATING,   "art_done",      PENDING_ART_REVIEW,  None,  "verify_assets"),
-    Transition(PENDING_ART_REVIEW,"art_approved", PENDING_DEV,         None,  None),
-    Transition(PENDING_DEV,      "dev_start",     DEV_CODING,          "dev", None),
-    Transition(DEV_CODING,       "dev_done",      CI_VERIFYING,        None,  "run_unity_cli"),
-    Transition(CI_VERIFYING,     "ci_passed",     QA_VERIFYING,        "qa",  None),
-    Transition(CI_VERIFYING,     "ci_failed",     FIXING,              "dev", None),
-    Transition(QA_VERIFYING,     "qa_passed",     PENDING_HUMAN,       None,  None),
-    Transition(QA_VERIFYING,     "qa_failed_code",FIXING,              "dev", None),
-    Transition(QA_VERIFYING,     "qa_failed_art", FIXING,              "art", None),
-    Transition(QA_VERIFYING,     "qa_failed_spec",FIXING,              "pm",  None),
-    Transition(FIXING,           "fix_done",      CI_VERIFYING,        None,  "run_unity_cli"),
-    Transition(PENDING_HUMAN,    "human_approved",DONE,                None,  "merge_pr"),
-]</code></pre>
+<pre><code>Transition[] transitions = new Transition[]
+{
+    new Transition(BACKLOG,          "pm_analyze",    PM_ANALYZING,        "pm",  null),
+    new Transition(PM_ANALYZING,     "pm_done",       PENDING_PM_REVIEW,   null,  null),
+    new Transition(PENDING_PM_REVIEW,"human_approved",PENDING_ART,         null,  null,
+               guard: ctx => ctx.HasArtTasks),
+    new Transition(PENDING_ART,      "art_start",     ART_GENERATING,      "art", null),
+    new Transition(ART_GENERATING,   "art_done",      PENDING_ART_REVIEW,  null,  "verify_assets"),
+    new Transition(PENDING_ART_REVIEW,"art_approved", PENDING_DEV,         null,  null),
+    new Transition(PENDING_DEV,      "dev_start",     DEV_CODING,          "dev", null),
+    new Transition(DEV_CODING,       "dev_done",      CI_VERIFYING,        null,  "run_unity_cli"),
+    new Transition(CI_VERIFYING,     "ci_passed",     QA_VERIFYING,        "qa",  null),
+    new Transition(CI_VERIFYING,     "ci_failed",     FIXING,              "dev", null),
+    new Transition(QA_VERIFYING,     "qa_passed",     PENDING_HUMAN,       null,  null),
+    new Transition(QA_VERIFYING,     "qa_failed_code",FIXING,              "dev", null),
+    new Transition(QA_VERIFYING,     "qa_failed_art", FIXING,              "art", null),
+    new Transition(QA_VERIFYING,     "qa_failed_spec",FIXING,              "pm",  null),
+    new Transition(FIXING,           "fix_done",      CI_VERIFYING,        null,  "run_unity_cli"),
+    new Transition(PENDING_HUMAN,    "human_approved",DONE,                null,  "merge_pr"),
+};</code></pre>
 
 <h2>4.4 幂等与重试</h2>
 
@@ -584,20 +581,21 @@
 <p>幂等键与执行结果统一记录在 JIRA。执行副作用前读取 JIRA 中的记录，完成后回写结果；崩溃恢复时先核对目标系统中的已有产物，再决定重试或补写 JIRA。JIRA 不可用时暂停推进流程，不使用本地状态代替 JIRA。</p>
 
 <h3>重试策略</h3>
-<pre><code>RETRY_POLICY = {
+<p>重试配置使用 JSON，由 C# DTO 读取和校验：</p>
+<pre><code>{
     "max_attempts": 3,
-    "backoff": "exponential",   # 1s, 2s, 4s
+    "backoff": "exponential",
     "retryable_errors": [
         "NETWORK_TIMEOUT",
         "RATE_LIMITED",
         "UNITY_CRASH",
-        "CI_INFRA_ERROR",
+        "CI_INFRA_ERROR"
     ],
     "non_retryable_errors": [
         "SPEC_INVALID",
         "AUTH_FAILED",
-        "HUMAN_REJECTED",
-    ],
+        "HUMAN_REJECTED"
+    ]
 }</code></pre>
 
 <h3>错误分类处理</h3>
@@ -1024,120 +1022,39 @@ agents:
 <div class="caption">图 7-1 Skill 四层分类</div>
 </div>
 
-<h2>7.2 Skill 统一契约</h2>
-
-<h3>函数签名</h3>
-<pre><code>from pydantic import BaseModel
-
-class ResizeInput(BaseModel):
-    src_url: str
-    width: int
-    height: int
-    keep_alpha: bool = True
-
-class ResizeOutput(BaseModel):
-    dst_url: str
-    width: int
-    height: int
-    hash: str
-
-def resize_image(inp: ResizeInput, ctx: SkillContext) -> ResizeOutput:
-    ...</code></pre>
-
-<h3>SkillContext 统一注入</h3>
-<pre><code>@dataclass
-class SkillContext:
-    trace_id: str
-    idempotency_key: str
-    config: dict
-    jira: JiraClient
-    storage: StorageClient
-    git: GitClient
-    llm: LLMClient
-    logger: Logger</code></pre>
-
-<h3>Skill 装饰器</h3>
-<pre><code>@skill(
-    name="art.resize_image",
-    description="按尺寸和透明通道要求缩放图像，输出新图和哈希",
-    input_model=ResizeInput,
-    output_model=ResizeOutput,
-    deterministic=True,
-    side_effects=["storage_write"],
-    idempotent=True,
-    tags=["art", "image"],
-)
-def resize_image(inp, ctx): ...</code></pre>
-
-<h2>7.3 Skill 注册表</h2>
-
-<pre><code>class SkillRegistry:
-    def __init__(self):
-        self._skills = {}
-
-    def register(self, meta, fn):
-        self._skills[meta.name] = (meta, fn)
-
-    def get(self, name):
-        return self._skills[name]
-
-    def list_for(self, agent: str):
-        return [s for s in self._skills.values() if agent in s[0].tags]
-
-    def describe_for_llm(self, agent: str) -> str:
-        """生成给 LLM 的工具描述"""
-        lines = []
-        for meta, _ in self.list_for(agent):
-            lines.append(f"- {meta.name}: {meta.description}")
-            lines.append(f"  input: {meta.input_model.schema()}")
-        return "\n".join(lines)</code></pre>
-
+<h2>7.2 标准 Skill 契约</h2>
+<p>Skill 使用标准目录与 <code>SKILL.md</code> 文件。文件以 YAML frontmatter 开头，包含 <code>name</code> 和 <code>description</code>，正文定义输入、职责、流程约束与输出。Skill 是操作指令，不是可执行程序，也不等于已实现的 Agent 或 CLI。</p>
+<pre><code>---
+name: gameai-pm
+description: 拆解游戏需求并定义 JIRA 任务与验收标准；用于 PM Agent。
+---
+# PM Agent
+读取需求与 JIRA，拆分任务、依赖和验收标准，返回结构化结果。</code></pre>
+<p>四个业务 Agent 各有独立角色技能；编排器有独立技能，仍按确定性状态机执行。所有角色共用 gameai-common、gameai-jira 和 gameai-unity，按需读取其 SKILL.md。</p>
+<h2>7.3 Skill 发现与加载</h2>
+<p>加载器扫描技能目录中的 SKILL.md，先读取 name/description 选择技能，再加载正文及其引用。标准技能统一放在 com.oathx.gamecli/game-cli/。可将其中 gameai-* 技能目录复制或安装到目标 AI 工具的技能根目录，保持目录名称和同级关系；同时携带所引用的公共技能，编排器还需要四个角色技能。复制全部九个目录可保留完整引用。gameai-cli-development 用于本工程开发约定，由仓库 AGENTS.md 引用，不增加业务 Agent 角色。当前未自动安装到任何 AI 工具。可选 scripts/ 用于真实的确定性工具，references/ 用于详细契约，assets/ 用于输出模板，按需添加。</p>
 <h2>7.4 Skill 目录结构</h2>
-
-<pre><code>gameai/skills/
-├── registry.py          # Skill 注册表
-├── common/              # 通用
-│   ├── hash.py
-│   ├── json_io.py
-│   └── trace.py
-├── jira/                # JIRA
-│   ├── create_issue.py
-│   ├── update_field.py
-│   └── transition.py
-├── art/                 # 美术
-│   ├── gen_image.py
-│   ├── resize.py
-│   ├── make_meta.py
-│   └── upload_asset.py
-├── dev/                 # 开发
-│   ├── gen_code.py
-│   ├── gen_test.py
-│   ├── git_branch.py
-│   └── open_pr.py
-├── unity/               # Unity
-│   ├── run_cli.py
-│   ├── parse_log.py
-│   └── parse_junit.py
-└── qa/                  # 验收
-    ├── check_acceptance.py
-    ├── classify_failure.py
-    └── diff_screenshot.py</code></pre>
-
+<pre><code>app/client/LocalPackages/com.oathx.gamecli/game-cli/
+├── gameai-cli-development/SKILL.md # 工程开发规范，不是业务 Agent
+├── gameai-pm/SKILL.md            # PM：需求、任务、依赖、验收标准
+├── gameai-art/SKILL.md           # Art：生成、尺寸/透明度、导入设置、上传
+├── gameai-dev/SKILL.md           # Dev：代码、测试、分支、PR
+├── gameai-qa/SKILL.md            # QA：验收、失败分类、截图对比
+├── gameai-orchestrator/SKILL.md  # 编排器：调度、依赖、重试、人工门禁
+├── gameai-common/SKILL.md        # 公共：哈希、JSON、Trace
+├── gameai-jira/SKILL.md          # JIRA：建单、更新字段、状态迁移
+└── gameai-unity/SKILL.md         # Unity：执行 CLI、解析日志和测试报告</code></pre>
 <h2>7.5 Skill 编写规范清单</h2>
-
 <ol>
-  <li><strong>单一职责</strong>：一个 Skill 做一件事</li>
-  <li><strong>明确输入输出</strong>：用 Pydantic 定义</li>
-  <li><strong>幂等</strong>：有副作用的 Skill 带幂等键</li>
-  <li><strong>可测试</strong>：不依赖全局状态，依赖注入</li>
-  <li><strong>可观测</strong>：写 trace，记录耗时、结果、失败原因</li>
-  <li><strong>可描述</strong>：元数据给 LLM 用</li>
-  <li><strong>可版本化</strong>：带 version</li>
-  <li><strong>错误分类</strong>：抛可重试 / 可修复 / 不可重试异常</li>
-  <li><strong>不直接调 Agent</strong>：Skill 只被 Agent 调用</li>
-  <li><strong>不硬编码配置</strong>：通过 <code>ctx.config</code> 注入</li>
+  <li>每个技能目录与 frontmatter name 一致，使用小写字母和连字符，入口统一为 SKILL.md。</li>
+  <li>description 明确适用任务；正文定义职责、输入、输出和真实约束，不把规划能力描述为已实现工具。</li>
+  <li>结构化 JSON 输出遵循 gameai-common；缺少证据、工具或配置时报告阻塞。</li>
+  <li>JIRA 是状态、审批、重试和执行记录的唯一可信来源，不创建本地状态数据库。</li>
+  <li>业务角色不直接调用其他 Agent；编排器按已定义的状态迁移负责调度。</li>
+  <li>外部写入和人工门禁遵守任务授权；Skill 文件本身不扩大权限。</li>
+  <li>有副作用的操作使用 JIRA 执行记录并核对结果；记录 Trace 和错误分类。</li>
+  <li>按需添加 scripts/、references/、assets/，不要求每个技能都有空辅助目录。</li>
 </ol>
-
 <!-- ========== 8. 数据契约 ========== -->
 <h1 id="s8">8. 数据契约</h1>
 
@@ -1175,7 +1092,7 @@ def resize_image(inp, ctx): ...</code></pre>
   "import_settings": {
     "texture_type": "Sprite",
     "max_size": 512,
-    "compression": "None"
+    "compression": "null"
   }
 }</code></pre>
 
@@ -1438,68 +1355,30 @@ def resize_image(inp, ctx): ...</code></pre>
 
 <h2>11.1 生产结构</h2>
 
-<pre><code>game-ai/
-├── gameai/                      # 单 CLI 包
-│   ├── main.py                  # CLI 入口
-│   ├── config.py                # 全局配置
-│   │
-│   ├── commands/                # 子命令层（薄）
-│   │   ├── start.py
-│   │   ├── watch.py
-│   │   ├── serve.py
-│   │   ├── status.py
-│   │   ├── approve.py
-│   │   ├── retry.py
-│   │   ├── pm.py
-│   │   ├── art.py
-│   │   ├── dev.py
-│   │   ├── qa.py
-│   │   └── unity.py
-│   │
-│   ├── core/                    # 核心逻辑
-│   │   ├── fsm.py               # 状态机
-│   │   ├── execution.py         # 通过 JIRA 读写执行记录与幂等键
-│   │   ├── jira.py              # 唯一可信来源的读写客户端
-│   │   ├── runner.py            # Unity CLI 调用
-│   │   ├── orchestrator.py      # 主循环
-│   │   └── contracts.py         # JSON 契约
-│   │
-│   ├── agents/                  # Agent 业务逻辑（纯 Python）
-│   │   ├── pm_agent.py
-│   │   ├── art_agent.py
-│   │   ├── dev_agent.py
-│   │   └── qa_agent.py
-│   │
-│   └── skills/                  # Skill 包
-│       ├── registry.py
-│       ├── common/
-│       ├── jira/
-│       ├── art/
-│       ├── dev/
-│       ├── unity/
-│       └── qa/
-│
-├── unity-runner/
-│   └── Dockerfile
-│
-├── tests/
-│   ├── unit/
-│   ├── contract/
-│   └── integration/
-│
-├── workspace/                   # 产物工作区，不保存流程状态
-│   ├── assets/
-│   ├── repo/
-│   └── builds/
-│
-├── pyproject.toml
-└── README.md</code></pre>
+<pre><code>app/client/LocalPackages/com.oathx.gamecli/
+├── game-cli/                    # 可安装到 AI 工具的标准技能（见 7.4）
+├── Editor/                      # Unity Editor 集成（C#）
+├── Runtime/                     # Unity 运行时共享代码（C#，按需）
+├── Docs/
+└── GameCLI~/
+    └── GameCLI/
+        ├── GameCLI.sln          # 已创建的 VS 解决方案
+        ├── GameCLI/
+        │   ├── GameCLI.csproj   # 已创建，目标 net8.0
+        │   ├── Program.cs      # 已创建的控制台入口
+        │   ├── Commands/       # 规划：命令与参数处理
+        │   ├── Core/           # 规划：状态机、编排、JIRA 执行记录
+        │   ├── Contracts/      # 规划：DTO 与输入输出校验
+        │   ├── Agents/         # 规划：PM、Art、Dev、QA 调用适配
+        │   └── Services/       # 规划：JIRA、Git、资产与 Unity 执行器
+        ├── Tests/              # 规划：单元、契约、集成测试
+        └── workspace/          # 规划：仅生成产物，不保存权威流程状态</code></pre>
 
 <!-- ========== 12. MVP ========== -->
 <h1 id="s12">12. MVP 开发计划</h1>
 
 <div class="callout info">
-  <strong>先跑通链路，再细化肌肉。</strong>不要一上来就上 Temporal、K8s、多 Agent 编排框架。<br>
+  <strong>先跑通链路，再细化肌肉。</strong>不要一上来就上分布式调度框架、K8s、多 Agent 编排框架。<br>
   目标：3 天内端到端跑通一次 <code>策划文档 → Done</code>，JIRA 从 MVP 起真实接入，其他外部调用和 LLM 先用桩函数。
 </div>
 
@@ -1507,16 +1386,16 @@ def resize_image(inp, ctx): ...</code></pre>
 
 <table>
   <tr><th>组件</th><th>MVP 选型</th><th>生产替换</th></tr>
-  <tr><td>CLI</td><td>Python + Typer</td><td>不变</td></tr>
-  <tr><td>数据校验</td><td>Pydantic</td><td>不变</td></tr>
+  <tr><td>CLI</td><td>C# / .NET 8</td><td>不变</td></tr>
+  <tr><td>数据校验</td><td>C# DTO + System.Text.Json + 显式校验</td><td>不变</td></tr>
 
-  <tr><td>调度</td><td>轮询循环</td><td>Temporal / LangGraph</td></tr>
+  <tr><td>调度</td><td>轮询循环</td><td>C# 异步调度与 Worker</td></tr>
   <tr><td>JIRA</td><td>JIRA REST API</td><td>不变</td></tr>
   <tr><td>资产</td><td>本地目录</td><td>S3 / MinIO</td></tr>
   <tr><td>Git</td><td>本地目录</td><td>Git + PR</td></tr>
   <tr><td>Unity</td><td>echo 脚本</td><td>Unity CLI + Docker</td></tr>
   <tr><td>LLM</td><td>桩函数</td><td>GPT / Claude</td></tr>
-  <tr><td>日志</td><td>logging</td><td>OpenTelemetry</td></tr>
+  <tr><td>日志</td><td>结构化日志</td><td>OpenTelemetry</td></tr>
 </table>
 
 <h2>12.2 MVP 不做什么</h2>
@@ -1524,7 +1403,7 @@ def resize_image(inp, ctx): ...</code></pre>
 <ul>
   <li>不做 Webhook</li>
   <li>不做并发</li>
-  <li>不做 Temporal</li>
+  <li>不做分布式调度框架</li>
   <li>不做 OpenTelemetry</li>
   <li>不做真美术生成</li>
   <li>不做真代码生成</li>
@@ -1565,10 +1444,10 @@ def resize_image(inp, ctx): ...</code></pre>
   <li><strong>先桩后真</strong>：JIRA 从 MVP 起真实接入；其他外部依赖先用桩，链路先通</li>
   <li><strong>接口先行</strong>：通过统一 JiraClient 读写 JIRA，测试替身仅用于隔离测试</li>
   <li><strong>状态唯一源</strong>：JIRA 是唯一可信来源；任务状态、审批、重试和执行记录均从 JIRA 读取并写回</li>
-  <li><strong>契约优先</strong>：Agent 和 Skill 都用 Pydantic 定义输入输出</li>
-  <li><strong>CLI 薄</strong>：命令层只解析参数，逻辑在 <code>agents/</code> 和 <code>core/</code></li>
+  <li><strong>契约优先</strong>：Agent 运行时使用 C# DTO 和 System.Text.Json，并显式校验输入输出；Skill 用 SKILL.md 定义职责和契约</li>
+  <li><strong>CLI 薄</strong>：命令层只解析参数，逻辑在 <code>Agents/</code> 和 <code>Core/</code></li>
   <li><strong>可回放</strong>：<code>workspace/</code> 里所有产物可查、可复现</li>
-  <li><strong>不提前优化</strong>：不上 Temporal、不上 K8s、不上多进程</li>
+  <li><strong>不提前优化</strong>：不上分布式调度框架、不上 K8s、不上多进程</li>
 </ol>
 
 <!-- ========== 13. 路线图 ========== -->
@@ -1603,9 +1482,9 @@ def resize_image(inp, ctx): ...</code></pre>
     <!-- Phase 3 -->
     <circle cx="420" cy="170" r="10" fill="#bf8700"/>
     <text x="420" y="120" text-anchor="middle" font-size="13" font-weight="bold" fill="#7a5b00">Phase 3</text>
-    <text x="420" y="140" text-anchor="middle" fill="#57606a">Skill 注册表</text>
+    <text x="420" y="140" text-anchor="middle" fill="#57606a">Skill 发现与加载</text>
     <text x="420" y="200" text-anchor="middle" fill="#57606a">2 周</text>
-    <text x="420" y="220" text-anchor="middle" font-size="10" fill="#57606a">抽象 Skill</text>
+    <text x="420" y="220" text-anchor="middle" font-size="10" fill="#57606a">标准 SKILL.md</text>
     <text x="420" y="235" text-anchor="middle" font-size="10" fill="#57606a">LLM 工具化</text>
 
     <!-- Phase 4 -->
@@ -1638,15 +1517,15 @@ def resize_image(inp, ctx): ...</code></pre>
   <tr><td>本地 repo</td><td>Git + 分支 + PR</td></tr>
   <tr><td>模拟 Unity</td><td>真 Unity CLI + Docker</td></tr>
   <tr><td>桩 Agent</td><td>LLM 驱动 Agent</td></tr>
-  <tr><td rowspan="3">Phase 3</td><td>Agent 内联逻辑</td><td>Skill 注册表</td></tr>
-  <tr><td>硬编码调用</td><td>Registry 动态发现</td></tr>
+  <tr><td rowspan="3">Phase 3</td><td>Agent 内联逻辑</td><td>Skill 发现与加载</td></tr>
+  <tr><td>硬编码调用</td><td>扫描 SKILL.md 元数据</td></tr>
   <tr><td>无描述</td><td>LLM 工具描述</td></tr>
   <tr><td rowspan="3">Phase 4</td><td>无幂等</td><td>JIRA 幂等键 + 执行记录</td></tr>
   <tr><td>无分类</td><td>可重试 / 可修复 / 不可重试</td></tr>
   <tr><td>无上限</td><td>重试 3 次后转人工</td></tr>
   <tr><td rowspan="3">Phase 5</td><td>轮询</td><td>Webhook + 队列</td></tr>
   <tr><td>单进程</td><td>多 Worker + 并发</td></tr>
-  <tr><td>logging</td><td>OpenTelemetry + 指标面板</td></tr>
+  <tr><td>结构化日志</td><td>OpenTelemetry + 指标面板</td></tr>
 </table>
 
 <!-- ========== 总结 ========== -->

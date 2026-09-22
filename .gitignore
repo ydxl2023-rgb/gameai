@@ -31,3 +31,9 @@ sysinfo.txt
 # OS files
 .DS_Store
 Thumbs.db
+
+# Standalone C# CLI project files are authored source, not Unity IDE output.
+!/app/client/LocalPackages/com.oathx.gamecli/GameCLI~/**/*.csproj
+!/app/client/LocalPackages/com.oathx.gamecli/GameCLI~/**/*.sln
+!/app/client/LocalPackages/com.oathx.gamecli/GameCLI~/**/*.slnx
+**/[Bb]in/
