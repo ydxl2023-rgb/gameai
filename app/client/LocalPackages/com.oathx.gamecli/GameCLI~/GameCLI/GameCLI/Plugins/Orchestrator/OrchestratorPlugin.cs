@@ -23,7 +23,8 @@ namespace GameCLI.Plugins.Orchestrator
             new WorkflowCommand("resume"),
             new WorkflowCommand("revise"),
             new WorkflowCommand("gates"),
-            new WorkflowCommand("dispatch")
+            new WorkflowCommand("dispatch"),
+            new ConnectCommand()
         });
     }
 }

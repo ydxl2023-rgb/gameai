@@ -5,6 +5,9 @@ For development in this repository, read and apply
 
 Use the existing C#/.NET 8 console project under `GameCLI~/GameCLI`.
 Keep distributable standard skills under `com.oathx.gamecli/game-cli`.
+The coordination service is Node.js under `GameCLI~/GameCLIServer`; this is the
+explicit server-side exception to the C# CLI implementation rule.
+Follow `docs/gamecli-server-architecture.md` for the event protocol and rollout boundaries.
 JIRA is the sole source of truth for workflow state. Use `pwsh.exe` for Windows commands.
 Preserve user changes and exclude Unity/IDE caches and build output from commits.
 

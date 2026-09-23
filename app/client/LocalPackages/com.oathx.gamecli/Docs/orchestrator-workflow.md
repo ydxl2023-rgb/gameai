@@ -122,3 +122,9 @@ GameCLI.exe orchestrator --dispatch --issue AI9527-1 --project <工程目录> --
 专项规范见包内 `game-cli/gameai-task-delivery/SKILL.md`，项目管理、编排器及各专业主技能共同引用。
 
 程序完成转换从当前项目提供的原生转换中选择，目标状态类别必须为完成且候选唯一。提交转换前持久化意图，响应丢失后核实实际状态，未确认时停止，不重复转换；字段或权限明确拒绝时修复配置后可再次调度，不重跑程序代理。
+
+## WebSocket 事件连接
+
+新增 `orchestrator --connect --server <ws或wss地址>/ws --project-key <项目> --format json`，通过 `GAMECLI_SERVER_TOKEN` 环境变量提供服务凭据。Node.js GameCLIServer 接收 JIRA Webhook 后按项目推送通知。连接支持心跳、退避重连、有限补发与重新核对提示；这是事件通道，不会自动运行现有 dispatch，不会让所有观察客户端重复派工。
+
+正式部署需要一个 JIRA 服务器可访问的回调地址。当前完成本机 HTTP/WebSocket 与真实 CLI 联调，尚未登记正式 JIRA Webhook。完整部署、固定协议及已实现边界见 [协调服务设计](../../../../../docs/gamecli-server-architecture.md)。

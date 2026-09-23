@@ -37,3 +37,11 @@ Thumbs.db
 !/app/client/LocalPackages/com.oathx.gamecli/GameCLI~/**/*.sln
 !/app/client/LocalPackages/com.oathx.gamecli/GameCLI~/**/*.slnx
 **/[Bb]in/
+
+# Node.js service dependencies, local credentials and reports
+**/node_modules/
+**/.env
+**/.env.*
+!**/.env.example
+**/coverage/
+npm-debug.log*

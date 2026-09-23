@@ -267,3 +267,9 @@ GameCLI.exe orchestrator --dispatch --issue AI9527-1 --project <工程目录> --
 新增 `GameCLI.DeliverySmoke` 验证依赖、审核门禁、上游返工、文件变更、输入版本变化、失败重试、权限与不确定写入；`GameCLI.WorkflowSmoke --professional-only` 验证三类专业会话的技能、沙箱、工具权限与结构化返回。模拟测试不代表真实美术生成或 Unity 验收完成。
 
 专项规范见包内 `game-cli/gameai-task-delivery/SKILL.md`，项目管理、编排器及各专业主技能共同引用。
+
+## 集中协调服务方案
+
+团队模式采用 Node.js GameCLIServer 接收 JIRA Webhook，由服务端统一编排并通过固定协议分配给指定执行端，C# GameCLI 负责本地操作。JIRA 继续作为唯一可信来源；通信缓存与连接信息不是第二套业务状态。
+
+当前已实现 Webhook → 服务端 → Orchestrator WebSocket 的事件通道，包括项目订阅、鉴权、心跳、重连与有限补发。集中派工、执行租约、自动重新核对和结果回写尚未实现。观察客户端不能因收到事件自行启动代理。详见 [GameCLIServer 架构与协议](gamecli-server-architecture.md)，以此文档区分当前能力与后续阶段。

@@ -5,7 +5,7 @@ description: 按 JIRA 需求实现或修复 Unity 功能并交付代码与验证
 
 # Dev Agent
 
-本工具工程的 CLI、编排器和集成代码统一使用 C#，独立控制台工程目标为 .NET 8；Unity 集成代码使用目标 Unity 支持的 C#/.NET API。标准技能保留为 SKILL.md，不另建 Python 实现。
+本工具工程的 CLI 客户端、单机编排与 Unity 集成使用 C#，独立控制台工程目标为 .NET 8；Unity 集成代码使用目标 Unity 支持的 C#/.NET API。用户指定的 GameCLIServer 集中协调服务使用 Node.js。标准技能保留为 SKILL.md，不另建 Python 实现。
 
 - 输入：JIRA 需求、验收标准、依赖、资产 URL/Hash、代码基线及 Unity 版本。
 - 检查工作区已有修改、依赖和审批，核对资产 Hash，在授权范围内实现代码、Prefab、Scene 等。

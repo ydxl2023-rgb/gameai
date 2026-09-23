@@ -18,7 +18,7 @@ description: 定义所有使用 GameCLI 的工程必须遵守的 C# 编码、排
 ## 项目边界与入口
 
 - 本节描述 ugame-ai-cli 自身的工程入口。先确认实际目标仓库；为接入工程工作时使用该工程路径，不因引用本技能或 Oathx 命名转到其他项目。
-- 全部业务和工具实现使用 C#。独立 CLI 使用现有 .NET 8 工程，不恢复 Python 骨架。
+- 独立 CLI、Unity 集成及客户端工具使用 C#，CLI 使用现有 .NET 8 工程，不恢复 Python 骨架。用户指定的集中协调服务 GameCLIServer 使用 Node.js，存放于 `GameCLI~/GameCLIServer`，这是服务端的明确例外，不要求客户端迁移语言。
 - 从仓库根目录定位：`app/client/LocalPackages/com.oathx.gamecli/GameCLI~/GameCLI/GameCLI.sln`；其 `GameCLI/GameCLI.csproj` 为控制台入口工程。
 - Unity 宿主为 `app/client`，当前 Unity 2022.3.62f2。Unity 代码遵守该版本的语言和 API 兼容性，不能直接套用 .NET 8 API。
 - 保留既有目录和用户改动；配置路径从项目根、参数或配置解析，不将本机盘符写入可复用代码。
@@ -143,6 +143,7 @@ namespace GameCLI.Contracts
 - Design、PM、Art、Development、QA 五个专业角色技能及 Orchestrator 技能与 common/jira/unity 公共技能保持职责边界。本开发技能负责工程约定，不增加业务 Agent。
 - 技能互引使用同级相对路径；分发时携带依赖，不能依赖开发机绝对路径。只按需增加 references、scripts、assets。
 - 新增或修改技能优先保持单一职责；可复用专项规则独立为技能，由角色主技能引用。宿主禁用文件读取时，必须显式加载所需依赖技能内容，不能只传入无法打开的链接。
+- 协调服务使用版本化 JSON 与 WebSocket 协议；事件通知不等于派工授权。Node.js 依赖提交 package.json 和锁文件，不提交 node_modules、真实 .env 或令牌。服务端遵守单一职责、四空格、Allman 大括号、英文源码注释及可取消的连接生命周期约定；C# 属性排版规则不机械套用到 JavaScript。
 - 结构或契约变化同步 `Docs/structure.md` 与仓库 `docs/全AI流程规划纲要.html`，明确区分已实现与规划。
 
 ## 验证与交付

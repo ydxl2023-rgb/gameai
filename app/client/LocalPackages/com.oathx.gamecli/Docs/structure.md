@@ -29,6 +29,11 @@ com.oathx.gamecli/
 |   |-- references/
 |   `-- scripts/
 `-- GameCLI~/                    Excluded from Unity asset import
+    |-- GameCLIServer/           Node.js JIRA Webhook and WebSocket event service
+    |   |-- src/
+    |   |-- test/
+    |   |-- package.json
+    |   `-- package-lock.json
     `-- GameCLI/
         |-- GameCLI.sln          Existing VS solution
         `-- GameCLI/
@@ -67,3 +72,9 @@ Core/EarlyTaskPublisher.cs registers Development and QA scopes after the legacy-
 ## 专业交付门禁
 
 Contracts/TaskDelivery.cs 定义子任务交付、证据和输入版本；Core/DeliveryWorkflow.cs 按依赖图读取最新 JIRA 并串行派工；Services/DeliveryVerifier.cs 校验实际文件。交付记录存储在子任务的 gamecli.delivery.v1 属性。专业代理使用工程写入沙箱执行本地制作与验证，仍禁用继承的外部工具，不能自批或修改 JIRA。美术经抽检并在 JIRA 完成后再次 dispatch 放行程序；程序交付校验通过自动完成并启动验收；最终验收保留人工关口。gates 提供只读诊断，DeliverySmoke 覆盖版本失效及恢复边界。
+
+## 集中协调事件服务
+
+Node.js 服务位于 GameCLI~/GameCLIServer，属于服务器端明确的技术例外。C# 的 Contracts/ServerEnvelope.cs 定义消息封装，Services/ServerEventClient.cs 管理 WebSocket 注册、心跳及重连，Plugins/Orchestrator/ConnectCommand.cs 提供 orchestrator --connect。当前只接收事件，不进行分布式派工或自动启动代理。node_modules、真实 .env 与凭据不提交，package-lock.json 保留。
+
+完整协议、配置及后续集中调度方案见 [协调服务设计](../../../../../docs/gamecli-server-architecture.md)。
