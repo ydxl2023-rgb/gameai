@@ -1,4 +1,13 @@
-using GameCLI.Commands;
+using GameCLI.Abstractions;
+using GameCLI.Core;
+using GameCLI.Plugins.Art;
+using GameCLI.Plugins.Development;
+using GameCLI.Plugins.Jira;
+using GameCLI.Plugins.Orchestrator;
+using GameCLI.Plugins.PM;
+using GameCLI.Plugins.QA;
+using GameCLI.Plugins.Unity;
+using GameCLI.Services;
 
 namespace GameCLI
 {
@@ -6,23 +15,13 @@ namespace GameCLI
     {
         private static Task<int> Main(string[] args)
         {
-            if (args.Length == 0 || (args.Length == 1 && (args[0] == "--help" || args[0] == "-h")))
+            ICLIPlugin[] plugins =
             {
-                Console.WriteLine("Usage: GameCLI <group> [options]");
-                Console.WriteLine("Groups:");
-                Console.WriteLine("  unity    Unity Editor commands (use unity --help)");
-                return Task.FromResult(0);
-            }
-
-            // Route by capability before parsing group-specific operations and options.
-            switch (args[0])
-            {
-                case "unity":
-                    return UnityCommand.RunAsync(args[1..]);
-                default:
-                    Console.Error.WriteLine("Unknown command group: " + args[0] + ". Use GameCLI --help.");
-                    return Task.FromResult(4);
-            }
+                new OrchestratorPlugin(), new PMPlugin(), new ArtPlugin(), new DevelopmentPlugin(),
+                new UnityPlugin(), new QAPlugin(), new JiraPlugin()
+            };
+            PluginHost host = new(plugins, new PluginSettingsStore());
+            return host.RunAsync(args);
         }
     }
 }

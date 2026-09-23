@@ -38,7 +38,7 @@ Exit codes: 0 = pong; 1 = timeout/disconnection; 3 = bridge rejected the request
 
 ## Implementation
 
-- `Commands/UnityCommand.cs`: arguments, output and exit codes.
+- `Plugins/Unity/UnityPingCommand.cs`: arguments, output and exit codes.
 - `Services/UnityBridgeClient.cs`: project discovery, endpoint validation and pipe connection.
 - `Runtime/PipeProtocol.cs`: shared bounded UTF-8 JSON framing, linked into the console project.
 - `Editor/Bridge/GameCliServer.cs`: Editor lifecycle and authenticated GET /ping handling.

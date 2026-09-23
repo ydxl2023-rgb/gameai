@@ -1,13 +1,21 @@
 using System.Text.Json;
 using GameCLI.Services;
+using GameCLI.Abstractions;
 
-namespace GameCLI.Commands
+namespace GameCLI.Plugins.Unity
 {
-    internal static class UnityCommand
+    internal sealed class UnityPingCommand : ICommand
     {
+        public string Name => "ping";
+        public string Description => "Check the Unity Editor bridge connection.";
+
+        public Task<int> ExecuteAsync(string[] args, CancellationToken cancellationToken)
+        {
+            return RunAsync(args.Length == 1 && args[0] is "--help" or "-h" ? args : new[] { "--ping" }.Concat(args).ToArray(), cancellationToken);
+        }
         private const string Usage = "GameCLI unity --ping [--project <Unity project>] [--format human|json]";
 
-        public static async Task<int> RunAsync(string[] args)
+        private static async Task<int> RunAsync(string[] args, CancellationToken cancellationToken)
         {
             if (args.Length == 1 && (args[0] == "--help" || args[0] == "-h"))
             {
@@ -43,14 +51,15 @@ namespace GameCLI.Commands
                 return 4;
             }
 
-            return await ExecutePingAsync(project, format);
+            return await ExecutePingAsync(project, format, cancellationToken);
         }
 
-        private static async Task<int> ExecutePingAsync(string? project, string format)
+        private static async Task<int> ExecutePingAsync(string? project, string format, CancellationToken cancellationToken)
         {
             try
             {
-                using CancellationTokenSource timeout = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+                using CancellationTokenSource timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                timeout.CancelAfter(TimeSpan.FromSeconds(5));
                 PingResponse response = await UnityBridgeClient.PingAsync(project, timeout.Token);
                 if (format == "json")
                 {

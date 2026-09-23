@@ -25,6 +25,10 @@ namespace Oathx.GameCLI.Editor
         private MessageType statusType = MessageType.Info;
         private Vector2 scroll;
         private Vector2 commandScroll;
+        private Vector2 windowScroll;
+        private JiraConnectionPanel jiraPanel;
+        private AgentMonitorPanel agentMonitor;
+        private double nextMonitorRefresh;
 
         [MenuItem("Tools/GameCLI/Window")]
         public static void Open()
@@ -36,6 +40,10 @@ namespace Oathx.GameCLI.Editor
         private void OnEnable()
         {
             minSize = new Vector2(560, 420);
+            jiraPanel = new JiraConnectionPanel(Repaint);
+            agentMonitor = new AgentMonitorPanel();
+            nextMonitorRefresh = 0;
+            EditorApplication.update += RefreshMonitor;
             unityProject = Path.GetFullPath(Path.Combine(Application.dataPath, ".."));
             GameCliCommandSettings.Initialize(unityProject);
             PackageInfo package = PackageInfo.FindForAssembly(typeof(GameCliWindow).Assembly);
@@ -46,6 +54,18 @@ namespace Oathx.GameCLI.Editor
         private void OnDisable()
         {
             operation?.Cancel();
+            jiraPanel?.Dispose();
+            EditorApplication.update -= RefreshMonitor;
+        }
+
+        private void RefreshMonitor()
+        {
+            if (selectedPage == 0 && EditorApplication.timeSinceStartup >= nextMonitorRefresh)
+            {
+                nextMonitorRefresh = EditorApplication.timeSinceStartup + 1;
+                agentMonitor.Refresh();
+                Repaint();
+            }
         }
 
         private void OnGUI()
@@ -53,6 +73,7 @@ namespace Oathx.GameCLI.Editor
             string executable = GameCliInstaller.GetExecutablePath(unityProject);
             bool installed = File.Exists(executable);
             bool busy = operation != null;
+            windowScroll = EditorGUILayout.BeginScrollView(windowScroll);
             EditorGUILayout.LabelField("GameCLI Installer", EditorStyles.boldLabel);
             EditorGUILayout.LabelField("CLI", installed ? "Installed" : "Not Installed");
             EditorGUILayout.HelpBox(status, statusType);
@@ -97,8 +118,9 @@ namespace Oathx.GameCLI.Editor
             DrawCommandPage();
             EditorGUILayout.Space(8);
             EditorGUILayout.LabelField("Output", EditorStyles.miniBoldLabel);
-            scroll = EditorGUILayout.BeginScrollView(scroll);
+            scroll = EditorGUILayout.BeginScrollView(scroll, GUILayout.Height(100));
             EditorGUILayout.TextArea(output.ToString(), GUILayout.ExpandHeight(true));
+            EditorGUILayout.EndScrollView();
             EditorGUILayout.EndScrollView();
         }
 
@@ -140,7 +162,15 @@ namespace Oathx.GameCLI.Editor
             }
 
             GUILayout.Label(description, EditorStyles.wordWrappedLabel);
-            if (selectedPage == 4)
+            if (selectedPage == 0)
+            {
+                agentMonitor.Draw();
+            }
+            else if (selectedPage == 1)
+            {
+                jiraPanel.Draw();
+            }
+            else if (selectedPage == 4)
             {
                 DrawUnityCommandList();
             }

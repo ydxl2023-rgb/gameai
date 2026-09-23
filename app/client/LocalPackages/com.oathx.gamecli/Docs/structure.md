@@ -32,7 +32,7 @@ com.oathx.gamecli/
             `-- Program.cs      CLI entry point
 ```
 
-Program dispatches capability groups. Commands/UnityCommand.cs and Services implement unity --ping; future JIRA commands belong to a separate jira group. Bare ping is not supported. Core, Contracts and Agents remain planned. Tests/GameCLI.Smoke beside the console project contains executable live-bridge smoke checks. The Editor bridge and shared Runtime framing protocol are registered through package.json and assembly definitions. See [PING](ping.md) for usage and validation. The former Python scaffold has been removed by the project owner and is not restored.
+Program dispatches capability groups. Plugins/Unity/UnityPingCommand.cs and Services implement unity --ping; future JIRA commands belong to a separate jira group. Bare ping is not supported. Core contains the plugin host; Contracts and Agents support PM execution. Tests/GameCLI.Smoke beside the console project contains executable live-bridge smoke checks. The Editor bridge and shared Runtime framing protocol are registered through package.json and assembly definitions. See [PING](ping.md) for usage and validation. The former Python scaffold has been removed by the project owner and is not restored.
 
 JIRA is the sole source of truth for task status, approvals, retries and execution records. No SQLite database or local JIRA state file is planned. Reports and generated artifacts are not an alternative workflow state store.
 
@@ -43,3 +43,11 @@ The standalone .csproj and .sln are source files and must be versioned. Unity-ge
 Editor/GameCliWindow.cs provides Tools > GameCLI > Window. Editor/Services/GameCliInstaller.cs builds the bundled CLI asynchronously into the current project's Library/GameCLI ; the window retains installation and cancellation controls and provides six command-category pages: Orchestrator, PM, Art, Development, Unity and QA. The installed unity --ping command remains available from the terminal. Installation outputs remain ignored by Git; no global PATH configuration is modified.
 
 Editor/Bridge/GameCliCommandSettings.cs stores per-user, per-project command enablement in EditorPrefs and exposes a thread-safe cache to the pipe server. The Unity page lists command metadata with an On toggle; disabled routes return command_disabled.
+
+The PM page starts with Editor/JiraConnectionPanel.cs: JIRA Address, visible Access Token (Bearer), save and asynchronous connection test. Services/JiraConnectionSettings.cs persists public connection metadata outside the project; WindowsCredentialStore.cs stores secrets in Windows Credential Manager; JiraConnectionClient.cs verifies the current user without following redirects. See [JIRA configuration](jira-configuration.md). PM workflow commands and standalone JIRA CLI integration remain planned.
+
+The standalone CLI now provides `pm --analyze`: Plugins/PM/PmAnalyzeCommand.cs handles options, Agents/CodexPmRunner.cs loads the role skills and executes one read-only draft, Services/CodexRpcClient.cs owns the App Server process and JSON protocol, and Contracts/PmAnalysis.cs validates results and dependencies. Tests/GameCLI.CodexSmoke exercises the protocol using a fake child process. See [Codex PM analysis](codex-pm.md). This is a single-role execution foundation; automatic orchestration and JIRA workflow transitions remain planned.
+
+Services/LiveRun.cs publishes transient, per-user execution discovery records. Editor/AgentMonitorPanel.cs reads them on the Orchestrator page once per second, validates PID and process start time, and shows active session/execution counts and identities. These local records contain no workflow state, credentials or requirement text; JIRA retains business state ownership.
+
+CLI feature groups are registered ICLIPlugin modules, and every CLI command implements ICommand. Core/PluginHost.cs replaces feature switches and enforces persistent enable/disable settings. See [plugin architecture](plugins.md) for extension points, supported modules and management commands.

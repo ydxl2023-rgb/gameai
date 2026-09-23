@@ -421,6 +421,8 @@
 </table>
 
 <h2>3.2 PM Agent（产品经理）</h2>
+<p>CLI 已改为插件注册结构：所有插件实现 ICLIPlugin，所有 CLI 命令实现 ICommand；Program 仅组装插件，PluginHost 负责统一分发与启用检查。通过 GameCLI plugins list / enable / disable 管理插件。PM 与 Unity 已有命令，Art、Development、QA、Jira、Orchestrator 插件已注册但业务 CLI 命令尚待实现。启用偏好保存在 ~/.gamecli/plugins.json，仅控制后续 CLI 调用，不是 JIRA 工作流状态。当前为编译内注册插件，未实现 DLL 热加载。</p>
+<p>PM 分页的第一个功能是 JIRA 连接配置：参考原工程，仅配置 JIRA Address 与 Access Token，统一采用 Bearer 认证，再开展需求分析与任务管理。当前 Editor 已实现配置保存与连接测试；连接元数据保存在用户目录 <code>~/.gamecli/jira.json</code>，凭据单独存入 Windows 凭据管理器，不写入工程。连接测试通过当前用户接口验证身份，不代表已验证项目写入权限。JIRA 始终是工作流数据的唯一可信来源，独立 CLI 已提供 <code>GameCLI pm --analyze</code>：启动 Codex App Server、加载角色 Skill、实时接收进度并校验结构化只读草案。Orchestrator 页每秒刷新本机 GameCLI 活跃会话与执行任务数量，展示角色、工程、会话 ID 和耗时；临时进程发现记录不保存工作流状态。JIRA 建单与多角色自动编排仍待实现。</p>
 
 <h4>输入</h4>
 <ul>
@@ -914,7 +916,7 @@
 </div>
 
 <p>当前已实现最小命令 <code>GameCLI unity --ping --project &lt;Unity工程路径&gt; --format json</code>：通过命名管道连接真实 Unity Editor，返回 pong、工程路径、Unity 版本、PID 和 UTC 时间。该命令验证桥接连接，不代表 JIRA 或游戏功能验证通过。完整流水线命令仍为规划。</p>
-<p>Unity Editor 已提供 <code>Tools &gt; GameCLI &gt; Window</code> 安装窗口：异步构建/重装 CLI 到当前项目的 <code>Library/GameCLI</code>，显示日志并支持取消；分页 Toolbar 按 Orchestrator、PM、Art、Development、Unity、QA 展示命令分类。Unity 页以 On、Command、Method、Route、Status、Description 列表展示 <code>unity --ping</code>；首列开关实际控制命令，关闭后返回 command_disabled。设置按用户和项目保存在 EditorPrefs，不属于 JIRA 工作流状态。其余分类标明待实现；PING 通过终端执行。需要可用的 .NET SDK；不修改系统 PATH。</p>
+<p>Unity Editor 已提供 <code>Tools &gt; GameCLI &gt; Window</code> 安装窗口：异步构建/重装 CLI 到当前项目的 <code>Library/GameCLI</code>，显示日志并支持取消；分页 Toolbar 按 Orchestrator、PM、Art、Development、Unity、QA 展示命令分类。Unity 页以 On、Command、Method、Route、Status、Description 列表展示 <code>unity --ping</code>；首列开关实际控制命令，关闭后返回 command_disabled。设置按用户和项目保存在 EditorPrefs，不属于 JIRA 工作流状态。PM 页首先提供 JIRA 连接配置、保存与测试；其他业务命令仍待实现。PING 通过终端执行。需要可用的 .NET SDK；不修改系统 PATH。</p>
 <h2>6.2 命令映射</h2>
 
 <table>
@@ -1368,7 +1370,7 @@ description: 拆解游戏需求并定义 JIRA 任务与验收标准；用于 PM 
         ├── GameCLI/
         │   ├── GameCLI.csproj   # 已创建，目标 net8.0
         │   ├── Program.cs      # 已创建的控制台入口
-        │   ├── Commands/       # 已实现：PING 命令与参数处理
+        │   ├── Plugins/        # 已实现：ICLIPlugin 模块与 ICommand 命令
         │   ├── Core/           # 规划：状态机、编排、JIRA 执行记录
         │   ├── Contracts/      # 规划：DTO 与输入输出校验
         │   ├── Agents/         # 规划：PM、Art、Dev、QA 调用适配
