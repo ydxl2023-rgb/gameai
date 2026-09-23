@@ -21,6 +21,8 @@ namespace GameCLI.Plugins.Orchestrator
             "approve" => "Approve the reviewed revision and start a PM agent to create JIRA tasks.",
             "resume" => "Resume a recorded workflow without bypassing approval or repeating unknown writes.",
             "revise" => "Replace the unplanned requirement document and rerun Design.",
+            "gates" => "读取专业任务依赖、完成状态和交付文件校验结果。",
+            "dispatch" => "按已批准需求和交付门禁调度专业代理。",
             _ => "Read the authoritative workflow, design and created tasks from JIRA."
         };
 
@@ -29,7 +31,7 @@ namespace GameCLI.Plugins.Orchestrator
             Name = name;
         }
 
-        private string Usage => "GameCLI orchestrator --" + Name + (Name == "start" ? " --document <UTF-8 .md|.txt>" : " --issue <KEY-123>") + (Name == "approve" ? " --revision <reviewed SHA-256>" : Name == "revise" ? " --document <UTF-8 .md|.txt>" : "") + (Name == "status" ? "" : " --project <directory> [--skills <game-cli>] [--codex <codex.exe>] [--model <model>] [--timeout <seconds>]") + " [--issue-type <name-or-id>] [--format human|json]";
+        private string Usage => "GameCLI orchestrator --" + Name + (Name == "start" ? " --document <UTF-8 .md|.txt>" : " --issue <KEY-123>") + (Name == "approve" ? " --revision <reviewed SHA-256>" : Name == "revise" ? " --document <UTF-8 .md|.txt>" : "") + (Name == "status" ? "" : " --project <directory> [--skills <game-cli>] [--codex <codex.exe>] [--model <model>] [--timeout <seconds>]") + (Name == "dispatch" ? " [--retry-task <KEY-123>]" : "") + " [--issue-type <name-or-id>] [--format human|json]";
 
         /// <inheritdoc />
         public async Task<int> ExecuteAsync(string[] args, CancellationToken cancellationToken)
@@ -78,7 +80,7 @@ namespace GameCLI.Plugins.Orchestrator
                     throw new DirectoryNotFoundException("Project directory does not exist.");
                 }
 
-                string skills = Name == "status" ? "" : FindSkills(project, options.GetValueOrDefault("--skills"));
+                string skills = Name is "status" or "gates" ? "" : FindSkills(project, options.GetValueOrDefault("--skills"));
                 int seconds = int.Parse(options.GetValueOrDefault("--timeout", "600"));
                 cancellation.CancelAfter(TimeSpan.FromSeconds(seconds));
                 string? document = null;
@@ -116,7 +118,7 @@ namespace GameCLI.Plugins.Orchestrator
 
                 Guard(Name is "start" or "revise" ? "design" : Name == "approve" ? "pm" : "orchestrator");
                 JiraConnection connection = await JiraConnection.LoadAsync(cancellation.Token);
-                using FileStream? lease = Name == "status" ? null : AcquireLease(connection);
+                using FileStream? lease = Name is "status" or "gates" ? null : AcquireLease(connection);
                 using HttpClientHandler handler = new()
                 {
                     AllowAutoRedirect = false,
@@ -129,6 +131,19 @@ namespace GameCLI.Plugins.Orchestrator
                 };
                 store = new JiraWorkflowStore(http, connection, () => Guard("jira"), options.GetValueOrDefault("--issue-type"));
                 CodexWorkflowAgent agent = new(options.GetValueOrDefault("--codex", "codex"), project, skills, options.GetValueOrDefault("--model"));
+                if (Name is "gates" or "dispatch")
+                {
+                    DeliveryWorkflow delivery = new(store, agent, project, Guard);
+                    GateReport gates = Name == "gates" ? await delivery.InspectAsync(issue!, cancellation.Token) : await delivery.DispatchAsync(issue!, options.GetValueOrDefault("--retry-task"), cancellation.Token);
+                    bool stopped = Name == "dispatch" && !gates.Complete;
+                    Console.WriteLine(WorkflowContract.Serialize(new
+                    {
+                        ok = !stopped,
+                        gates
+                    }));
+                    return stopped ? 3 : 0;
+                }
+
                 RequirementWorkflow workflow = new(store, agent, Guard);
                 Workflow result = Name switch
                 {
@@ -218,6 +233,11 @@ namespace GameCLI.Plugins.Orchestrator
                 allowed.Add("--revision");
             }
 
+            if (Name == "dispatch")
+            {
+                allowed.Add("--retry-task");
+            }
+
             Dictionary<string, string> options = new(StringComparer.Ordinal);
             for (int i = 0; i < args.Length; i += 2)
             {
@@ -255,7 +275,13 @@ namespace GameCLI.Plugins.Orchestrator
                 "gameai-common",
                 "gameai-jira",
                 "gameai-jira-issue-writing",
-                "gameai-mobile-requirements"
+                "gameai-mobile-requirements",
+                "gameai-task-delivery",
+                "gameai-art",
+                "gameai-dev",
+                "gameai-qa",
+                "gameai-cli-development",
+                "gameai-unity"
             }.All(name => File.Exists(Path.Combine(path, name, "SKILL.md")))) ?? throw new FileNotFoundException("Missing Design/PM/common skills. Supply --skills <game-cli directory>.");
         }
 

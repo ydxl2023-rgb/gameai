@@ -1578,6 +1578,16 @@ description: 拆解游戏需求并定义 JIRA 任务与验收标准；用于 PM 
   <code>gameai start --spec ./docs/game.md --project GAME</code> 即可启动全流程。
 </div>
 
+<h2>专业交付门禁实现补充（2026-09-23）</h2>
+<p>当前已实现专业调度：美术交付并抽检完成后启动程序，程序交付校验完成后启动验收；没有美术需求时直接开发。主子任务归属与执行依赖分别维护。</p>
+<ul>
+<li>使用 <code>orchestrator --gates</code> 检查前置任务；使用 <code>orchestrator --dispatch</code> 启动满足依赖的专业代理。两者均指定需求主任务与本地工程目录。</li>
+<li>当前需求版本必须获批。前置子任务原生状态为完成，并且交付文件存在、哈希一致、检查证据齐全、输入版本有效，才能放行下游。</li>
+<li>实际文件与报告落在工程内；执行及交付清单记录在子任务属性 <code>gamecli.delivery.v1</code>，JIRA 继续作为唯一可信状态来源。</li>
+<li>代理提交不等于批准。美术抽检完成后再次调度；程序交付通过校验后自动完成子任务并启动验收，不增加程序人工审批；最终验收由用户完成。上游返工或版本变化使下游旧交付失效。</li>
+<li>当前串行、按调用推进，不常驻监听；缺少美术工具、运行环境或测试证据时阻塞，不伪造成功。跨机器并发、自动缺陷闭环和跨需求变更审批仍属后续工作。</li>
+</ul>
+<p>单一职责规范：<code>game-cli/gameai-task-delivery/SKILL.md</code>；详见 <code>docs/agent-workflow-development-guide.md</code>。</p>
 <div class="footer">
   全 AI 游戏开发流水线设计文档 · v1.0 · 2026-09-22<br>
   本文档可直接通过浏览器打印导出为 PDF

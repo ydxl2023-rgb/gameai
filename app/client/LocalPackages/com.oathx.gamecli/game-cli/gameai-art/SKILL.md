@@ -13,3 +13,7 @@ description: 按美术 Manifest 制作、整理和验证资源；用于 Art Agen
 - 使用 [JIRA 技能](../gameai-jira/SKILL.md) 回写资源地址、Hash、预览及导入设置，遵守任务定义的美术审批。
 
 输出 data.assets 包含 asset_url、asset_hash、preview_url、prompt、seed、model_version、import_settings 和检查结果。未上传时说明本地位置和待完成步骤。遵循 [公共契约](../gameai-common/SKILL.md)。
+
+## 依赖与交付门禁
+
+执行或编写专业任务时，必须遵守 [任务依赖与交付规范](../gameai-task-delivery/SKILL.md)。单据列出真实前置编号、启动条件、交付要求及确认方式；编排器验证上游完成状态、实际文件与版本后才派工，交付提交不等于审核完成。

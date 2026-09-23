@@ -40,6 +40,90 @@ namespace GameCLI.Services
 
         public string IssueUrl(string key) => connection.Address + "/browse/" + Uri.EscapeDataString(key);
 
+        /// <summary>Reads native workflow completion instead of inferring it from description text.</summary>
+        public async Task<JiraTaskState> ReadTaskStateAsync(string key, CancellationToken cancellation)
+        {
+            ValidateKey(key);
+            JsonElement issue = await SendAsync(HttpMethod.Get, "issue/" + key + "?fields=status,updated", null, cancellation);
+            JsonElement fields = issue.GetProperty("fields");
+            return new JiraTaskState(fields.GetProperty("status").GetProperty("statusCategory").GetProperty("key").GetString() == "done", DateTimeOffset.Parse(fields.GetProperty("updated").GetString()!, System.Globalization.CultureInfo.InvariantCulture));
+        }
+
+        /// <summary>Missing records mean work has not been dispatched, never that it has completed.</summary>
+        public async Task<TaskDelivery?> ReadDeliveryAsync(string key, CancellationToken cancellation)
+        {
+            ValidateKey(key);
+            JsonElement property = await SendAsync(HttpMethod.Get, "issue/" + key + "/properties/gamecli.delivery.v1", null, cancellation, true);
+            if (property.ValueKind == JsonValueKind.Undefined)
+            {
+                return null;
+            }
+
+            TaskDelivery delivery = WorkflowContract.Parse<TaskDelivery>(property.GetProperty("value").GetRawText());
+            delivery.Validate();
+            if (delivery.IssueKey != key)
+            {
+                throw new JsonException("交付记录不属于当前子任务。");
+            }
+
+            return delivery;
+        }
+
+        /// <summary>Resolves an unambiguous completion transition from the project's actual workflow.</summary>
+        public async Task<string> CompletionTransitionAsync(string key, CancellationToken cancellation)
+        {
+            ValidateKey(key);
+            JsonElement result = await SendAsync(HttpMethod.Get, "issue/" + key + "/transitions", null, cancellation);
+            JsonElement[] transitions = result.GetProperty("transitions").EnumerateArray().Where(item => item.GetProperty("to").GetProperty("statusCategory").GetProperty("key").GetString() == "done").ToArray();
+            if (transitions.Length != 1)
+            {
+                throw new JiraTaskException("当前程序任务没有唯一可用的完成转换，请检查项目工作流：" + key, 3);
+            }
+
+            return transitions[0].GetProperty("id").GetString() ?? throw new JsonException("缺少状态转换编号。");
+        }
+
+        /// <summary>The caller must persist the completion intent first and reconcile uncertain responses.</summary>
+        public async Task CompleteTaskAsync(string key, string transition, CancellationToken cancellation)
+        {
+            ValidateKey(key);
+            await SendAsync(HttpMethod.Post, "issue/" + key + "/transitions", JsonSerializer.Serialize(new
+            {
+                transition = new
+                {
+                    id = transition
+                }
+            }), cancellation);
+        }
+
+        /// <summary>Writes execution evidence and its readable projection in one JIRA issue update.</summary>
+        public async Task SaveDeliveryAsync(Workflow state, PlannedTask task, CreatedTask created, TaskDelivery delivery, CancellationToken cancellation)
+        {
+            delivery.Validate();
+            await VerifyTaskAsync(state, task, created, cancellation);
+            string json = WorkflowContract.Serialize(delivery);
+            if (Encoding.UTF8.GetByteCount(json) > 32000)
+            {
+                throw new JiraTaskException("交付清单超过单据属性容量，请减少清单并将详细内容放入报告文件。", 4);
+            }
+
+            await SendAsync(HttpMethod.Put, "issue/" + created.Key, JsonSerializer.Serialize(new
+            {
+                fields = new
+                {
+                    description = JiraIssueDescription.Task(state, task, IssueUrl(state.IssueKey)) + JiraIssueDescription.Delivery(delivery)
+                },
+                properties = new[]
+                {
+                    new
+                    {
+                        key = "gamecli.delivery.v1",
+                        value = JsonSerializer.Deserialize<JsonElement>(json)
+                    }
+                }
+            }), cancellation);
+        }
+
         /// <summary>Finds an existing document marker or creates an entry containing a recoverable initial snapshot.</summary>
         public async Task<Workflow> StartAsync(string document, CancellationToken cancellation)
         {

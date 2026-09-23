@@ -13,3 +13,7 @@ description: 按 JIRA 验收标准核对指定交付版本的测试与视觉证�
 - 使用 [JIRA 技能](../gameai-jira/SKILL.md) 回写验收结果，通过后进入人工验收，不自行合并或直接调用其他 Agent。
 
 输出 data 包含 verdict（pass/fail/blocked）、checks、category、evidence、suggested_owner、commit、build_id。修复建议交由编排器处理。遵循 [公共契约](../gameai-common/SKILL.md)。
+
+## 依赖与交付门禁
+
+执行或编写专业任务时，必须遵守 [任务依赖与交付规范](../gameai-task-delivery/SKILL.md)。单据列出真实前置编号、启动条件、交付要求及确认方式；编排器验证上游完成状态、实际文件与版本后才派工，交付提交不等于审核完成。

@@ -69,6 +69,26 @@ namespace GameCLI.WorkflowSmoke
             });
             Require(!formatted.Contains("待澄清") && formatted.Contains("** 前置条件") && formatted.Contains("*** 背包为空") && formatted.Contains("** 操作步骤") && !formatted.Contains("；操作"), "Test case hierarchy or private question boundary failed.");
             string skills = Path.Combine(root, "app/client/LocalPackages/com.oathx.gamecli/game-cli");
+            if (args.Contains("--professional-only"))
+            {
+                foreach (string role in new[]
+                {
+                    "Art",
+                    "Development",
+                    "QA"
+                })
+                {
+                    Environment.SetEnvironmentVariable("GAMECLI_WORKFLOW_MODE", "professional-" + role);
+                    CodexWorkflowAgent worker = new(Environment.ProcessPath!, root, skills, null);
+                    using CancellationTokenSource deadline = new(TimeSpan.FromSeconds(15));
+                    string output = await worker.RunAsync(role, "测试专业协议，不执行实际制作。", TaskDelivery.ResultSchema, Guid.NewGuid().ToString("N"), null, (_, _, _) => Task.CompletedTask, deadline.Token);
+                    Require(WorkflowContract.Parse<DeliveryResult>(output).Verdict == "blocked", "Professional result protocol failed.");
+                    Console.WriteLine("PASS professional-" + role);
+                }
+
+                return 0;
+            }
+
             if (args.Contains("--real-codex"))
             {
                 using FakeJira handler = new();
@@ -342,7 +362,16 @@ namespace GameCLI.WorkflowSmoke
                     case "thread/start":
                         JsonElement parameters = root.GetProperty("params");
                         Require(!parameters.GetProperty("config").GetProperty("mcp_servers.external.enabled").GetBoolean(), "Inherited MCP not disabled.");
-                        Require(parameters.GetProperty("sandbox").GetString() == "read-only", "Invalid sandbox.");
+                        bool professional = mode?.StartsWith("professional-", StringComparison.Ordinal) == true;
+                        Require(parameters.GetProperty("sandbox").GetString() == (professional ? "workspace-write" : "read-only"), "Invalid sandbox.");
+                        Require(parameters.GetProperty("config").GetProperty("features.shell_tool").GetBoolean() == professional, "Invalid shell capability.");
+                        Require(!parameters.GetProperty("config").GetProperty("sandbox_workspace_write.network_access").GetBoolean(), "Unexpected network access.");
+                        Require(parameters.GetProperty("developerInstructions").GetString()!.Contains("# 任务依赖与交付"), "Missing delivery skill.");
+                        if (mode == "professional-Development")
+                        {
+                            Require(parameters.GetProperty("developerInstructions").GetString()!.Contains("# Dev Agent"), "Development skill mapping failed.");
+                        }
+
                         pm = parameters.GetProperty("developerInstructions").GetString()!.Contains("# PM Agent");
                         Require(parameters.GetProperty("dynamicTools").GetArrayLength() == (pm ? 1 : 0), "Wrong role tools.");
                         Send(new
@@ -371,6 +400,12 @@ namespace GameCLI.WorkflowSmoke
                     });
                         if (mode == "cancel")
                         {
+                            break;
+                        }
+
+                        if (mode?.StartsWith("professional-", StringComparison.Ordinal) == true)
+                        {
+                            Complete(thread, turn, WorkflowContract.Serialize(new DeliveryResult("blocked", "模拟协议测试，未制作实际产物。", Array.Empty<DeliveryArtifact>(), Array.Empty<DeliveryCheck>())));
                             break;
                         }
 

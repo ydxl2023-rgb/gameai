@@ -52,8 +52,16 @@ namespace GameCLI.Services
                 turnId
             });
             string temporary = path + ".tmp";
-            File.WriteAllText(temporary, json);
-            File.Move(temporary, path, overwrite: true);
+            try
+            {
+                File.WriteAllText(temporary, json);
+                File.Move(temporary, path, overwrite: true);
+            }
+            catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+            {
+                // A viewer can briefly hold the file on Windows. Monitoring must not abort authoritative work.
+                Console.Error.WriteLine("Unable to refresh local monitoring metadata; JIRA execution remains authoritative.");
+            }
         }
 
         /// <summary>
@@ -64,6 +72,7 @@ namespace GameCLI.Services
             try
             {
                 File.Delete(path);
+                File.Delete(path + ".tmp");
             }
             catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
             {

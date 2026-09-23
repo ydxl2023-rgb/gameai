@@ -51,6 +51,17 @@ namespace GameCLI.Services
                 Section(text, "程序开发内容", design.DevelopmentRequirements);
                 Section(text, "美术开发内容", design.ArtRequirements);
                 TestCases(text, design.Acceptance);
+                Section(text, "专业执行顺序", new[]
+                {
+                    design.ArtRequirements.Length > 0 ? "美术设计与资源交付并审核完成后，程序方可开始实现。" : "本需求无美术前置任务，需求获批后进入程序开发。",
+                    "程序交付校验完成后，编排器自动完成程序子任务，验收代理针对同一交付版本执行测试。",
+                    "验收代理提交报告与证据，由用户进行最终验收。"
+                });
+                Section(text, "交付门禁", new[]
+                {
+                    "编排器重新读取前置子任务的完成状态、文件路径、哈希和检查证据，满足全部条件后才启动下游。",
+                    "上游重新打开、文件变化或交付版本更新时，下游旧交付不能继续放行。"
+                });
             }
             else
             {
@@ -92,6 +103,59 @@ namespace GameCLI.Services
             });
             TestCases(text, task.Acceptance);
             Section(text, "前置依赖", task.DependsOn.Select(id => state.Created.Find(item => item.Id == id)?.Key ?? state.EarlyTasks.Find(item => item.Task.Id == id)?.Created?.Key ?? (state.ArtCreated?.Id == id ? state.ArtCreated.Key : id)));
+            Section(text, "启动条件", new[]
+            {
+                "所属需求的当前版本已获批准。",
+                task.DependsOn.Length == 0 ? "本任务无专业前置任务。" : "所有前置子任务均已完成，交付文件存在、哈希一致，检查证据齐全。",
+                "编排器启动前重新读取单据与交付版本；上游返工、文件变化或版本失效时停止放行。"
+            });
+            Section(text, "交付要求", task.Role switch
+            {
+                "Art" => new[]
+            {
+                "提交界面设计、布局与尺寸、触屏交互说明、资源文件及预览、导入设置。",
+                "程序必须使用通过审核的美术交付版本，不能凭文字描述自行替代美术设计。"
+            },
+                "Development" => new[]
+            {
+                "提交实际代码和界面资源、构建结果、功能检查报告，并记录使用的美术交付版本。",
+                "编译通过不等于功能验收通过。"
+            },
+                _ => new[]
+            {
+                "针对指定程序及美术交付版本逐项执行验收，提交测试报告与证据。",
+                "未执行或缺少证据的用例不能判定通过；最终验收由用户完成。"
+            }
+            });
+            Section(text, "交付确认", new[]
+            {
+                "交付清单记录工程相对路径、文件哈希、检查证据与输入版本。",
+                task.Role == "Development" ? "程序代理提交后，由编排器核验交付并完成子任务，再启动验收，不增加人工程序审批。" : "代理提交后先检查实际交付，再将本子任务设为完成；美术抽检与最终验收由用户确认。",
+                "返工先重新打开子任务；修改上游后，下游必须重新核验并按需返工。"
+            });
+            return text.ToString().TrimEnd();
+        }
+
+        /// <summary>Separates reported execution evidence from unexecuted acceptance criteria.</summary>
+        public static string Delivery(TaskDelivery delivery)
+        {
+            StringBuilder text = new("\n\n");
+            Section(text, "实际交付记录", new[]
+            {
+                delivery.Status == "submitted" ? "已提交交付，按本任务交付确认规则推进；实际完成状态以单据为准。" : delivery.Status == "running" ? "专业代理正在执行。" : "执行未通过，需要处理后重试。",
+                "执行编号：" + delivery.ExecutionId,
+                "交付版本：" + (delivery.Version.Length == 0 ? "尚未生成" : delivery.Version)
+            });
+            if (delivery.Result != null)
+            {
+                Section(text, "交付说明", new[]
+                {
+                    delivery.Result.Summary
+                });
+                Section(text, "交付文件", delivery.Result.Artifacts.Select(item => item.Path + "；文件哈希：" + item.Sha256));
+                Section(text, "实际检查证据", delivery.Result.Checks.Select(item => item.Name + "：" + (item.Passed ? "代理报告通过" : "未通过") + "；证据路径：" + item.EvidencePath));
+            }
+
             return text.ToString().TrimEnd();
         }
 

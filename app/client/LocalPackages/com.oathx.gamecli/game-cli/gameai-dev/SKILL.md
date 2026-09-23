@@ -16,3 +16,7 @@ description: 按 JIRA 需求实现或修复 Unity 功能并交付代码与验证
 - 重试由编排器按 JIRA 记录控制，不在 Agent 内无限重试。
 
 输出 data 包含 branch、commit、pr_url、build_id、test_report、changes、remaining_issues。未执行步骤使用 null 并说明原因；编译通过不能替代功能验收。遵循 [公共契约](../gameai-common/SKILL.md)。
+
+## 依赖与交付门禁
+
+执行或编写专业任务时，必须遵守 [任务依赖与交付规范](../gameai-task-delivery/SKILL.md)。单据列出真实前置编号、启动条件、交付要求及确认方式；编排器验证上游完成状态、实际文件与版本后才派工，交付提交不等于审核完成。
