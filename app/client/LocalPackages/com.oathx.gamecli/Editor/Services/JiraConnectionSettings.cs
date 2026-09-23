@@ -15,6 +15,16 @@ namespace Oathx.GameCLI.Editor
     {
         public string address = "";
 
+        [SerializeField]
+        private string projectKey = "";
+
+        /// <summary>Gets or sets the default JIRA project key, separate from server credentials.</summary>
+        public string ProjectKey
+        {
+            get => projectKey;
+            set => projectKey = value;
+        }
+
         /// <summary>Returns a validated copy with a normalized HTTP(S) base address.</summary>
         /// <exception cref="ArgumentException">The address contains unsupported URI components or is invalid.</exception>
         public JiraConnectionSettings Normalized()
@@ -26,7 +36,8 @@ namespace Oathx.GameCLI.Editor
 
             return new JiraConnectionSettings
             {
-                address = uri.AbsoluteUri.TrimEnd('/')
+                address = uri.AbsoluteUri.TrimEnd('/'),
+                ProjectKey = (ProjectKey ?? "").Trim()
             };
         }
 
@@ -36,6 +47,7 @@ namespace Oathx.GameCLI.Editor
             get
             {
                 JiraConnectionSettings settings = Normalized();
+                // Project selection must not change the server-scoped credential identity.
                 // Preserve existing Bearer credential targets without reusing former Basic credentials.
                 string identity = settings.address + "\n\nBearer";
                 using (SHA256 hash = SHA256.Create())

@@ -2,6 +2,7 @@ using GameCLI.Abstractions;
 using GameCLI.Core;
 using GameCLI.Plugins.Art;
 using GameCLI.Plugins.Development;
+using GameCLI.Plugins.Design;
 using GameCLI.Plugins.Jira;
 using GameCLI.Plugins.Orchestrator;
 using GameCLI.Plugins.PM;
@@ -18,6 +19,7 @@ namespace GameCLI
             ICLIPlugin[] plugins =
             {
                 new OrchestratorPlugin(),
+                new DesignPlugin(),
                 new PMPlugin(),
                 new ArtPlugin(),
                 new DevelopmentPlugin(),

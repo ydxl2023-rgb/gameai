@@ -9,6 +9,9 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="GameCLI.CodexSmoke" />
+    <InternalsVisibleTo Include="GameCLI.JiraSmoke" />
+    <InternalsVisibleTo Include="GameCLI.WorkflowSmoke" />
     <Compile Include="../../../Runtime/PipeProtocol.cs" Link="Protocol/PipeProtocol.cs" />
+    <Compile Include="../../../Editor/Services/WindowsCredentialStore.cs" Link="Services/WindowsCredentialStore.cs" />
   </ItemGroup>
 </Project>

@@ -1,3 +1,5 @@
+#nullable enable
+
 using System;
 using System.ComponentModel;
 using System.Runtime.InteropServices;
@@ -16,7 +18,7 @@ namespace Oathx.GameCLI.Editor
 
         /// <summary>Reads a generic credential, returning null when the target does not exist.</summary>
         /// <exception cref="Win32Exception">Windows rejects the credential lookup.</exception>
-        public static string Read(string target)
+        public static string? Read(string target)
         {
             if (!CredRead(target, GenericCredential, 0, out IntPtr pointer))
             {

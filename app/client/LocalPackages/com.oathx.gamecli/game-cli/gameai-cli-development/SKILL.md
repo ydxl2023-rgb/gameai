@@ -26,7 +26,7 @@ description: 定义所有使用 GameCLI 的工程必须遵守的 C# 编码、排
 ## C# 职责与实现约定
 
 - `Program.cs` 负责启动和依赖组装；`Commands` 解析参数、调用用例并映射退出码，不承载业务流程。
-- `Core` 放状态机与编排；`Contracts` 放 DTO、结果与显式校验；`Agents` 放四类业务角色调用适配；`Services` 放 JIRA、Git、资产与 Unity 执行器。按实际功能创建，不用空实现假装功能完成。
+- `Core` 放状态机与编排；`Contracts` 放 DTO、结果与显式校验；`Agents` 放 Design、PM、Art、Development、QA 五类专业角色调用适配；`Services` 放 JIRA、Git、资产与 Unity 执行器。按实际功能创建，不用空实现假装功能完成。
 - 通过接口或构造参数注入外部依赖，使状态迁移和验证可独立测试。确定性调度逻辑不交给 LLM 自行决定。
 - 所有 CLI 命令实现 `ICommand`，所有 CLI 插件实现 `ICLIPlugin`；沿用插件宿主统一处理 enable/disable，不在命令内绕过插件开关。
 - 方法职责单一，优先用有名称的小方法表达业务步骤；参数或前置条件不满足时提前返回，减少嵌套。
@@ -120,10 +120,11 @@ namespace GameCLI.Contracts
 
 - JIRA 是任务状态、审批、重试和执行记录的唯一可信来源。不得引入 SQLite、本地 JSON 或另一数据库保存权威流程状态；产物与日志可以落盘。
 - 每次执行读取 JIRA 的最新状态、依赖及审批，只执行定义明确且满足 guard 的迁移。JIRA 不可用时暂停，不能凭缓存推进。
-- PM、Art、Dev、QA 使用结构化任务和结果交互，由编排器统一调度；技能是指令，不是已运行的 Agent 服务。
+- Design、PM、Art、Development、QA 使用结构化任务和结果交互，由编排器统一调度；技能是指令，不是已运行的 Agent 服务。
 - 副作用前核对执行 ID/幂等键；超时或恢复时核对远端已有结果，不能将先查后写视为原子锁。
 - 重试上限和结果回写 JIRA。默认最多 3 次，区分网络重试与业务修复；拒绝、权限失败、规则缺失或次数超限时返回明确原因。
 - 人工批准绑定对应需求或产物版本。不得由 Agent 自批、以旧审批批准新产物，或在合并未完成时记录完成。
+- 策划产生明确美术需求时立即登记美术需求单据，这是已授权的建单步骤，不等待整体方案审批；仍不授权制作资源或自动批准程序开发。后续项目管理复用同一美术单据，恢复和修订保持幂等。问题只在对话处理，不渲染到单据描述。
 
 ## CLI 契约与安全配置
 
@@ -139,8 +140,9 @@ namespace GameCLI.Contracts
 - 包内 `Editor` 放 UnityEditor、桥接和导入验证；`Runtime` 放可复用运行时契约。独立 CLI 留在 `GameCLI~`，不让 Unity 导入其源码。
 - 资产变更保留已有 .meta GUID。不要为完成 CLI 工作重建用户场景或移动现有资产。
 - 标准技能全部放在包根 `game-cli/<skill-name>/SKILL.md`，使用包含 name/description 的 YAML frontmatter，目录名与 name 一致。
-- 五个角色技能与 common/jira/unity 公共技能保持职责边界。本开发技能负责工程约定，不增加第五个业务 Agent。
+- Design、PM、Art、Development、QA 五个专业角色技能及 Orchestrator 技能与 common/jira/unity 公共技能保持职责边界。本开发技能负责工程约定，不增加业务 Agent。
 - 技能互引使用同级相对路径；分发时携带依赖，不能依赖开发机绝对路径。只按需增加 references、scripts、assets。
+- 新增或修改技能优先保持单一职责；可复用专项规则独立为技能，由角色主技能引用。宿主禁用文件读取时，必须显式加载所需依赖技能内容，不能只传入无法打开的链接。
 - 结构或契约变化同步 `Docs/structure.md` 与仓库 `docs/全AI流程规划纲要.html`，明确区分已实现与规划。
 
 ## 验证与交付
@@ -152,3 +154,9 @@ namespace GameCLI.Contracts
 - 提交前检查 diff 和文件清单。保留独立 CLI 的 .csproj/.sln；排除 Unity 生成工程、Library、Temp、Logs、UserSettings、bin、obj、.vs、构建产物和凭据。
 - Git 提交与推送按用户授权执行，不默认 force push。连接失败先区分网络与鉴权，必要时读取实际系统代理并采用单次参数，不写死代理或擅改全局配置。
 - 交付说明实际修改、验证结果和未完成事项；推送成功后报告真实提交号与目标分支。
+
+## 专业需求同步登记
+
+策划分析完成后统一登记明确的美术、程序开发和测试验收需求，各专业一张汇总单据。通过项目管理建单通道完成，不等整体方案审批。单据登记不等于开始制作、编码或测试。程序依赖美术（如有），测试依赖对应交付任务。后续项目管理原样复用 existing_tasks 和 existing_issues，禁止重复创建。
+
+已有 art_task/art_created/art_pending 保持兼容；程序与测试的任务、真实单号和未决意图存入入口属性 early_tasks。响应丢失时逐项查询恢复，结果未知禁止再次创建。修订更新已有专业单据。

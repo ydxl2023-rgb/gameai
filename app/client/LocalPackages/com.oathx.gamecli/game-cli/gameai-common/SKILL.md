@@ -15,7 +15,7 @@ description: 提供流水线共用的结构化结果、文件哈希与 Trace 约
 
 JIRA 是任务状态、审批、重试与执行记录的唯一可信来源。Git、文件和对象存储保存产物与证据，不保存第二套权威流程状态。
 
-每次输出可解析的 JSON 对象：
+每次输出可解析的 JSON 对象。宿主明确提供角色专用 schema 时采用该 schema；否则使用以下通用外层结构：
 - schema_version：默认 1。
 - issue_key：真实 JIRA 编号，尚未建单时为 null。
 - trace_id、execution_id：沿用调用方传入值；缺失时说明，不伪造已有执行。

@@ -26,11 +26,14 @@ namespace GameCLI.Services
 
         private volatile Exception? terminalError;
 
+        private readonly Func<string, JsonElement, CancellationToken, Task<object>>? serverRequest;
+
         /// <summary>
         /// Starts an owned Codex app-server process and immediately drains both output pipes.
         /// </summary>
-        public CodexRpcClient(string executable, string project)
+        public CodexRpcClient(string executable, string project, Func<string, JsonElement, CancellationToken, Task<object>>? serverRequest = null)
         {
+            this.serverRequest = serverRequest;
             ProcessStartInfo start = new ProcessStartInfo
             {
                 FileName = executable,
@@ -140,8 +143,19 @@ namespace GameCLI.Services
                     JsonElement message = document.RootElement;
                     if (message.TryGetProperty("id", out JsonElement id))
                     {
-                        if (message.TryGetProperty("method", out _))
+                        if (message.TryGetProperty("method", out JsonElement method))
                         {
+                            if (serverRequest != null && method.GetString() == "item/tool/call")
+                            {
+                                object result = await serverRequest(method.GetString()!, message.GetProperty("params").Clone(), lifetime.Token);
+                                await SendAsync(new
+                                {
+                                    id = id.Clone(),
+                                    result
+                                }, lifetime.Token);
+                                continue;
+                            }
+
                             // This first read-only runner cannot approve actions or answer interactive questions.
                             await SendAsync(new
                             {

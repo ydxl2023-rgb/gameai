@@ -81,6 +81,19 @@ namespace Oathx.GameCLI.Editor
                     }
 
                     EditorGUI.BeginChangeCheck();
+                    settings.ProjectKey = EditorGUILayout.TextField(
+                        new GUIContent("Project Key", "Enter the JIRA project key, not its display name."),
+                        settings.ProjectKey ?? "");
+                    if (EditorGUI.EndChangeCheck())
+                    {
+                        // The connection indicator reflects account authentication, not project access.
+                        status = "Project key changed. Save Configuration to keep this value.";
+                        statusType = MessageType.Info;
+                    }
+
+                    GUILayout.Label("Enter the project key from JIRA project settings. Test Connection verifies your account, not project access.", EditorStyles.wordWrappedMiniLabel);
+
+                    EditorGUI.BeginChangeCheck();
                     secret = EditorGUILayout.TextField("Access Token", secret);
                     if (EditorGUI.EndChangeCheck())
                     {
@@ -154,7 +167,7 @@ namespace Oathx.GameCLI.Editor
             return stored;
         }
 
-        private void Save()
+        private bool Save()
         {
             try
             {
@@ -166,11 +179,13 @@ namespace Oathx.GameCLI.Editor
                 secret = token;
                 status = "Configuration saved. Use Test Connection to verify access.";
                 statusType = MessageType.Info;
+                return true;
             }
             catch (Exception exception)
             {
                 status = exception is ArgumentException ? exception.Message : "Unable to save JIRA configuration or Windows credential.";
                 statusType = MessageType.Error;
+                return false;
             }
         }
 

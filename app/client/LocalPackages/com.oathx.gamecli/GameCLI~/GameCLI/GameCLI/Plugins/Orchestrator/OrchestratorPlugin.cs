@@ -3,7 +3,7 @@ using GameCLI.Abstractions;
 namespace GameCLI.Plugins.Orchestrator
 {
     /// <summary>
-    /// Reserves the orchestration capability group; it currently registers no commands.
+    /// Coordinates document analysis, versioned approval and JIRA task publication.
     /// </summary>
     public sealed class OrchestratorPlugin : CLIPlugin
     {
@@ -11,10 +11,17 @@ namespace GameCLI.Plugins.Orchestrator
         public override string Id => "orchestrator";
 
         /// <inheritdoc />
-        public override string Description => "Workflow orchestration (CLI commands not implemented)";
+        public override string Description => "Design and PM workflow orchestration";
 
         /// <inheritdoc />
         public override IReadOnlyList<ICommand> Commands
-        { get; } = Array.AsReadOnly(new ICommand[] {});
+        { get; } = Array.AsReadOnly(new ICommand[]
+        {
+            new WorkflowCommand("start"),
+            new WorkflowCommand("status"),
+            new WorkflowCommand("approve"),
+            new WorkflowCommand("resume"),
+            new WorkflowCommand("revise")
+        });
     }
 }

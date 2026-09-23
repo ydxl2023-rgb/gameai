@@ -19,10 +19,10 @@ namespace Oathx.GameCLI.Editor
         private static readonly string[] commandPages =
         {
             "Orchestrator",
+            "Design",
             "PM",
             "Art",
             "Development",
-            "Unity",
             "QA"
         };
 
@@ -42,8 +42,6 @@ namespace Oathx.GameCLI.Editor
         private MessageType statusType = MessageType.Info;
 
         private Vector2 scroll;
-
-        private Vector2 commandScroll;
 
         private Vector2 windowScroll;
 
@@ -167,13 +165,13 @@ namespace Oathx.GameCLI.Editor
                     description = "Requirement analysis, task breakdown and acceptance criteria.";
                     break;
                 case 2:
-                    description = "Asset generation, validation and delivery.";
+                    description = "JIRA configuration, task organization, dependencies and progress tracking.";
                     break;
                 case 3:
-                    description = "Code implementation, fixes and development validation.";
+                    description = "Asset generation, validation and delivery.";
                     break;
                 case 4:
-                    description = "Unity Editor connectivity, compilation, tests and builds.";
+                    description = "Code implementation, fixes and development validation.";
                     break;
                 default:
                     description = "Acceptance checks, evidence review and failure classification.";
@@ -183,59 +181,16 @@ namespace Oathx.GameCLI.Editor
             GUILayout.Label(description, EditorStyles.wordWrappedLabel);
             if (selectedPage == 0)
             {
+                EditorGUILayout.HelpBox("Provide your requirement document in the Codex conversation to start the workflow. This panel monitors running agents.", MessageType.Info);
                 agentMonitor.Draw();
             }
-            else if (selectedPage == 1)
+            else if (selectedPage == 2)
             {
                 jiraPanel.Draw();
-            }
-            else if (selectedPage == 4)
-            {
-                DrawUnityCommandList();
             }
             else
             {
                 EditorGUILayout.HelpBox("Commands for this category are not implemented yet.", MessageType.Info);
-            }
-        }
-
-        private void DrawUnityCommandList()
-        {
-            using (new EditorGUILayout.VerticalScope(EditorStyles.helpBox))
-            {
-                using (new EditorGUILayout.HorizontalScope())
-                {
-                    EditorGUILayout.LabelField("On", EditorStyles.miniBoldLabel, GUILayout.Width(28));
-                    EditorGUILayout.LabelField("Command", EditorStyles.miniBoldLabel, GUILayout.Width(80));
-                    EditorGUILayout.LabelField("Method", EditorStyles.miniBoldLabel, GUILayout.Width(50));
-                    EditorGUILayout.LabelField("Route", EditorStyles.miniBoldLabel, GUILayout.Width(60));
-                    EditorGUILayout.LabelField("Status", EditorStyles.miniBoldLabel, GUILayout.Width(70));
-                    EditorGUILayout.LabelField("Description", EditorStyles.miniBoldLabel);
-                }
-
-                commandScroll = EditorGUILayout.BeginScrollView(commandScroll, GUILayout.Height(70));
-                using (new EditorGUILayout.HorizontalScope())
-                {
-                    bool enabled = GameCliCommandSettings.IsEnabled("/ping");
-                    bool nextEnabled = EditorGUILayout.Toggle(new GUIContent(string.Empty, "Allow or reject incoming PING commands for this project."), enabled, GUILayout.Width(28));
-                    if (nextEnabled != enabled)
-                    {
-                        GameCliCommandSettings.SetEnabled("/ping", nextEnabled);
-                        enabled = nextEnabled;
-                    }
-
-                    // Keep the toggle interactive so a disabled command can always be re-enabled.
-                    using (new EditorGUI.DisabledScope(!enabled))
-                    {
-                        EditorGUILayout.LabelField(new GUIContent("ping", "GameCLI.exe unity --ping"), EditorStyles.boldLabel, GUILayout.Width(80));
-                        EditorGUILayout.LabelField("GET", GUILayout.Width(50));
-                        EditorGUILayout.LabelField("ping", GUILayout.Width(60));
-                        EditorGUILayout.LabelField(enabled ? "Enabled" : "Disabled", GUILayout.Width(70));
-                        GUILayout.Label("Check the Unity Editor connection.", EditorStyles.wordWrappedLabel);
-                    }
-                }
-
-                EditorGUILayout.EndScrollView();
             }
         }
 
