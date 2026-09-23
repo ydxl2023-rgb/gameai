@@ -52,12 +52,6 @@ namespace GameCLI.Plugins.Orchestrator
                     throw new ArgumentException("项目编号或客户端编号无效。");
                 }
 
-                string? token = Environment.GetEnvironmentVariable("GAMECLI_SERVER_TOKEN");
-                if (string.IsNullOrWhiteSpace(token) || !Regex.IsMatch(token, "^[a-zA-Z0-9_-]{32,256}$"))
-                {
-                    throw new InvalidOperationException("请通过 GAMECLI_SERVER_TOKEN 配置 32 至 256 字符服务令牌，仅使用字母、数字、横线或下划线。");
-                }
-
                 int maximum = ReadNumber(options, "--max-events", 1000000);
                 int timeout = ReadNumber(options, "--timeout", 86400);
                 if (timeout > 0)
@@ -74,7 +68,7 @@ namespace GameCLI.Plugins.Orchestrator
                     }
                 }
 
-                ServerEventClient client = new(address, token, project, clientId, Guard);
+                ServerEventClient client = new(address, project, clientId, Guard);
                 bool json = options.GetValueOrDefault("--format", "human") == "json";
                 await client.RunAsync((envelope, _) =>
                 {

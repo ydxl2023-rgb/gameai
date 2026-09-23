@@ -21,14 +21,12 @@ test('Webhook routes minimal Chinese status events only to the subscribed projec
     await assert.rejects(other.inbox.next('jira.issue_changed', 100));
 });
 
-test('Webhook and WebSocket credentials are independent and required', async context =>
+test('Webhook requires its token while WebSocket registers without authentication', async context =>
 {
     const app = await fixture(context);
-    assert.equal((await post(app, jiraEvent(), app.options.clientToken)).status, 401);
-    const socket = new WebSocket(app.wsUrl, { headers: { Authorization: 'Bearer ' + app.options.webhookToken } });
-    context.after(() => socket.terminate());
-    const [error] = await once(socket, 'error');
-    assert.match(error.message, /401/);
+    assert.equal((await post(app, jiraEvent(), 'invalid-token')).status, 401);
+    const client = await subscriber(context, app);
+    assert.equal(client.registered.type, 'worker.registered');
 });
 
 test('Identical notifications are deduplicated within the replay window', async context =>
@@ -118,4 +116,41 @@ test('Shutdown closes connected WebSocket clients', async context =>
     await app.close();
     await closed;
     assert.equal(client.socket.readyState, WebSocket.CLOSED);
+});
+
+
+test('Diagnostics distinguish delivery, filtering and rejection without exposing secrets or bodies', async context =>
+{
+    const logs = [];
+    const app = await fixture(context, { log: (message, details) => logs.push({ message, ...details }) });
+    await post(app, jiraEvent(), 'invalid-token');
+    await post(app, { ...jiraEvent(), timestamp: null });
+    await post(app, { webhookEvent: 'comment_created' });
+    await post(app, jiraEvent('UNRELATED-1'));
+    await post(app, jiraEvent());
+    assert.equal(logs.find(item => item.issue_key === 'AI9527-2' && item.recipients !== undefined).recipients, 0);
+    const client = await subscriber(context, app);
+    await post(app, jiraEvent('AI9527-3', 2));
+    await client.inbox.next('jira.issue_changed');
+    assert.equal(logs.find(item => item.issue_key === 'AI9527-3' && item.recipients !== undefined).recipients, 1);
+    assert.ok(logs.some(item => item.status === 401));
+    assert.ok(logs.some(item => item.status === 400));
+    assert.ok(logs.some(item => item.message.includes('事件类型不支持')));
+    assert.ok(logs.some(item => item.message.includes('项目不在配置范围')));
+    const parsed = logs.find(item => item.issue_key === 'AI9527-3' && item.status_change);
+    assert.deepEqual(parsed.status_change, { from: '进行中', to: '完成' });
+    assert.ok(parsed.remote_address);
+    assert.ok(logs.some(item => item.request_id === parsed.request_id && item.status === 202 && item.duration_ms >= 0));
+    const registered = logs.find(item => item.replay_count === 0 && item.connection_id);
+    assert.ok(registered.client_id);
+    assert.ok(logs.some(item => item.connection_id === registered.connection_id && item.message_id && item.sequence === 2));
+    client.socket.close();
+    await once(client.socket, 'close');
+    await app.close();
+    assert.ok(logs.some(item => item.connection_id === registered.connection_id && item.close_code && item.duration_ms >= 0));
+    const text = JSON.stringify(logs);
+    assert.ok(!text.includes(app.options.webhookToken));
+    assert.ok(!text.includes('invalid-token'));
+    assert.ok(!text.includes('private@example.test'));
+    assert.ok(!text.includes('完整需求'));
 });

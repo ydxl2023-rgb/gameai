@@ -125,6 +125,22 @@ GameCLI.exe orchestrator --dispatch --issue AI9527-1 --project <工程目录> --
 
 ## WebSocket 事件连接
 
-新增 `orchestrator --connect --server <ws或wss地址>/ws --project-key <项目> --format json`，通过 `GAMECLI_SERVER_TOKEN` 环境变量提供服务凭据。Node.js GameCLIServer 接收 JIRA Webhook 后按项目推送通知。连接支持心跳、退避重连、有限补发与重新核对提示；这是事件通道，不会自动运行现有 dispatch，不会让所有观察客户端重复派工。
+新增 `orchestrator --connect --server <ws或wss地址>/ws --project-key <项目> --format json`，局域网客户端无需认证令牌。Node.js GameCLIServer 接收 JIRA Webhook 后按项目推送通知。连接支持心跳、退避重连、有限补发与重新核对提示；这是事件通道，不会自动运行现有 dispatch，不会让所有观察客户端重复派工。
 
-正式部署需要一个 JIRA 服务器可访问的回调地址。当前完成本机 HTTP/WebSocket 与真实 CLI 联调，尚未登记正式 JIRA Webhook。完整部署、固定协议及已实现边界见 [协调服务设计](../../../../../docs/gamecli-server-architecture.md)。
+正式部署需要一个 JIRA 服务器可访问的回调地址。已验证 HTTP/WebSocket 与真实 CLI 联调；JIRA 管理员登记回调后可接收真实通知。完整部署、固定协议及已实现边界见 [协调服务设计](../../../../../docs/gamecli-server-architecture.md)。
+
+## ART 只读联调
+
+`orchestrator --art-probe --issue <需求主任务> --server <ws或wss地址>/ws --project <工程目录> [--trigger sync|event] [--timeout 600] --format json` 用于显式授权的链路联调。默认 sync 在连接注册后核对 JIRA 并执行一次；event 等待该主任务或其子任务的通知后再核对。它不会轮询 JIRA。
+
+编排器读取真实美术子任务，验证父子关系、项目和任务标签，通过 Codex App Server 启动独立的 Art 会话。代理采用只读模式、禁用工具，仅确认任务和返回计划产物，不创建资源、不写工程、不改变批准或任务状态，也不进入 Development/QA。诊断不要求生产批准；正式制作仍必须经过原有交付门禁。
+
+会话编号、轮次、执行编号及结果存入美术子任务属性 `gamecli.art-probe.v1`，与 `gamecli.delivery.v1` 分开。先保存启动意图，再启动代理；成功后退出监听。相同需求版本重复执行复用已完成结果，运行中、响应不确定或版本不符的记录阻止再次启动，先核对原会话。当前不提供自动重试或清除记录命令。
+
+联调沿用同机同用户的项目执行锁，连接使用固定的流程客户端编号来拒绝同时注册。该机制不是生产级跨机器租约；当前只允许指定的一台工作机执行联调。连接期间的事件接收、心跳和代理运行相互独立，不会因代理耗时阻塞心跳。普通 `--connect` 仍只观察，不启动代理。
+
+运行日志写入 stderr，最终结构化回执写入 stdout。Unity 面板通过现有 LiveRun 记录可观察 Art 会话。示例：
+
+```powershell
+& './app/client/Library/GameCLI/GameCLI.exe' orchestrator --art-probe --issue AI9527-1 --server ws://192.168.72.39:8088/ws --project './app/client' --timeout 600 --format json
+```

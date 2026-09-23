@@ -7,12 +7,10 @@ using GameCLI.Contracts;
 
 namespace GameCLI.Services
 {
-    /// <summary>Maintains an authenticated project event subscription with bounded replay and reconnect backoff.</summary>
+    /// <summary>Maintains a project event subscription with bounded replay and reconnect backoff.</summary>
     internal sealed class ServerEventClient
     {
         private readonly Uri address;
-
-        private readonly string token;
 
         private readonly string projectKey;
 
@@ -20,10 +18,9 @@ namespace GameCLI.Services
 
         private readonly Action guard;
 
-        public ServerEventClient(Uri address, string token, string projectKey, string clientId, Action guard)
+        public ServerEventClient(Uri address, string projectKey, string clientId, Action guard)
         {
             this.address = address;
-            this.token = token;
             this.projectKey = projectKey;
             this.clientId = clientId;
             this.guard = guard;
@@ -41,7 +38,6 @@ namespace GameCLI.Services
                 cancellation.ThrowIfCancellationRequested();
                 guard();
                 using ClientWebSocket socket = new();
-                socket.Options.SetRequestHeader("Authorization", "Bearer " + token);
                 socket.Options.CollectHttpResponseDetails = true;
                 using CancellationTokenSource lifetime = CancellationTokenSource.CreateLinkedTokenSource(cancellation);
                 Task heartbeat = Task.CompletedTask;
@@ -124,7 +120,7 @@ namespace GameCLI.Services
                 {
                     if (socket.HttpStatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden)
                     {
-                        throw new InvalidOperationException("服务鉴权失败，请检查 GAMECLI_SERVER_TOKEN。");
+                        throw new InvalidOperationException("服务或代理拒绝连接，请检查地址及访问配置。");
                     }
                 }
                 catch (OperationCanceledException) when (!cancellation.IsCancellationRequested)

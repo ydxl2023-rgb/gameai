@@ -78,3 +78,7 @@ Contracts/TaskDelivery.cs 定义子任务交付、证据和输入版本；Core/D
 Node.js 服务位于 GameCLI~/GameCLIServer，属于服务器端明确的技术例外。C# 的 Contracts/ServerEnvelope.cs 定义消息封装，Services/ServerEventClient.cs 管理 WebSocket 注册、心跳及重连，Plugins/Orchestrator/ConnectCommand.cs 提供 orchestrator --connect。当前只接收事件，不进行分布式派工或自动启动代理。node_modules、真实 .env 与凭据不提交，package-lock.json 保留。
 
 完整协议、配置及后续集中调度方案见 [协调服务设计](../../../../../docs/gamecli-server-architecture.md)。
+
+GameCLIServer 的局域网 WebSocket 客户端连接无需认证令牌；JIRA Webhook 保留通知令牌校验。
+
+`Contracts/ArtProbe.cs` 保存只读联调契约；`Core/ArtProbeWorkflow.cs` 串联 WebSocket 通知、JIRA 核对和独立 Art 会话，联调记录不作为生产交付。

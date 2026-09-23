@@ -22,6 +22,7 @@ namespace GameCLI.Plugins.Orchestrator
             "resume" => "Resume a recorded workflow without bypassing approval or repeating unknown writes.",
             "revise" => "Replace the unplanned requirement document and rerun Design.",
             "gates" => "读取专业任务依赖、完成状态和交付文件校验结果。",
+            "art-probe" => "连接事件服务并启动只读 ART 联调代理，不生成资源或完成单据。",
             "dispatch" => "按已批准需求和交付门禁调度专业代理。",
             _ => "Read the authoritative workflow, design and created tasks from JIRA."
         };
@@ -31,11 +32,12 @@ namespace GameCLI.Plugins.Orchestrator
             Name = name;
         }
 
-        private string Usage => "GameCLI orchestrator --" + Name + (Name == "start" ? " --document <UTF-8 .md|.txt>" : " --issue <KEY-123>") + (Name == "approve" ? " --revision <reviewed SHA-256>" : Name == "revise" ? " --document <UTF-8 .md|.txt>" : "") + (Name == "status" ? "" : " --project <directory> [--skills <game-cli>] [--codex <codex.exe>] [--model <model>] [--timeout <seconds>]") + (Name == "dispatch" ? " [--retry-task <KEY-123>]" : "") + " [--issue-type <name-or-id>] [--format human|json]";
+        private string Usage => "GameCLI orchestrator --" + Name + (Name == "start" ? " --document <UTF-8 .md|.txt>" : " --issue <KEY-123>") + (Name == "approve" ? " --revision <reviewed SHA-256>" : Name == "revise" ? " --document <UTF-8 .md|.txt>" : "") + (Name == "status" ? "" : " --project <directory> [--skills <game-cli>] [--codex <codex.exe>] [--model <model>] [--timeout <seconds>]") + (Name == "dispatch" ? " [--retry-task <KEY-123>]" : "") + (Name == "art-probe" ? " --server <ws://host:port/ws> [--trigger sync|event]" : "") + " [--issue-type <name-or-id>] [--format human|json]";
 
         /// <inheritdoc />
         public async Task<int> ExecuteAsync(string[] args, CancellationToken cancellationToken)
         {
+            Console.OutputEncoding = new UTF8Encoding(false);
             if (args.Length == 1 && args[0] is "--help" or "-h")
             {
                 Console.WriteLine(Usage);
@@ -116,7 +118,7 @@ namespace GameCLI.Plugins.Orchestrator
                     }
                 }
 
-                Guard(Name is "start" or "revise" ? "design" : Name == "approve" ? "pm" : "orchestrator");
+                Guard(Name is "start" or "revise" ? "design" : Name == "approve" ? "pm" : Name == "art-probe" ? "art" : "orchestrator");
                 JiraConnection connection = await JiraConnection.LoadAsync(cancellation.Token);
                 using FileStream? lease = Name is "status" or "gates" ? null : AcquireLease(connection);
                 using HttpClientHandler handler = new()
@@ -130,7 +132,22 @@ namespace GameCLI.Plugins.Orchestrator
                     MaxResponseContentBufferSize = 1024 * 1024
                 };
                 store = new JiraWorkflowStore(http, connection, () => Guard("jira"), options.GetValueOrDefault("--issue-type"));
-                CodexWorkflowAgent agent = new(options.GetValueOrDefault("--codex", "codex"), project, skills, options.GetValueOrDefault("--model"));
+                CodexWorkflowAgent agent = new(options.GetValueOrDefault("--codex", "codex"), project, skills, options.GetValueOrDefault("--model"), artProbe: Name == "art-probe");
+                if (Name == "art-probe")
+                {
+                    Uri address = new(options["--server"]);
+                    ArtProbeWorkflow probe = new(store, agent, () => Guard("art"));
+                    ArtProbe receipt = await probe.RunAsync(issue!, address, options.GetValueOrDefault("--trigger", "sync") == "event", cancellation.Token);
+                    Console.WriteLine(WorkflowContract.Serialize(new
+                    {
+                        ok = true,
+                        mode = "art_probe",
+                        production_complete = false,
+                        receipt
+                    }));
+                    return 0;
+                }
+
                 if (Name is "gates" or "dispatch")
                 {
                     DeliveryWorkflow delivery = new(store, agent, project, Guard);
@@ -238,6 +255,12 @@ namespace GameCLI.Plugins.Orchestrator
                 allowed.Add("--retry-task");
             }
 
+            if (Name == "art-probe")
+            {
+                allowed.Add("--server");
+                allowed.Add("--trigger");
+            }
+
             Dictionary<string, string> options = new(StringComparer.Ordinal);
             for (int i = 0; i < args.Length; i += 2)
             {
@@ -248,6 +271,11 @@ namespace GameCLI.Plugins.Orchestrator
             }
 
             if (Name != "status" && !options.ContainsKey("--project") || Name != "start" && !options.ContainsKey("--issue") || Name is "start" or "revise" && !options.ContainsKey("--document") || Name == "approve" && !options.ContainsKey("--revision") || options.GetValueOrDefault("--format", "human") is not ("human" or "json") || !int.TryParse(options.GetValueOrDefault("--timeout", "600"), out int seconds) || seconds is < 1 or > 3600)
+            {
+                throw new ArgumentException(Usage);
+            }
+
+            if (Name == "art-probe" && (!Uri.TryCreate(options.GetValueOrDefault("--server"), UriKind.Absolute, out Uri? address) || address.Scheme is not ("ws" or "wss") || address.AbsolutePath != "/ws" || address.Query.Length > 0 || address.Fragment.Length > 0 || address.UserInfo.Length > 0 || options.GetValueOrDefault("--trigger", "sync") is not ("sync" or "event")))
             {
                 throw new ArgumentException(Usage);
             }

@@ -312,6 +312,27 @@ namespace GameCLI.Services
             }
         }
 
+        /// <summary>Reads diagnostic execution evidence without treating it as a production delivery.</summary>
+        public async Task<ArtProbe?> ReadArtProbeAsync(string key, CancellationToken cancellation)
+        {
+            ValidateKey(key);
+            JsonElement property = await SendAsync(HttpMethod.Get, "issue/" + key + "/properties/gamecli.art-probe.v1", null, cancellation, true);
+            return property.ValueKind == JsonValueKind.Undefined ? null : WorkflowContract.Parse<ArtProbe>(property.GetProperty("value").GetRawText());
+        }
+
+        /// <summary>Stores the bounded diagnostic receipt only; does not edit descriptions, approval or native status.</summary>
+        public async Task SaveArtProbeAsync(ArtProbe probe, CancellationToken cancellation)
+        {
+            ValidateKey(probe.IssueKey);
+            string json = WorkflowContract.Serialize(probe);
+            if (Encoding.UTF8.GetByteCount(json) > 30000)
+            {
+                throw new JiraTaskException("ART 联调记录超过容量。", 4);
+            }
+
+            await SendAsync(HttpMethod.Put, "issue/" + probe.IssueKey + "/properties/gamecli.art-probe.v1", json, cancellation);
+        }
+
         private static string TaskLabel(Workflow state, PlannedTask task)
         {
             string revision = task.Id == "art-requirements" ? "art" : task.Id is "development-requirements" or "qa-requirements" ? "early" : state.Revision;

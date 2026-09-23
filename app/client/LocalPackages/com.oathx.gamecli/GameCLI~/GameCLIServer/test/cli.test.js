@@ -8,12 +8,18 @@ import { Inbox, fixture, jiraEvent, post } from './support.js';
 
 const cli = fileURLToPath(new URL('../../GameCLI/GameCLI/bin/Release/net8.0/GameCLI.dll', import.meta.url));
 
-function startClient(context, app, { maximum = 1, token = app.options.clientToken } = {})
+function startClient(context, app, { maximum = 1, token = undefined } = {})
 {
     assert.ok(existsSync(cli), '先构建 Release 版本的 GameCLI。');
+    const environment = { ...process.env };
+    delete environment.GAMECLI_SERVER_TOKEN;
+    if (token !== undefined)
+    {
+        environment.GAMECLI_SERVER_TOKEN = token;
+    }
     const child = spawn('dotnet', [cli, 'orchestrator', '--connect', '--server', app.wsUrl, '--project-key', 'AI9527', '--format', 'json', '--max-events', String(maximum), '--timeout', '15'], {
         windowsHide: true,
-        env: { ...process.env, GAMECLI_SERVER_TOKEN: token },
+        env: environment,
         stdio: ['ignore', 'pipe', 'pipe']
     });
     context.after(() => child.kill());
@@ -45,15 +51,17 @@ test('Real C# CLI receives a Node Webhook event and exits after the requested co
     assert.equal(event.payload.status.name, '完成');
     assert.equal(event.payload.issue_key, 'AI9527-2');
     assert.equal((await client.exited).code, 0);
-    assert.ok(!JSON.stringify(client.lines).includes(app.options.clientToken));
+    assert.ok(!JSON.stringify(client.lines).includes(app.options.webhookToken));
 });
 
-test('Real CLI rejects a wrong server token without reconnecting indefinitely', { timeout: 20000 }, async context =>
+test('Real CLI ignores an obsolete server token and still receives events', { timeout: 20000 }, async context =>
 {
     const app = await fixture(context);
     const client = startClient(context, app, { token: 'wrong-token-'.repeat(4) });
-    assert.equal((await client.exited).code, 3);
-    assert.equal(client.lines.at(-1).ok, false);
+    await client.inbox.next('worker.registered');
+    await post(app, jiraEvent());
+    await client.inbox.next('jira.issue_changed');
+    assert.equal((await client.exited).code, 0);
 });
 
 test('Real CLI reconnects after transport loss and consumes retained notifications', { timeout: 20000 }, async context =>

@@ -24,6 +24,7 @@ namespace GameCLI.Plugins.Orchestrator
             new WorkflowCommand("revise"),
             new WorkflowCommand("gates"),
             new WorkflowCommand("dispatch"),
+            new WorkflowCommand("art-probe"),
             new ConnectCommand()
         });
     }

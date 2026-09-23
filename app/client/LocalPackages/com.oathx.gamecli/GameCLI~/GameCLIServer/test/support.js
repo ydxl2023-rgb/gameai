@@ -51,7 +51,6 @@ export class Inbox
 export async function fixture(context, overrides = {})
 {
     const options = {
-        clientToken: randomBytes(24).toString('hex'),
         webhookToken: randomBytes(24).toString('hex'),
         projects: ['AI9527', 'OTHER'],
         heartbeatMs: 1000,
@@ -126,7 +125,7 @@ export function httpRequest(url, options = {})
 
 export async function subscriber(context, fixture, { project = 'AI9527', cursor = null, heartbeat = true, id = randomUUID() } = {})
 {
-    const socket = new WebSocket(fixture.wsUrl, { headers: { Authorization: 'Bearer ' + fixture.options.clientToken } });
+    const socket = new WebSocket(fixture.wsUrl);
     const inbox = new Inbox();
     socket.on('message', bytes => inbox.push(JSON.parse(bytes.toString())));
     socket.on('error', () => {});

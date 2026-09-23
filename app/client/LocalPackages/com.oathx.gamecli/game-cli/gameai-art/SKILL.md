@@ -17,3 +17,7 @@ description: 按美术 Manifest 制作、整理和验证资源；用于 Art Agen
 ## 依赖与交付门禁
 
 执行或编写专业任务时，必须遵守 [任务依赖与交付规范](../gameai-task-delivery/SKILL.md)。单据列出真实前置编号、启动条件、交付要求及确认方式；编排器验证上游完成状态、实际文件与版本后才派工，交付提交不等于审核完成。
+
+## 只读启动联调
+
+宿主明确指定 `art_probe` 模式时，仅确认接收指定单据、返回中文任务摘要和计划产物。禁止生成资源、调用工具、写文件或改变 JIRA。返回 `acknowledged=true`、`assets_generated=false` 及原样 issue_key/execution_id。这种诊断可以在生产审批前执行，不能声称任务制作完成或提供虚假产物证据。

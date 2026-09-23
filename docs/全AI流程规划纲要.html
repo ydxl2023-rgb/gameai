@@ -1590,7 +1590,7 @@ description: 拆解游戏需求并定义 JIRA 任务与验收标准；用于 PM 
 <p>单一职责规范：<code>game-cli/gameai-task-delivery/SKILL.md</code>；详见 <code>docs/agent-workflow-development-guide.md</code>。</p>
 <h2>集中协调服务与通知通道</h2>
 <p>团队模式采用 Node.js GameCLIServer 接收 JIRA Webhook，通过固定 WebSocket 协议连接 C# GameCLI 客户端。JIRA 继续作为需求、审批、依赖和交付的唯一可信来源；事件缓存不是业务状态库。</p>
-<p>当前已实现项目事件订阅、鉴权、心跳、重连、有限补发与重新核对提示。集中派工、执行租约、自动核对及结果回写仍待实现；不能将状态广播直接解释为所有客户端的执行授权。</p>
+<p>当前已实现局域网免认证项目事件订阅、JIRA 回调令牌校验、心跳、重连、有限补发与重新核对提示。集中派工、执行租约、自动核对及结果回写仍待实现；不能将状态广播直接解释为所有客户端的执行授权。</p>
 <p>服务源码位于 <code>GameCLI~/GameCLIServer</code>，方案与部署见 <a href="gamecli-server-architecture.md">协调服务设计</a>。客户端使用 <code>orchestrator --connect</code> 连接，现有单机调度命令保持原有门禁。</p>
 <div class="footer">
   全 AI 游戏开发流水线设计文档 · v1.0 · 2026-09-22<br>
@@ -1599,5 +1599,6 @@ description: 拆解游戏需求并定义 JIRA 任务与验收标准；用于 PM 
 
 </div>
 
+<p>ART 只读联调已提供 <code>orchestrator --art-probe</code>：事件服务连接、JIRA 子任务核对、真实 Art 会话启动和独立诊断记录回写；不制作资源、不改变审批或单据完成状态，正式集中派工仍待实现。</p>
 </body>
 </html>

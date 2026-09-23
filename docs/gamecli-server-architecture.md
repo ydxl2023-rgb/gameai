@@ -39,15 +39,15 @@ flowchart TD
 
 ## 3. 当前已实现范围
 
-当前版本实现的是**事件通道**：
+当前版本实现的是**事件通道和显式只读 ART 联调**：
 
 1. Node.js 接收 JIRA 的单据创建、更新和删除通知。
 2. 按开放项目过滤，只转发单据编号、父任务编号、时间、状态与状态变更摘要，不广播完整需求、评论、人员信息或凭据。
 3. C# Orchestrator 通过 WebSocket 注册项目订阅并接收事件。
-4. 提供鉴权、心跳、退避重连、通知去重、有限补发和缺口提示。
+4. 提供 JIRA 回调令牌校验、心跳、退避重连、通知去重、有限补发和缺口提示。
 5. 服务退出时关闭连接，CLI 支持取消和可选监听时限。
 
-当前**尚未实现**集中任务分配、执行租约、远程启动代理、自动 JIRA 状态核对与回写、持久通知队列、逐用户项目授权和 Unity 面板连接配置。收到通知只输出事件，不启动 Agent，不调用 JIRA。现有单机调度命令保持原有审批与依赖门禁。
+当前**尚未实现**集中任务分配、执行租约、远程启动代理、自动 JIRA 状态核对与回写、持久通知队列、逐用户项目授权和 Unity 面板连接配置。普通 `--connect` 只输出事件，不启动 Agent，不调用 JIRA；显式 `--art-probe` 例外，仅执行只读联调并保存独立诊断记录。现有单机调度命令保持原有审批与依赖门禁。
 
 ## 4. 目录与模块
 
@@ -125,7 +125,7 @@ GameCLI~/
 ## 6. 通知可靠性与连接生命周期
 
 - 默认每 15 秒一次客户端与服务的心跳，超过三个心跳周期无响应断开。该流量只在客户端与服务之间，不访问 JIRA。
-- CLI 连接失败后按约 1、2、4、8、16、30 秒退避并加入抖动；成功注册后重置。鉴权或协议错误直接报错，不无限重试错误凭据。
+- CLI 连接失败后按约 1、2、4、8、16、30 秒退避并加入抖动；成功注册后重置。服务或代理拒绝访问、协议错误直接报错。
 - 每个项目保留最近 1000 条通知。相同请求正文在这个窗口内去重；不能承诺所有形式的重复通知都能识别，更不能将这种去重当成执行幂等。
 - CLI 在消费者接收消息后推进内存游标。短暂断线时携带 `server_id` 与 `sequence` 重连，服务按项目补发遗漏通知。
 - 初次连接、CLI 进程重启、服务重启或缓存不足时，返回 `resync_required=true`。原因分别为 `initial_sync`、`server_restarted` 或 `replay_gap`。客户端不能把这时的通知流视为完整状态快照。
@@ -150,10 +150,9 @@ Copy-Item .env.example .env
 | `GAMECLI_HOST` | 默认 `127.0.0.1`，本机联调；对内网开放时按部署环境设置 |
 | `GAMECLI_PORT` | 默认 `8088` |
 | `GAMECLI_PROJECT_KEYS` | 允许的项目，例如 `AI9527`；多个项目用英文逗号分隔 |
-| `GAMECLI_SERVER_TOKEN` | 客户端连接凭据，独立随机值，32 至 256 字符，仅字母、数字、横线或下划线 |
-| `GAMECLI_WEBHOOK_TOKEN` | JIRA 回调凭据，与客户端凭据不同，同样使用 32 至 256 字符的字母、数字、横线或下划线 |
+| `GAMECLI_WEBHOOK_TOKEN` | JIRA 回调凭据，使用 32 至 256 字符的字母、数字、横线或下划线 |
 
-可用 `node -e "console.log(require('node:crypto').randomBytes(32).toString('hex'))"` 分别生成两个随机值。它们不是 JIRA Access Token。服务端首版不读取 JIRA 凭据，真实 `.env`、令牌和依赖目录不提交 Git。
+可用 `node -e "console.log(require('node:crypto').randomBytes(32).toString('hex'))"` 生成一个随机值。它不是 JIRA Access Token。服务端首版不读取 JIRA 凭据，真实 `.env`、令牌和依赖目录不提交 Git。
 
 ```powershell
 npm start
@@ -163,14 +162,13 @@ npm start
 
 - `GET /health`：存活检查。
 - `POST /webhooks/jira/<通知令牌>`：JIRA 回调。
-- `/ws`：WebSocket；升级请求使用 `Authorization: Bearer <客户端令牌>`。
+- `/ws`：WebSocket；局域网客户端直接连接，不需要认证令牌。
 
-外部部署使用 HTTPS/WSS 反向代理，并转发 WebSocket 升级。回调路径含令牌，代理访问日志需要隐藏该路径，不能把完整回调地址写入公开文档。首版客户端凭据是团队共享服务凭据，不能替代后续逐用户或逐执行端的授权。
+外部部署使用 HTTPS/WSS 反向代理，并转发 WebSocket 升级。回调路径含令牌，代理访问日志需要隐藏该路径，不能把完整回调地址写入公开文档。当前客户端连接不做身份认证，面向局域网使用。旧配置中的 `GAMECLI_SERVER_TOKEN` 可删除，保留也不会生效。
 
 CLI 连接示例：
 
 ```powershell
-$env:GAMECLI_SERVER_TOKEN = '<与服务端一致的客户端令牌>'
 & '<工程目录>/Library/GameCLI/GameCLI.exe' orchestrator --connect --server ws://127.0.0.1:8088/ws --project-key AI9527 --client-id workstation-01 --format json
 ```
 
@@ -223,6 +221,10 @@ npm test
 npm run test:cli
 ```
 
-服务测试覆盖项目过滤、必要字段、鉴权、去重、补发、缺口提示、非法协议、心跳、50 个连接的事件推送及关闭。CLI 联调实际启动 C# 进程，覆盖中文事件、错误凭据、网络断开后补发及服务重启。50 个连接测试验证广播正确性，不等于生产容量压测。
+服务测试覆盖项目过滤、必要字段、回调令牌校验、免认证订阅、去重、补发、缺口提示、非法协议、心跳、50 个连接的事件推送及关闭。CLI 联调实际启动 C# 进程，覆盖中文事件、无客户端令牌及旧令牌兼容、网络断开后补发及服务重启。50 个连接测试验证广播正确性，不等于生产容量压测。
 
 参考：[JIRA Server Webhooks](https://developer.atlassian.com/server/jira/platform/webhooks/)、[ws 官方说明](https://github.com/websockets/ws)。具体能力以当前代码、测试和目标 JIRA 版本为准，不套用 JIRA Cloud 的投递保证。
+
+## ART 联调执行端
+
+已新增显式 `orchestrator --art-probe`：连接事件服务、核对真实 JIRA 美术子任务、启动只读 Codex Art 会话并回写独立诊断记录。普通观察连接仍不派工，正式集中执行租约、资源制作及自动完成仍未实现。操作见 [编排器命令](../app/client/LocalPackages/com.oathx.gamecli/Docs/orchestrator-workflow.md)。

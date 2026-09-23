@@ -7,7 +7,7 @@ description: 用户在 AI 对话中提供游戏需求文档并要求启动流程
 
 ## 集中协调事件连接
 
-`orchestrator --connect --server <ws或wss地址>/ws --project-key <项目> --format json` 连接 Node.js GameCLIServer，凭据来自 `GAMECLI_SERVER_TOKEN` 环境变量。当前只注册项目观察连接，接收 JIRA 单据事件；不能收到通知就自行调用 dispatch 或启动专业代理，避免多个客户端重复执行。
+`orchestrator --connect --server <ws或wss地址>/ws --project-key <项目> --format json` 连接 Node.js GameCLIServer，局域网客户端无需认证令牌；JIRA 回调仍使用 `GAMECLI_WEBHOOK_TOKEN`。此命令只注册项目观察连接，接收 JIRA 单据事件；不能收到通知就自行调用 dispatch 或启动专业代理，避免多个客户端重复执行。
 
 通知只是变化提示，不能作为任务完成、批准或派工授权。重连时使用内存游标补发；`resync_required=true` 表示首次连接、服务重启或缓存不足，需要重新核对 JIRA。当前客户端只报告这个要求，不自动查询 JIRA，也不实现远程任务租约。集中派工和执行端协议属于后续阶段，现有单机命令的审批、依赖门禁继续适用。
 
@@ -51,7 +51,7 @@ description: 用户在 AI 对话中提供游戏需求文档并要求启动流程
 - `orchestrator --resume --issue <KEY> --project <目录>`：核对已有状态再恢复，不绕过批准，也不重复提交结果未知的建单。
 - `orchestrator --revise --issue <KEY> --document <新文档> --project <目录>`：尚未保存 PM 计划前重新策划，旧审批失效。
 
-同一 JIRA 项目当前限定单机器、单用户调度；本机锁不能当作跨机器锁。逻辑阶段、任务依赖及审批保存在 JIRA issue property，不假定项目已有同名 workflow status。依赖保存在 JIRA 属性并展示为描述引用，不创建原生 JIRA issue links。专业派工通过 dispatch 显式执行，审核后再次调度；不常驻监听。
+同一 JIRA 项目当前限定单机器、单用户调度；本机锁不能当作跨机器锁。逻辑阶段、任务依赖及审批保存在 JIRA issue property，不假定项目已有同名 workflow status。依赖保存在 JIRA 属性并展示为描述引用，不创建原生 JIRA issue links。正式专业派工通过 dispatch 显式执行，审核后再次调度；只读联调使用下述 art-probe。
 
 ## 专业需求同步登记
 
@@ -66,3 +66,7 @@ description: 用户在 AI 对话中提供游戏需求文档并要求启动流程
 - `orchestrator --gates --issue <主任务> --project <目录> --format json`：读取各子任务的就绪、阻塞、待审核或完成状态，校验实际交付文件。
 - `orchestrator --dispatch --issue <主任务> --project <目录> --format json`：只启动依赖已满足的专业代理，美术抽检后再次调度，程序校验通过自动完成并进入验收；最终验收保留人工关口。
 - 显式重试使用 `--dispatch ... --retry-task <子任务>`。返工先重新打开单据，累计最多三次；运行中记录不能自动重试。
+
+## ART 联调入口
+
+用户明确要求只启动美术代理、验证通知链路且不制作资源时，使用 `orchestrator --art-probe --issue <主任务> --server <ws或wss地址>/ws --project <目录> --format json`。默认连接注册后核对当前任务；需要只等待后续 JIRA 通知时加 `--trigger event`。这是诊断授权，不是生产审批；代理不得写工程、生成资源或完成单据。回执只保存到 `gamecli.art-probe.v1`，不能当作交付门禁证据。重复执行复用已完成记录；中断或结果未知时先核对会话，不清除记录绕过防重。当前限定一台指定工作机运行，不能当作跨机器租约调度。

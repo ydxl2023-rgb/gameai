@@ -12,8 +12,28 @@ namespace GameCLI.DeliverySmoke
 {
     internal static class Program
     {
-        private static async Task Main()
+        private static async Task Main(string[] args)
         {
+            Console.OutputEncoding = new UTF8Encoding(false);
+            if (args.Length == 2 && args[0] == "--probe-server")
+            {
+                using FakeJira handler = new(false);
+                using HttpClient http = new(handler);
+                JiraWorkflowStore store = new(http, new JiraConnection("https://jira.test", "GAME", "secret"), () =>
+                {
+                }, null);
+                ProbeAgent agent = new(handler, "slow");
+                ArtProbeWorkflow workflow = new(store, agent, () =>
+                {
+                });
+                using CancellationTokenSource timeout = new(TimeSpan.FromSeconds(10));
+                ArtProbe receipt = await workflow.RunAsync("GAME-1", new Uri(args[1]), true, timeout.Token);
+                Require(receipt.Status == "completed" && agent.Calls == 1, "Event-triggered probe");
+                Console.WriteLine("PROBE_TRANSPORT_PASS");
+                return;
+            }
+
+            await TestArtProbeAsync();
             foreach (string mode in new[]
             {
                 "chain",
@@ -267,8 +287,116 @@ namespace GameCLI.DeliverySmoke
             }
         }
 
+        private static async Task TestArtProbeAsync()
+        {
+            foreach (string mode in new[]
+            {
+                "success", "intent-lost", "agent-failed", "fabricated-assets", "disabled", "done", "version-changed"
+            })
+            {
+                using FakeJira handler = new(false);
+                handler.State.ApprovedRevision = null;
+                handler.FailIntent = mode == "intent-lost";
+                using HttpClient http = new(handler);
+                JiraWorkflowStore store = new(http, new JiraConnection("https://jira.test", "GAME", "secret"), () =>
+                {
+                }, null);
+                ProbeAgent agent = new(handler, mode);
+                ArtProbeWorkflow workflow = new(store, agent, () =>
+                {
+                    if (mode == "disabled")
+                    {
+                        throw new JiraTaskException("已禁用", 3);
+                    }
+                });
+                if (mode == "done")
+                {
+                    handler.Done.Add("GAME-2");
+                }
+
+                bool failed = false;
+                try
+                {
+                    ArtProbe receipt = await workflow.ExecuteAsync("GAME-1", CancellationToken.None);
+                    Require(receipt.Status == "completed" && receipt.Result!.Acknowledged && !receipt.Result.AssetsGenerated, "Probe receipt");
+                    ArtProbe repeated = await workflow.ExecuteAsync("GAME-1", CancellationToken.None);
+                    Require(repeated.ExecutionId == receipt.ExecutionId && agent.Calls == 1, "Probe deduplication");
+                }
+                catch (Exception exception) when (exception is JiraTaskException or HttpRequestException or JsonException or IOException)
+                {
+                    failed = true;
+                }
+
+                Require(failed == (mode != "success"), "Probe outcome " + mode);
+                Require(handler.Deliveries.Count == 0 && handler.TransitionCalls == 0 && handler.State.ApprovedRevision == null, "Probe must preserve production gates");
+                if (mode is "intent-lost" or "disabled" or "done")
+                {
+                    Require(agent.Calls == 0, "No unauthorized probe launch");
+                }
+
+                if (mode == "agent-failed")
+                {
+                    try
+                    {
+                        await workflow.ExecuteAsync("GAME-1", CancellationToken.None);
+                        throw new InvalidOperationException("Interrupted probe restarted");
+                    }
+                    catch (JiraTaskException)
+                    {
+                        Require(agent.Calls == 1, "Unknown runs must not repeat");
+                    }
+                }
+
+                Console.WriteLine("ART probe: " + mode + " passed");
+            }
+        }
+
+        private sealed class ProbeAgent : IWorkflowAgent
+        {
+            private readonly FakeJira handler;
+            private readonly string mode;
+
+            public int Calls
+            { get; private set; }
+
+            public ProbeAgent(FakeJira handler, string mode)
+            {
+                this.handler = handler;
+                this.mode = mode;
+            }
+
+            public async Task<string> RunAsync(string role, string input, object schema, string executionId, Func<JsonElement, CancellationToken, Task<object>>? publish, Func<string, string, CancellationToken, Task> sessionStarted, CancellationToken cancellation)
+            {
+                Require(handler.Probe?.Status == "starting" && role == "Art" && publish == null, "Intent before actual launch");
+                Calls++;
+                await sessionStarted("probe-thread", "probe-turn", cancellation);
+                if (mode == "agent-failed")
+                {
+                    throw new IOException("Simulated interruption");
+                }
+
+                if (mode == "slow")
+                {
+                    await Task.Delay(500, cancellation);
+                }
+
+                if (mode == "version-changed")
+                {
+                    handler.State.Revision = "changed";
+                }
+
+                return WorkflowContract.Serialize(new ArtProbeResult("GAME-2", executionId, true, mode == "fabricated-assets", "已接收任务，未生成资源。", new[]
+                {
+                    "背包界面设计"
+                }));
+            }
+        }
+
         private sealed class FakeJira : HttpMessageHandler
         {
+            public ArtProbe? Probe
+            { get; private set; }
+
             public Workflow State
             { get; }
 
@@ -324,6 +452,26 @@ namespace GameCLI.DeliverySmoke
             {
                 string[] parts = request.RequestUri!.AbsolutePath.Split('/', StringSplitOptions.RemoveEmptyEntries);
                 string key = parts[4];
+                if (parts.Length > 6 && parts[6] == "gamecli.art-probe.v1")
+                {
+                    if (request.Method == HttpMethod.Get)
+                    {
+                        return Probe == null ? new HttpResponseMessage(HttpStatusCode.NotFound) : Json(new
+                        {
+                            value = JsonSerializer.SerializeToElement(Probe, WorkflowContract.Json)
+                        });
+                    }
+
+                    Require(request.Method == HttpMethod.Put, "Unexpected probe mutation");
+                    Probe = WorkflowContract.Parse<ArtProbe>(await request.Content!.ReadAsStringAsync(cancellationToken));
+                    if (FailIntent)
+                    {
+                        throw new HttpRequestException("Lost intent response");
+                    }
+
+                    return new HttpResponseMessage(HttpStatusCode.NoContent);
+                }
+
                 if (request.Method == HttpMethod.Get)
                 {
                     if (parts.Length > 5 && parts[5] == "transitions")
