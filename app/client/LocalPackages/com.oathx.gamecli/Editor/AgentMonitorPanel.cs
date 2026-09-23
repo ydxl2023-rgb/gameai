@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+
 using UnityEditor;
 using UnityEngine;
 
@@ -10,8 +11,12 @@ namespace Oathx.GameCLI.Editor
     internal sealed class AgentMonitorPanel
     {
         private readonly List<Run> runs = new List<Run>();
+
         private string error;
 
+        /// <summary>
+        /// Refreshes transient execution records and filters out exited or reused process IDs.
+        /// </summary>
         public void Refresh()
         {
             runs.Clear();
@@ -42,8 +47,7 @@ namespace Oathx.GameCLI.Editor
             try
             {
                 Run run = JsonUtility.FromJson<Run>(File.ReadAllText(path));
-                if (run == null || run.version != 1 || run.pid <= 0 || run.started <= 0 ||
-                    string.IsNullOrEmpty(run.executionId) || string.IsNullOrEmpty(run.project))
+                if (run == null || run.version != 1 || run.pid <= 0 || run.started <= 0 || string.IsNullOrEmpty(run.executionId) || string.IsNullOrEmpty(run.project))
                 {
                     return;
                 }
@@ -58,13 +62,15 @@ namespace Oathx.GameCLI.Editor
                     }
                 }
             }
-            catch (Exception exception) when (exception is IOException || exception is ArgumentException ||
-                exception is InvalidOperationException || exception is System.ComponentModel.Win32Exception || exception is UnauthorizedAccessException)
+            catch (Exception exception) when (exception is IOException || exception is ArgumentException || exception is InvalidOperationException || exception is System.ComponentModel.Win32Exception || exception is UnauthorizedAccessException)
             {
                 // A process may exit or remove its record between enumeration and inspection.
             }
         }
 
+        /// <summary>
+        /// Draws the most recent execution snapshot on the Unity Editor thread.
+        /// </summary>
         public void Draw()
         {
             int sessions = runs.FindAll(run => !string.IsNullOrEmpty(run.threadId)).Count;
@@ -85,8 +91,7 @@ namespace Oathx.GameCLI.Editor
                 using (new EditorGUILayout.VerticalScope(EditorStyles.helpBox))
                 {
                     double elapsed = Math.Max(0, (DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - run.started) / 1000.0);
-                    string stage = string.IsNullOrEmpty(run.threadId) ? "Starting Codex" :
-                        string.IsNullOrEmpty(run.turnId) ? "Starting task" : "Running";
+                    string stage = string.IsNullOrEmpty(run.threadId) ? "Starting Codex" : string.IsNullOrEmpty(run.turnId) ? "Starting task" : "Running";
                     EditorGUILayout.LabelField(run.role + "  |  " + stage + "  |  " + TimeSpan.FromSeconds(elapsed).ToString(@"hh\:mm\:ss"), EditorStyles.boldLabel);
                     DrawValue("Project", run.project);
                     DrawValue("Execution", run.executionId);
@@ -107,13 +112,21 @@ namespace Oathx.GameCLI.Editor
         private sealed class Run
         {
             public int version;
+
             public int pid;
+
             public long hostStarted;
+
             public long started;
+
             public string executionId;
+
             public string project;
+
             public string role;
+
             public string threadId;
+
             public string turnId;
         }
     }

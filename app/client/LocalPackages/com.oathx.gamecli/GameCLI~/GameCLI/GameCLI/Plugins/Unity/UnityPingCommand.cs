@@ -1,18 +1,27 @@
 using System.Text.Json;
-using GameCLI.Services;
+
 using GameCLI.Abstractions;
+using GameCLI.Services;
 
 namespace GameCLI.Plugins.Unity
 {
     internal sealed class UnityPingCommand : ICommand
     {
+        /// <inheritdoc />
         public string Name => "ping";
+
+        /// <inheritdoc />
         public string Description => "Check the Unity Editor bridge connection.";
 
+        /// <inheritdoc />
         public Task<int> ExecuteAsync(string[] args, CancellationToken cancellationToken)
         {
-            return RunAsync(args.Length == 1 && args[0] is "--help" or "-h" ? args : new[] { "--ping" }.Concat(args).ToArray(), cancellationToken);
+            return RunAsync(args.Length == 1 && args[0] is "--help" or "-h" ? args : new[]
+            {
+                "--ping"
+            }.Concat(args).ToArray(), cancellationToken);
         }
+
         private const string Usage = "GameCLI unity --ping [--project <Unity project>] [--format human|json]";
 
         private static async Task<int> RunAsync(string[] args, CancellationToken cancellationToken)
@@ -78,18 +87,18 @@ namespace GameCLI.Plugins.Unity
 
                 return response.Ok ? 0 : 3;
             }
-            catch (Exception exception) when (
-                exception is IOException || exception is OperationCanceledException ||
-                exception is JsonException || exception is InvalidOperationException ||
-                exception is UnauthorizedAccessException || exception is ArgumentException)
+            catch (Exception exception) when (exception is IOException || exception is OperationCanceledException || exception is JsonException || exception is InvalidOperationException || exception is UnauthorizedAccessException || exception is ArgumentException)
             {
                 int exitCode = exception is IOException || exception is OperationCanceledException ? 1 : 5;
-                string message = exception is OperationCanceledException
-                    ? "Unity bridge timed out after 5 seconds. Open the project and wait for compilation."
-                    : exception.Message;
+                string message = exception is OperationCanceledException ? "Unity bridge timed out after 5 seconds. Open the project and wait for compilation." : exception.Message;
                 if (format == "json")
                 {
-                    Console.WriteLine(JsonSerializer.Serialize(new { ok = false, error = "bridge_unavailable", message }));
+                    Console.WriteLine(JsonSerializer.Serialize(new
+                    {
+                        ok = false,
+                        error = "bridge_unavailable",
+                        message
+                    }));
                 }
 
                 Console.Error.WriteLine(message);

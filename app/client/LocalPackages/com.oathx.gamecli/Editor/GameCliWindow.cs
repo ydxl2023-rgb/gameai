@@ -2,34 +2,58 @@ using System;
 using System.IO;
 using System.Text;
 using System.Threading;
+
 using UnityEditor;
 using PackageInfo = UnityEditor.PackageManager.PackageInfo;
 using UnityEngine;
 
 namespace Oathx.GameCLI.Editor
 {
+    /// <summary>
+    /// Hosts CLI installation, command configuration, and live execution monitoring.
+    /// </summary>
     public sealed class GameCliWindow : EditorWindow
     {
         private const int MaximumLogLength = 60000;
-        private static readonly string[] CommandPages =
+
+        private static readonly string[] commandPages =
         {
-            "Orchestrator", "PM", "Art", "Development", "Unity", "QA"
+            "Orchestrator",
+            "PM",
+            "Art",
+            "Development",
+            "Unity",
+            "QA"
         };
+
         [SerializeField]
         private int selectedPage;
+
         private readonly StringBuilder output = new StringBuilder();
+
         private CancellationTokenSource operation;
+
         private string sourceProject;
+
         private string unityProject;
+
         private string status = "Ready";
+
         private MessageType statusType = MessageType.Info;
+
         private Vector2 scroll;
+
         private Vector2 commandScroll;
+
         private Vector2 windowScroll;
+
         private JiraConnectionPanel jiraPanel;
+
         private AgentMonitorPanel agentMonitor;
+
         private double nextMonitorRefresh;
 
+        /// <summary>Opens or focuses the GameCLI Editor window.</summary>
         [MenuItem("Tools/GameCLI/Window")]
         public static void Open()
         {
@@ -47,8 +71,7 @@ namespace Oathx.GameCLI.Editor
             unityProject = Path.GetFullPath(Path.Combine(Application.dataPath, ".."));
             GameCliCommandSettings.Initialize(unityProject);
             PackageInfo package = PackageInfo.FindForAssembly(typeof(GameCliWindow).Assembly);
-            sourceProject = package == null ? string.Empty :
-                Path.Combine(package.resolvedPath, "GameCLI~", "GameCLI", "GameCLI", "GameCLI.csproj");
+            sourceProject = package == null ? string.Empty : Path.Combine(package.resolvedPath, "GameCLI~", "GameCLI", "GameCLI", "GameCLI.csproj");
         }
 
         private void OnDisable()
@@ -82,11 +105,9 @@ namespace Oathx.GameCLI.Editor
             EditorGUILayout.LabelField("Installed Executable", EditorStyles.miniBoldLabel);
             DrawRelativePath(executable);
             EditorGUILayout.HelpBox("Requires the .NET 8 SDK (or a compatible newer SDK) on PATH. Installs into this project's Library folder.", MessageType.Info);
-
             using (new EditorGUILayout.HorizontalScope())
             {
-                using (new EditorGUI.DisabledScope(busy || !File.Exists(sourceProject) ||
-                    Application.platform != RuntimePlatform.WindowsEditor))
+                using (new EditorGUI.DisabledScope(busy || !File.Exists(sourceProject) || Application.platform != RuntimePlatform.WindowsEditor))
                 {
                     if (GUILayout.Button(installed ? "Reinstall GameCLI" : "Install GameCLI"))
                     {
@@ -114,7 +135,7 @@ namespace Oathx.GameCLI.Editor
             }
 
             EditorGUILayout.Space(8);
-            selectedPage = GUILayout.Toolbar(selectedPage, CommandPages, EditorStyles.toolbarButton);
+            selectedPage = GUILayout.Toolbar(selectedPage, commandPages, EditorStyles.toolbarButton);
             DrawCommandPage();
             EditorGUILayout.Space(8);
             EditorGUILayout.LabelField("Output", EditorStyles.miniBoldLabel);
@@ -126,18 +147,16 @@ namespace Oathx.GameCLI.Editor
 
         private void DrawRelativePath(string absolutePath)
         {
-            string displayPath = string.IsNullOrEmpty(absolutePath)
-                ? "(not found)"
-                : Path.GetRelativePath(unityProject, absolutePath).Replace('\\', '/');
+            string displayPath = string.IsNullOrEmpty(absolutePath) ? "(not found)" : Path.GetRelativePath(unityProject, absolutePath).Replace('\\', '/');
             // A wrapped label is display-only; execution continues to use the original absolute path.
             GUILayout.Label(displayPath, EditorStyles.wordWrappedLabel);
         }
 
         private void DrawCommandPage()
         {
-            selectedPage = Mathf.Clamp(selectedPage, 0, CommandPages.Length - 1);
+            selectedPage = Mathf.Clamp(selectedPage, 0, commandPages.Length - 1);
             EditorGUILayout.Space(6);
-            EditorGUILayout.LabelField(CommandPages[selectedPage], EditorStyles.boldLabel);
+            EditorGUILayout.LabelField(commandPages[selectedPage], EditorStyles.boldLabel);
             string description;
             switch (selectedPage)
             {
@@ -198,9 +217,7 @@ namespace Oathx.GameCLI.Editor
                 using (new EditorGUILayout.HorizontalScope())
                 {
                     bool enabled = GameCliCommandSettings.IsEnabled("/ping");
-                    bool nextEnabled = EditorGUILayout.Toggle(
-                        new GUIContent(string.Empty, "Allow or reject incoming PING commands for this project."),
-                        enabled, GUILayout.Width(28));
+                    bool nextEnabled = EditorGUILayout.Toggle(new GUIContent(string.Empty, "Allow or reject incoming PING commands for this project."), enabled, GUILayout.Width(28));
                     if (nextEnabled != enabled)
                     {
                         GameCliCommandSettings.SetEnabled("/ping", nextEnabled);
@@ -210,8 +227,7 @@ namespace Oathx.GameCLI.Editor
                     // Keep the toggle interactive so a disabled command can always be re-enabled.
                     using (new EditorGUI.DisabledScope(!enabled))
                     {
-                        EditorGUILayout.LabelField(new GUIContent("ping", "GameCLI.exe unity --ping"),
-                            EditorStyles.boldLabel, GUILayout.Width(80));
+                        EditorGUILayout.LabelField(new GUIContent("ping", "GameCLI.exe unity --ping"), EditorStyles.boldLabel, GUILayout.Width(80));
                         EditorGUILayout.LabelField("GET", GUILayout.Width(50));
                         EditorGUILayout.LabelField("ping", GUILayout.Width(60));
                         EditorGUILayout.LabelField(enabled ? "Enabled" : "Disabled", GUILayout.Width(70));
@@ -251,12 +267,10 @@ namespace Oathx.GameCLI.Editor
 
                 Repaint();
             });
-
             try
             {
                 int exitCode = await GameCliInstaller.InstallAsync(sourceProject, unityProject, log, current.Token);
-                status = exitCode == 0 ? "Installation completed." :
-                    "Operation failed (exit " + exitCode + "). See output.";
+                status = exitCode == 0 ? "Installation completed." : "Operation failed (exit " + exitCode + "). See output.";
                 statusType = exitCode == 0 ? MessageType.Info : MessageType.Error;
             }
             catch (OperationCanceledException)

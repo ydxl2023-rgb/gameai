@@ -6,15 +6,22 @@ using System.Threading.Tasks;
 
 namespace Oathx.GameCLI.Editor
 {
+    /// <summary>
+    /// Builds and runs the bundled CLI in the current Unity project's Library directory.
+    /// </summary>
     public static class GameCliInstaller
     {
+        /// <summary>Resolves the project-local executable path without checking installation state.</summary>
         public static string GetExecutablePath(string unityProject)
         {
             return Path.Combine(Path.GetFullPath(unityProject), "Library", "GameCLI", "GameCLI.exe");
         }
 
-        public static async Task<int> InstallAsync(
-            string sourceProject, string unityProject, IProgress<string> log, CancellationToken cancellation)
+        /// <summary>Builds the bundled CLI with a five-minute deadline and forwards process output.</summary>
+        /// <returns>The build process exit code; zero also requires the executable to exist.</returns>
+        /// <exception cref="OperationCanceledException">The caller cancels the operation.</exception>
+        /// <exception cref="TimeoutException">The build exceeds its deadline.</exception>
+        public static async Task<int> InstallAsync(string sourceProject, string unityProject, IProgress<string> log, CancellationToken cancellation)
         {
             if (!File.Exists(sourceProject))
             {
@@ -24,8 +31,7 @@ namespace Oathx.GameCLI.Editor
             string output = Path.GetDirectoryName(GetExecutablePath(unityProject));
             Directory.CreateDirectory(output);
             ProcessStartInfo start = CreateStartInfo("dotnet", unityProject);
-            AddArguments(start, "build", Path.GetFullPath(sourceProject), "-c", "Release",
-                "--nologo", "--disable-build-servers", "-p:UseSharedCompilation=false", "-o", output);
+            AddArguments(start, "build", Path.GetFullPath(sourceProject), "-c", "Release", "--nologo", "--disable-build-servers", "-p:UseSharedCompilation=false", "-o", output);
             int exitCode = await RunAsync(start, log, TimeSpan.FromMinutes(5), cancellation).ConfigureAwait(false);
             if (exitCode == 0 && !File.Exists(GetExecutablePath(unityProject)))
             {
@@ -35,8 +41,10 @@ namespace Oathx.GameCLI.Editor
             return exitCode;
         }
 
-        public static Task<int> PingAsync(
-            string unityProject, IProgress<string> log, CancellationToken cancellation)
+        /// <summary>Runs the installed Unity ping command with a fifteen-second process deadline.</summary>
+        /// <returns>The CLI process exit code.</returns>
+        /// <exception cref="FileNotFoundException">The project-local CLI is not installed.</exception>
+        public static Task<int> PingAsync(string unityProject, IProgress<string> log, CancellationToken cancellation)
         {
             string executable = GetExecutablePath(unityProject);
             if (!File.Exists(executable))
@@ -70,46 +78,50 @@ namespace Oathx.GameCLI.Editor
             }
         }
 
-        private static async Task<int> RunAsync(
-            ProcessStartInfo start, IProgress<string> log, TimeSpan timeout, CancellationToken cancellation)
+        private static async Task<int> RunAsync(ProcessStartInfo start, IProgress<string> log, TimeSpan timeout, CancellationToken cancellation)
         {
             cancellation.ThrowIfCancellationRequested();
             using (CancellationTokenSource deadline = CancellationTokenSource.CreateLinkedTokenSource(cancellation))
-            using (Process process = new Process { StartInfo = start })
             {
-                deadline.CancelAfter(timeout);
-                if (!process.Start())
+                using (Process process = new Process
                 {
-                    throw new InvalidOperationException("Could not start " + start.FileName);
-                }
-
-                // Drain both pipes concurrently so a full stderr buffer cannot deadlock a build.
-                Task stdout = ForwardAsync(process.StandardOutput, log);
-                Task stderr = ForwardAsync(process.StandardError, log);
-                try
+                    StartInfo = start
+                })
                 {
-                    while (!process.HasExited)
+                    deadline.CancelAfter(timeout);
+                    if (!process.Start())
                     {
-                        await Task.Delay(100, deadline.Token).ConfigureAwait(false);
+                        throw new InvalidOperationException("Could not start " + start.FileName);
                     }
 
-                    await Task.WhenAll(stdout, stderr).ConfigureAwait(false);
-                    return process.ExitCode;
-                }
-                catch (OperationCanceledException)
-                {
-                    if (!process.HasExited)
+                    // Drain both pipes concurrently so a full stderr buffer cannot deadlock a build.
+                    Task stdout = ForwardAsync(process.StandardOutput, log);
+                    Task stderr = ForwardAsync(process.StandardError, log);
+                    try
                     {
-                        process.Kill();
-                    }
+                        while (!process.HasExited)
+                        {
+                            await Task.Delay(100, deadline.Token).ConfigureAwait(false);
+                        }
 
-                    await Task.WhenAll(stdout, stderr).ConfigureAwait(false);
-                    if (!cancellation.IsCancellationRequested)
+                        await Task.WhenAll(stdout, stderr).ConfigureAwait(false);
+                        return process.ExitCode;
+                    }
+                    catch (OperationCanceledException)
                     {
-                        throw new TimeoutException("The CLI operation exceeded its time limit.");
-                    }
+                        if (!process.HasExited)
+                        {
+                            process.Kill();
+                        }
 
-                    throw;
+                        await Task.WhenAll(stdout, stderr).ConfigureAwait(false);
+                        if (!cancellation.IsCancellationRequested)
+                        {
+                            throw new TimeoutException("The CLI operation exceeded its time limit.");
+                        }
+
+                        throw;
+                    }
                 }
             }
         }

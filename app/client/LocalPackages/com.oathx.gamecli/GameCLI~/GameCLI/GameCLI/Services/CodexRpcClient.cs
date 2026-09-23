@@ -9,15 +9,26 @@ namespace GameCLI.Services
     internal sealed class CodexRpcClient : IAsyncDisposable
     {
         private readonly Process process;
+
         private readonly SemaphoreSlim writer = new SemaphoreSlim(1);
+
         private readonly CancellationTokenSource lifetime = new();
+
         private readonly ConcurrentDictionary<long, TaskCompletionSource<JsonElement>> pending = new();
+
         private readonly Channel<JsonElement> notifications = Channel.CreateUnbounded<JsonElement>();
+
         private readonly Task reader;
+
         private readonly Task diagnostics;
+
         private long nextId;
+
         private volatile Exception? terminalError;
 
+        /// <summary>
+        /// Starts an owned Codex app-server process and immediately drains both output pipes.
+        /// </summary>
         public CodexRpcClient(string executable, string project)
         {
             ProcessStartInfo start = new ProcessStartInfo
@@ -40,6 +51,8 @@ namespace GameCLI.Services
             reader = Task.Run(ReadAsync);
         }
 
+        /// <summary>Sends a correlated RPC request and waits for its result or caller cancellation.</summary>
+        /// <remarks>Cancelling the wait removes local correlation; interrupting a remote turn is a separate operation.</remarks>
         public async Task<JsonElement> RequestAsync(string method, object parameters, CancellationToken cancellation)
         {
             long id = Interlocked.Increment(ref nextId);
@@ -52,7 +65,12 @@ namespace GameCLI.Services
                     throw new IOException("Codex connection has closed.", terminalError);
                 }
 
-                await SendAsync(new { id, method, @params = parameters }, cancellation);
+                await SendAsync(new
+                {
+                    id,
+                    method,
+                    @params = parameters
+                }, cancellation);
                 return await completion.Task.WaitAsync(cancellation);
             }
             finally
@@ -61,11 +79,21 @@ namespace GameCLI.Services
             }
         }
 
+        /// <summary>
+        /// Sends an RPC notification without waiting for a response.
+        /// </summary>
         public Task NotifyAsync(string method, object parameters, CancellationToken cancellation)
         {
-            return SendAsync(new { method, @params = parameters }, cancellation);
+            return SendAsync(new
+            {
+                method,
+                @params = parameters
+            }, cancellation);
         }
 
+        /// <summary>
+        /// Reads buffered server notifications until disconnection or caller cancellation.
+        /// </summary>
         public IAsyncEnumerable<JsonElement> Notifications(CancellationToken cancellation)
         {
             return notifications.Reader.ReadAllAsync(cancellation);
@@ -115,7 +143,15 @@ namespace GameCLI.Services
                         if (message.TryGetProperty("method", out _))
                         {
                             // This first read-only runner cannot approve actions or answer interactive questions.
-                            await SendAsync(new { id = id.Clone(), error = new { code = -32601, message = "Interactive requests are unsupported by GameCLI PM analysis." } }, lifetime.Token);
+                            await SendAsync(new
+                            {
+                                id = id.Clone(),
+                                error = new
+                                {
+                                    code = -32601,
+                                    message = "Interactive requests are unsupported by GameCLI PM analysis."
+                                }
+                            }, lifetime.Token);
                             throw new CodexInteractionException("Codex requires an interactive action. Run it interactively or clarify the task.");
                         }
 
@@ -154,6 +190,9 @@ namespace GameCLI.Services
             }
         }
 
+        /// <summary>
+        /// Closes the owned process tree and drains protocol tasks before releasing local resources.
+        /// </summary>
         public async ValueTask DisposeAsync()
         {
             // This client owns only this server process tree, never an existing desktop Codex process.
@@ -185,6 +224,9 @@ namespace GameCLI.Services
 
     internal sealed class CodexInteractionException : Exception
     {
+        /// <summary>
+        /// Describes a server request that requires interaction unsupported by this runner.
+        /// </summary>
         public CodexInteractionException(string message) : base(message)
         {
         }

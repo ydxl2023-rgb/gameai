@@ -1,4 +1,5 @@
 using System.Text.Json;
+
 using GameCLI.Abstractions;
 using GameCLI.Core;
 
@@ -6,10 +7,19 @@ namespace GameCLI.Plugins.Management
 {
     internal sealed class PluginManagementPlugin : CLIPlugin
     {
+        /// <inheritdoc />
         public override string Id => "plugins";
-        public override string Description => "List, enable and disable CLI plugins.";
-        public override IReadOnlyList<ICommand> Commands { get; }
 
+        /// <inheritdoc />
+        public override string Description => "List, enable and disable CLI plugins.";
+
+        /// <inheritdoc />
+        public override IReadOnlyList<ICommand> Commands
+        { get; }
+
+        /// <summary>
+        /// Registers management commands against the supplied host without changing preferences.
+        /// </summary>
         public PluginManagementPlugin(PluginHost host)
         {
             Commands = Array.AsReadOnly<ICommand>(new ICommand[]
@@ -24,15 +34,24 @@ namespace GameCLI.Plugins.Management
     internal sealed class PluginManagementCommand : ICommand
     {
         private readonly PluginHost host;
-        public string Name { get; }
+
+        /// <inheritdoc />
+        public string Name
+        { get; }
+
+        /// <inheritdoc />
         public string Description => Name + " CLI plugins";
 
+        /// <summary>
+        /// Binds a management operation to the host whose plugin preferences it controls.
+        /// </summary>
         public PluginManagementCommand(PluginHost host, string name)
         {
             this.host = host;
             Name = name;
         }
 
+        /// <inheritdoc />
         public Task<int> ExecuteAsync(string[] args, CancellationToken cancellationToken)
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -60,12 +79,18 @@ namespace GameCLI.Plugins.Management
 
             var entries = host.Plugins.Select(plugin => new
             {
-                id = plugin.Id, enabled = plugin.IsEnabled, description = plugin.Description,
+                id = plugin.Id,
+                enabled = plugin.IsEnabled,
+                description = plugin.Description,
                 commands = plugin.Commands.Select(command => command.Name).ToArray()
             }).ToArray();
             if (json)
             {
-                Console.WriteLine(JsonSerializer.Serialize(new { ok = true, plugins = entries }));
+                Console.WriteLine(JsonSerializer.Serialize(new
+                {
+                    ok = true,
+                    plugins = entries
+                }));
             }
             else
             {

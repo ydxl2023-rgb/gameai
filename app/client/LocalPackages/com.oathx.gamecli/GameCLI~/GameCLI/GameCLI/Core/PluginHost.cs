@@ -1,16 +1,25 @@
 using System.Text.Json;
+
 using GameCLI.Abstractions;
 using GameCLI.Plugins.Management;
 using GameCLI.Services;
 
 namespace GameCLI.Core
 {
+    /// <summary>
+    /// Registers plugins, applies persisted enablement, and dispatches command operations.
+    /// </summary>
     public sealed class PluginHost
     {
         private readonly Dictionary<string, ICLIPlugin> plugins = new(StringComparer.Ordinal);
+
         private readonly PluginSettingsStore settings;
+
+        /// <summary>Gets a snapshot of registered plugin references, including the protected management plugin.</summary>
         public IReadOnlyCollection<ICLIPlugin> Plugins => plugins.Values.ToArray();
 
+        /// <summary>Registers the supplied plugins and the built-in management commands.</summary>
+        /// <exception cref="ArgumentException">A plugin or command identifier is invalid or duplicated.</exception>
         public PluginHost(IEnumerable<ICLIPlugin> plugins, PluginSettingsStore settings)
         {
             this.settings = settings;
@@ -24,7 +33,7 @@ namespace GameCLI.Core
 
         private void Register(ICLIPlugin plugin)
         {
-            if (!ValidName(plugin.Id) || !plugins.TryAdd(plugin.Id, plugin))
+            if (!IsValidName(plugin.Id) || !plugins.TryAdd(plugin.Id, plugin))
             {
                 throw new ArgumentException("Invalid or duplicate plugin ID: " + plugin.Id);
             }
@@ -32,19 +41,20 @@ namespace GameCLI.Core
             HashSet<string> names = new(StringComparer.Ordinal);
             foreach (ICommand command in plugin.Commands)
             {
-                if (!ValidName(command.Name) || !names.Add(command.Name))
+                if (!IsValidName(command.Name) || !names.Add(command.Name))
                 {
                     throw new ArgumentException("Invalid or duplicate command in " + plugin.Id);
                 }
             }
         }
 
-        private static bool ValidName(string name)
+        private static bool IsValidName(string name)
         {
-            return !string.IsNullOrEmpty(name) && char.IsAsciiLetterLower(name[0]) &&
-                name.All(c => char.IsAsciiLetterLower(c) || char.IsAsciiDigit(c) || c == '-');
+            return !string.IsNullOrEmpty(name) && char.IsAsciiLetterLower(name[0]) && name.All(c => char.IsAsciiLetterLower(c) || char.IsAsciiDigit(c) || c == '-');
         }
 
+        /// <summary>Persists enablement before updating the registered plugin's in-memory state.</summary>
+        /// <exception cref="ArgumentException">The plugin is unknown or is the protected management plugin.</exception>
         public void SetEnabled(string id, bool enabled)
         {
             if (id == "plugins" || !plugins.TryGetValue(id, out ICLIPlugin? plugin))
@@ -63,6 +73,9 @@ namespace GameCLI.Core
             }
         }
 
+        /// <summary>Reloads preferences and dispatches one command after checking its plugin gate.</summary>
+        /// <returns>The command exit code, or a mapped input, configuration, or cancellation failure.</returns>
+        /// <remarks>Enablement is checked before command parsing or command side effects. Cancellation does not disable the plugin.</remarks>
         public async Task<int> RunAsync(string[] args, CancellationToken cancellationToken = default)
         {
             try
@@ -134,7 +147,12 @@ namespace GameCLI.Core
         {
             if (args.Zip(args.Skip(1)).Any(pair => pair.First == "--format" && pair.Second == "json"))
             {
-                Console.WriteLine(JsonSerializer.Serialize(new { ok = false, exit_code = code, message }));
+                Console.WriteLine(JsonSerializer.Serialize(new
+                {
+                    ok = false,
+                    exit_code = code,
+                    message
+                }));
             }
 
             Console.Error.WriteLine(message);

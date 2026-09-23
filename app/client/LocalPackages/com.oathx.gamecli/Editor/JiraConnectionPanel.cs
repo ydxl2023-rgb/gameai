@@ -1,5 +1,6 @@
 using System;
 using System.Threading;
+
 using UnityEditor;
 using UnityEngine;
 
@@ -9,17 +10,30 @@ namespace Oathx.GameCLI.Editor
     internal sealed class JiraConnectionPanel
     {
         private readonly Action repaint;
+
         private readonly string configPath;
+
         private JiraConnectionSettings settings = new JiraConnectionSettings();
+
         private string secret = "";
+
         private string savedTarget;
+
         private string status = "Enter your JIRA connection, then save or test it.";
+
         private MessageType statusType = MessageType.Info;
+
         private string connectionStatus = "尚未测试连接";
+
         private bool connectionSucceeded;
+
         private CancellationTokenSource operation;
+
         private bool disposed;
 
+        /// <summary>
+        /// Restores public settings and the matching saved token without serializing panel state.
+        /// </summary>
         public JiraConnectionPanel(Action repaint, string configPath = null)
         {
             this.repaint = repaint;
@@ -34,6 +48,7 @@ namespace Oathx.GameCLI.Editor
                     {
                         secret = WindowsCredentialStore.Read(savedTarget) ?? "";
                     }
+
                     status = "Saved configuration loaded. Connection has not been tested.";
                 }
             }
@@ -44,6 +59,9 @@ namespace Oathx.GameCLI.Editor
             }
         }
 
+        /// <summary>
+        /// Draws and edits connection settings on the Unity Editor thread.
+        /// </summary>
         public void Draw()
         {
             using (new EditorGUILayout.VerticalScope(EditorStyles.helpBox))
@@ -54,7 +72,6 @@ namespace Oathx.GameCLI.Editor
                 {
                     EditorGUI.BeginChangeCheck();
                     settings.address = EditorGUILayout.TextField("JIRA Address", settings.address);
-
                     if (EditorGUI.EndChangeCheck())
                     {
                         connectionSucceeded = false;
@@ -103,15 +120,16 @@ namespace Oathx.GameCLI.Editor
                     fontStyle = FontStyle.Bold,
                     richText = false
                 };
-                connectionStyle.normal.textColor = connectionSucceeded
-                    ? (EditorGUIUtility.isProSkin ? new Color(0.3f, 0.85f, 0.4f) : new Color(0.1f, 0.5f, 0.2f))
-                    : (EditorGUIUtility.isProSkin ? new Color(0.65f, 0.65f, 0.65f) : new Color(0.4f, 0.4f, 0.4f));
+                connectionStyle.normal.textColor = connectionSucceeded ? (EditorGUIUtility.isProSkin ? new Color(0.3f, 0.85f, 0.4f) : new Color(0.1f, 0.5f, 0.2f)) : (EditorGUIUtility.isProSkin ? new Color(0.65f, 0.65f, 0.65f) : new Color(0.4f, 0.4f, 0.4f));
                 GUILayout.Label(connectionStatus, connectionStyle);
                 EditorGUILayout.HelpBox(status, statusType);
                 GUILayout.Label("Connection settings: ~/.gamecli/jira.json. Credentials: Windows Credential Manager. JIRA remains the sole workflow data source.", EditorStyles.wordWrappedMiniLabel);
             }
         }
 
+        /// <summary>
+        /// Clears the in-memory token and cancels an outstanding test without blocking the Editor.
+        /// </summary>
         public void Dispose()
         {
             disposed = true;
@@ -127,8 +145,7 @@ namespace Oathx.GameCLI.Editor
             }
 
             // Never reuse a stored access token for a different server.
-            string stored = current.CredentialTarget == savedTarget
-                ? WindowsCredentialStore.Read(savedTarget) : null;
+            string stored = current.CredentialTarget == savedTarget ? WindowsCredentialStore.Read(savedTarget) : null;
             if (string.IsNullOrEmpty(stored))
             {
                 throw new ArgumentException("Enter a credential for this connection.");
@@ -178,8 +195,7 @@ namespace Oathx.GameCLI.Editor
             }
             catch (Exception exception)
             {
-                connectionStatus = "连接失败 · " + (exception is ArgumentException || exception is InvalidOperationException
-                    ? exception.Message : "Unable to test JIRA access. Check the connection settings and credential store.");
+                connectionStatus = "连接失败 · " + (exception is ArgumentException || exception is InvalidOperationException ? exception.Message : "Unable to test JIRA access. Check the connection settings and credential store.");
             }
             finally
             {

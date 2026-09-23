@@ -9,7 +9,8 @@ description: 按 JIRA 需求实现或修复 Unity 功能并交付代码与验证
 
 - 输入：JIRA 需求、验收标准、依赖、资产 URL/Hash、代码基线及 Unity 版本。
 - 检查工作区已有修改、依赖和审批，核对资产 Hash，在授权范围内实现代码、Prefab、Scene 等。
-- 遵循目标项目开发规则，保留 .meta GUID，分离 UnityEditor 与运行时代码。
+- 编码前必须读取并严格执行 [GameCLI 编码规范](../gameai-cli-development/SKILL.md)，该规范强制适用于所有使用 GameCLI 的目标工程；目标项目规则可以补充但不得放宽，冲突按规范要求处理。保留 .meta GUID，分离 UnityEditor 与运行时代码。
+- 交付前检查本次新增和修改代码的命名、排版、注释及通用实现约束；不符合规范时先修正，不以编译通过替代规范检查。
 - 使用 [Unity 技能](../gameai-unity/SKILL.md) 编译与测试；修复依据实际日志和验收证据。
 - 使用 [JIRA 技能](../gameai-jira/SKILL.md) 回写实际分支、Commit、PR 和报告。提交、推送、PR 按本次授权执行，不默认合并或发布。
 - 重试由编排器按 JIRA 记录控制，不在 Agent 内无限重试。

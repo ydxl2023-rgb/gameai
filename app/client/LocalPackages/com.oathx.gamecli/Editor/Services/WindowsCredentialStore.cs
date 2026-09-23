@@ -5,11 +5,17 @@ using System.Text;
 
 namespace Oathx.GameCLI.Editor
 {
+    /// <summary>
+    /// Owns native Windows credential buffers and releases them after each operation.
+    /// </summary>
     public static class WindowsCredentialStore
     {
         private const int GenericCredential = 1;
+
         private const int NotFound = 1168;
 
+        /// <summary>Reads a generic credential, returning null when the target does not exist.</summary>
+        /// <exception cref="Win32Exception">Windows rejects the credential lookup.</exception>
         public static string Read(string target)
         {
             if (!CredRead(target, GenericCredential, 0, out IntPtr pointer))
@@ -34,6 +40,9 @@ namespace Oathx.GameCLI.Editor
             }
         }
 
+        /// <summary>Saves a UTF-16 secret and zeroes the temporary unmanaged buffer afterward.</summary>
+        /// <exception cref="ArgumentException">The encoded secret exceeds the native size limit.</exception>
+        /// <exception cref="Win32Exception">Windows rejects the write.</exception>
         public static void Write(string target, string secret)
         {
             if (Encoding.Unicode.GetByteCount(secret) > 2560)
@@ -64,6 +73,7 @@ namespace Oathx.GameCLI.Editor
             }
         }
 
+        /// <summary>Deletes a credential; an already absent target is treated as success.</summary>
         public static void Delete(string target)
         {
             if (!CredDelete(target, GenericCredential, 0) && Marshal.GetLastWin32Error() != NotFound)
@@ -76,16 +86,27 @@ namespace Oathx.GameCLI.Editor
         private struct Credential
         {
             public uint flags;
+
             public uint type;
+
             public string targetName;
+
             public string comment;
+
             public System.Runtime.InteropServices.ComTypes.FILETIME lastWritten;
+
             public uint blobSize;
+
             public IntPtr blob;
+
             public uint persist;
+
             public uint attributeCount;
+
             public IntPtr attributes;
+
             public string targetAlias;
+
             public string userName;
         }
 

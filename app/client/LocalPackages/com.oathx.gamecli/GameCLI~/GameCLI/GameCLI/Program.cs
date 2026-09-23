@@ -17,8 +17,13 @@ namespace GameCLI
         {
             ICLIPlugin[] plugins =
             {
-                new OrchestratorPlugin(), new PMPlugin(), new ArtPlugin(), new DevelopmentPlugin(),
-                new UnityPlugin(), new QAPlugin(), new JiraPlugin()
+                new OrchestratorPlugin(),
+                new PMPlugin(),
+                new ArtPlugin(),
+                new DevelopmentPlugin(),
+                new UnityPlugin(),
+                new QAPlugin(),
+                new JiraPlugin()
             };
             PluginHost host = new(plugins, new PluginSettingsStore());
             return host.RunAsync(args);

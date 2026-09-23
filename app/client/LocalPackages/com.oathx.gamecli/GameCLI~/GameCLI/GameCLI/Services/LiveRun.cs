@@ -6,11 +6,18 @@ namespace GameCLI.Services
     internal sealed class LiveRun : IDisposable
     {
         private readonly string path;
+
         private readonly string project;
+
         private readonly string executionId;
+
         private readonly long hostStarted;
+
         private readonly long started = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
 
+        /// <summary>
+        /// Publishes a transient record associated with this process ID and start time.
+        /// </summary>
         public LiveRun(string project, string executionId)
         {
             this.project = project;
@@ -23,19 +30,32 @@ namespace GameCLI.Services
             SetSession("", "");
         }
 
+        /// <summary>
+        /// Atomically replaces process-discovery metadata without persisting prompt or workflow state.
+        /// </summary>
         public void SetSession(string threadId, string turnId)
         {
             // Ephemeral local process discovery only: no prompt, credentials or JIRA workflow state.
             string json = JsonSerializer.Serialize(new
             {
-                version = 1, pid = Environment.ProcessId, hostStarted, started,
-                executionId, project, role = "PM", threadId, turnId
+                version = 1,
+                pid = Environment.ProcessId,
+                hostStarted,
+                started,
+                executionId,
+                project,
+                role = "PM",
+                threadId,
+                turnId
             });
             string temporary = path + ".tmp";
             File.WriteAllText(temporary, json);
             File.Move(temporary, path, overwrite: true);
         }
 
+        /// <summary>
+        /// Attempts to remove the discovery record; stale records are rejected by the viewer.
+        /// </summary>
         public void Dispose()
         {
             try

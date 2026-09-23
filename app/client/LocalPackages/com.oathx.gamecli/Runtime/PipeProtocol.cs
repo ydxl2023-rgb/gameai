@@ -6,11 +6,17 @@ using System.Threading.Tasks;
 
 namespace Oathx.GameCLI.Protocol
 {
+    /// <summary>
+    /// Shares length-prefixed UTF-8 JSON framing between the CLI and Unity Editor.
+    /// </summary>
     public static class PipeProtocol
     {
         private const int MaximumFrameSize = 65536;
 
         // Shared framing: four-byte little-endian byte length, followed by UTF-8 JSON.
+        /// <summary>Writes one four-byte little-endian length header followed by its UTF-8 JSON payload.</summary>
+        /// <remarks>The caller retains ownership of the stream and must serialize concurrent writes.</remarks>
+        /// <exception cref="InvalidDataException">The encoded payload is empty or exceeds 65,536 bytes.</exception>
         public static async Task WriteAsync(Stream stream, string json, CancellationToken token)
         {
             byte[] body = Encoding.UTF8.GetBytes(json);
@@ -30,6 +36,10 @@ namespace Oathx.GameCLI.Protocol
             await stream.FlushAsync(token).ConfigureAwait(false);
         }
 
+        /// <summary>Reads one complete frame and strictly decodes its UTF-8 payload.</summary>
+        /// <remarks>The caller retains ownership of the stream and supplies cancellation.</remarks>
+        /// <exception cref="InvalidDataException">The advertised payload length is invalid.</exception>
+        /// <exception cref="EndOfStreamException">The peer closes an incomplete frame.</exception>
         public static async Task<string> ReadAsync(Stream stream, CancellationToken token)
         {
             byte[] header = new byte[4];

@@ -3,18 +3,26 @@ using System.IO;
 using System.IO.Pipes;
 using System.Threading;
 using System.Threading.Tasks;
-using Oathx.GameCLI.Protocol;
+
 using UnityEditor;
 using UnityEngine;
 
+using Oathx.GameCLI.Protocol;
+
 namespace Oathx.GameCLI.Editor
 {
+    /// <summary>
+    /// Owns the per-Editor pipe endpoint and stops accepting requests during reload or exit.
+    /// </summary>
     [InitializeOnLoad]
     public static class GameCliServer
     {
         private static CancellationTokenSource lifetime;
+
         private static NamedPipeServerStream activePipe;
-        private static readonly object Sync = new object();
+
+        private static readonly object sync = new object();
+
         private static string endpointPath;
 
         static GameCliServer()
@@ -42,7 +50,6 @@ namespace Oathx.GameCLI.Editor
                 unityVersion = Application.unityVersion,
                 pid = System.Diagnostics.Process.GetCurrentProcess().Id
             };
-
             try
             {
                 Directory.CreateDirectory(Path.GetDirectoryName(endpointPath));
@@ -65,11 +72,9 @@ namespace Oathx.GameCLI.Editor
             {
                 while (!token.IsCancellationRequested)
                 {
-                    using (NamedPipeServerStream pipe = new NamedPipeServerStream(
-                        endpoint.pipeName, PipeDirection.InOut, 1,
-                        PipeTransmissionMode.Byte, PipeOptions.Asynchronous))
+                    using (NamedPipeServerStream pipe = new NamedPipeServerStream(endpoint.pipeName, PipeDirection.InOut, 1, PipeTransmissionMode.Byte, PipeOptions.Asynchronous))
                     {
-                        lock (Sync)
+                        lock (sync)
                         {
                             if (token.IsCancellationRequested)
                             {
@@ -93,16 +98,14 @@ namespace Oathx.GameCLI.Editor
                                     Response response = Handle(request, endpoint);
                                     await PipeProtocol.WriteAsync(pipe, JsonUtility.ToJson(response), requestTimeout.Token).ConfigureAwait(false);
                                 }
-                                catch (Exception exception) when (
-                                    exception is IOException || exception is OperationCanceledException ||
-                                    exception is ObjectDisposedException || exception is ArgumentException)
+                                catch (Exception exception) when (exception is IOException || exception is OperationCanceledException || exception is ObjectDisposedException || exception is ArgumentException)
                                 {
                                     // One malformed or disconnected client must not stop the listener.
                                 }
                             }
                         }
 
-                        lock (Sync)
+                        lock (sync)
                         {
                             activePipe = null;
                         }
@@ -122,12 +125,20 @@ namespace Oathx.GameCLI.Editor
         {
             if (request == null || request.token != endpoint.token)
             {
-                return new Response { error = "unauthorized", message = "Invalid session token." };
+                return new Response
+                {
+                    error = "unauthorized",
+                    message = "Invalid session token."
+                };
             }
 
             if (request.method != "GET" || request.path != "/ping")
             {
-                return new Response { error = "invalid_request", message = "Only GET /ping is supported." };
+                return new Response
+                {
+                    error = "invalid_request",
+                    message = "Only GET /ping is supported."
+                };
             }
 
             if (!GameCliCommandSettings.IsEnabled(request.path))
@@ -155,7 +166,7 @@ namespace Oathx.GameCLI.Editor
             if (lifetime != null)
             {
                 lifetime.Cancel();
-                lock (Sync)
+                lock (sync)
                 {
                     activePipe?.Dispose();
                     activePipe = null;
@@ -182,10 +193,15 @@ namespace Oathx.GameCLI.Editor
         private sealed class Endpoint
         {
             public int protocolVersion = 1;
+
             public string pipeName;
+
             public string token;
+
             public string projectPath;
+
             public string unityVersion;
+
             public int pid;
         }
 
@@ -193,7 +209,9 @@ namespace Oathx.GameCLI.Editor
         private sealed class Request
         {
             public string method;
+
             public string path;
+
             public string token;
         }
 
@@ -201,11 +219,17 @@ namespace Oathx.GameCLI.Editor
         private sealed class Response
         {
             public bool ok;
+
             public string message;
+
             public string error;
+
             public string projectPath;
+
             public string unityVersion;
+
             public int pid;
+
             public string respondedAtUtc;
         }
     }
