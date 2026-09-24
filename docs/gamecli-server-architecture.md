@@ -2,6 +2,8 @@
 
 ## 最新讨论约定（2026-09-24，待实现）
 
+- 最终部署边界：Unity 工程只安装本工具链中的 Unity CLI 操作包；GameCLI 独立部署在执行机，负责接单、Agent、工作区和工具调用；GameCLIServer 负责审批、JIRA 核验和集中调度；Codex 扩展 UI 负责审阅、审批与监测。非 Unity 任务无需启动 Unity。现有包内代码后续逐步迁移并保留必要兼容入口，当前阶段仍不接入 Unity CLI。
+
 本节优先于下文冲突的历史基线，详细设计见[方案 v1.1](GameAI云端编排与Codex协作平台设计方案.html)。
 
 - 后续开发以本节和云端协作设计方案为指导：直接扩展现有 GameCLIServer，服务端采用 Node.js + TypeScript，负责审批、依赖、租约和派工；不再新建 Python 编排服务。新增模块使用 TypeScript，现有 JavaScript 逐步迁移。C#/.NET GameCLI 保留，负责本地 Agent 执行，JIRA 仍为业务状态唯一可信来源。技术方向已确认，新增能力待实现。
