@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GameAI 云端编排与 Codex 协作平台设计方案</title>
+<style>
+  :root {
+    --bg: #ffffff;
+    --fg: #1f2328;
+    --muted: #57606a;
+    --border: #d0d7de;
+    --code-bg: #f6f8fa;
+    --accent: #0969da;
+    --accent-soft: #ddf4ff;
+    --warn: #bf8700;
+    --warn-soft: #fff8c5;
+    --ok: #1a7f37;
+    --ok-soft: #dafbe1;
+    --err: #cf222e;
+    --err-soft: #ffebe9;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: #f6f8fa;
+    color: var(--fg);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+                 "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue",
+                 Arial, sans-serif;
+    font-size: 14px;
+    line-height: 1.7;
+  }
+
+  .page {
+    max-width: 900px;
+    margin: 0 auto;
+    background: var(--bg);
+    padding: 60px 70px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+  }
+
+  /* 封面 */
+  .cover {
+    text-align: center;
+    padding: 80px 0 60px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 48px;
+  }
+  .cover h1 {
+    font-size: 34px;
+    margin: 0 0 16px;
+    letter-spacing: 1px;
+  }
+  .cover .subtitle {
+    font-size: 16px;
+    color: var(--muted);
+    margin-bottom: 30px;
+  }
+  .cover .meta {
+    display: inline-block;
+    text-align: left;
+    font-size: 13px;
+    color: var(--muted);
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    padding: 12px 30px;
+  }
+  .cover .meta span { display: inline-block; min-width: 90px; color: var(--fg); }
+
+  /* 标题 */
+  h1 { font-size: 26px; margin: 48px 0 16px; padding-bottom: 8px; border-bottom: 2px solid var(--fg); }
+  h2 { font-size: 20px; margin: 36px 0 12px; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
+  h3 { font-size: 16px; margin: 24px 0 8px; color: #24292f; }
+  h4 { font-size: 14px; margin: 16px 0 6px; color: var(--muted); }
+
+  p { margin: 8px 0; }
+
+  /* 代码 */
+  code {
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    background: var(--code-bg);
+    padding: 2px 5px;
+    border-radius: 4px;
+    font-size: 12.5px;
+  }
+  pre {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 14px 16px;
+    overflow-x: auto;
+    font-size: 12px;
+    line-height: 1.6;
+    margin: 12px 0;
+  }
+  pre code {
+    background: none;
+    padding: 0;
+    font-size: 12px;
+  }
+
+  /* 表格 */
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 14px 0;
+    font-size: 13px;
+  }
+  th, td {
+    border: 1px solid var(--border);
+    padding: 8px 10px;
+    text-align: left;
+    vertical-align: top;
+  }
+  th { background: #f6f8fa; font-weight: 600; }
+  tr:nth-child(even) td { background: #fafbfc; }
+
+  /* 引用 */
+  blockquote {
+    border-left: 4px solid var(--accent);
+    margin: 12px 0;
+    padding: 6px 14px;
+    background: var(--accent-soft);
+    border-radius: 0 6px 6px 0;
+    color: #0a3069;
+    font-size: 13.5px;
+  }
+
+  /* 提示框 */
+  .callout {
+    padding: 12px 16px;
+    border-radius: 6px;
+    margin: 14px 0;
+    font-size: 13.5px;
+    border-left: 4px solid;
+  }
+  .callout.info { background: var(--accent-soft); border-color: var(--accent); }
+  .callout.warn { background: var(--warn-soft); border-color: var(--warn); }
+  .callout.ok   { background: var(--ok-soft);   border-color: var(--ok); }
+  .callout.err  { background: var(--err-soft);  border-color: var(--err); }
+
+  /* 列表 */
+  ul, ol { padding-left: 24px; margin: 8px 0; }
+  li { margin: 4px 0; }
+
+  /* 图表容器 */
+  .diagram {
+    margin: 24px 0;
+    padding: 20px;
+    background: #fafbfc;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow-x: auto;
+    text-align: center;
+  }
+  .diagram svg { max-width: 100%; height: auto; }
+  .diagram .caption {
+    font-size: 12.5px;
+    color: var(--muted);
+    margin-top: 10px;
+    font-style: italic;
+  }
+
+  /* 目录 */
+  .toc {
+    background: #fafbfc;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px 28px;
+    margin: 24px 0 40px;
+  }
+  .toc h3 { margin-top: 0; }
+  .toc ol { margin: 0; padding-left: 20px; }
+  .toc a { color: var(--accent); text-decoration: none; }
+  .toc a:hover { text-decoration: underline; }
+
+  /* 打印 */
+  @page {
+    size: A4;
+    margin: 18mm 16mm;
+  }
+  @media print {
+    html, body { background: #fff; font-size: 11.5pt; }
+    .page { box-shadow: none; padding: 0; max-width: 100%; }
+    h1 { page-break-before: auto; }
+    h2 { page-break-after: avoid; }
+    pre, table, .diagram { page-break-inside: avoid; }
+    .cover { page-break-after: always; }
+    .no-print { display: none; }
+    a { color: var(--fg); text-decoration: none; }
+  }
+
+  /* 页脚 */
+  .footer {
+    margin-top: 60px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border);
+    text-align: center;
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  .print-btn {
+    position: fixed;
+    right: 24px;
+    bottom: 24px;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 999px;
+    padding: 12px 22px;
+    font-size: 14px;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(9,105,218,0.35);
+    z-index: 100;
+  }
+  .print-btn:hover { background: #0860ca; }
+
+.page { overflow-wrap: anywhere; }
+@media screen and (max-width: 700px) { .page { padding: 24px 18px; } .cover { padding: 30px 0; } .cover h1 { font-size: 26px; } .toc { padding: 16px; } }
+.wire-gallery { display: flex; flex-direction: column; gap: 24px; }
+.wire-step { width: 100%; }
+</style>
+<style>.flow{display:flex;flex-direction:column;gap:8px;text-align:center;margin:24px 0}.flow div{border:1px solid #aac4df;background:#f0f7ff;padding:16px;border-radius:8px}.flow span{color:#57606a}.track{border:1px solid #7c858e;border-radius:8px;overflow:hidden;margin:20px 0;background:#f6f8fa}.track-head,.track-tabs,.track-tools{padding:10px 14px;border-bottom:1px solid #c7cdd3}.track-head{font-weight:bold;background:#e8eef5}.track-list{padding:8px;min-height:210px;overflow-x:auto}.track-list table{font-size:11px;margin:0}.track-list th,.track-list td{padding:7px 5px}.track-list tr:nth-child(even){background:#e8edf1}.splitter{text-align:center;background:#d8dee5;font-size:11px;padding:4px}.output,.detail{padding:14px}.output{min-height:105px;background:#edf0f3}.caption{font-size:12px;color:#57606a}.callout{border-left:4px solid #bf8700;padding:16px;background:#fff8c5}details{border-top:1px solid #d0d7de;padding:12px 0}summary{font-weight:bold}table{width:100%;table-layout:fixed}td,th{overflow-wrap:anywhere}pre{white-space:pre-wrap}@media print{table{break-inside:auto}tr{break-inside:avoid}.track{break-inside:avoid}.track-list{overflow:visible;min-height:0}}</style></head>
+<body>
+<button class="print-btn no-print" onclick="window.print()">打印 / 导出文档</button>
+<main class="page">
+<header class="cover">
+<h1>GameAI 云端编排与 Codex 协作平台设计方案</h1>
+<div class="subtitle">JIRA 唯一可信来源 · CLI 执行 · MCP Track · 多节点协作</div>
+<div class="meta">版本：v1.3　｜　日期：2026-09-24<br>状态：技术方向已确认，作为后续开发指导；新增能力待实现　｜　范围：架构与分阶段实施<br>兼容基线：GameCLI 285c4d4；七日登录 AI9527-5</div>
+</header>
+<nav class="toc" aria-label="目录"><h3>目录</h3><ol><li><a href="#s1">设计目标与决策摘要</a></li><li><a href="#s2">现有基线与目标架构</a></li><li><a href="#s3">Track 界面与交互</a></li><li><a href="#s4">职责、实例与执行模式</a></li><li><a href="#s5">从需求到交付的完整链路</a></li><li><a href="#s6">状态归属与跨机器一致性</a></li><li><a href="#s7">领取、租约、异常与恢复</a></li><li><a href="#s8">HTTP、CLI 与薄 MCP 契约</a></li><li><a href="#s9">工作区、资产与后续 Unity 验证</a></li><li><a href="#s10">部署、目录与技能兼容</a></li><li><a href="#s11">迁移阶段与交付门槛</a></li><li><a href="#s12">验收计划与待验证项</a></li><li><a href="#s13">依据与后续实施边界</a></li></ol></nav>
+<section id="s1"><h2>1. 设计目标与决策摘要</h2><p>将单机 GameCLI 扩展为团队协作平台：人在 Codex 中讨论需求，在扩展 UI 中人工审阅和审批，多个执行节点承担五种专业角色，GameCLIServer 编排器集中核验和派工，Track 在 Codex 的 MCP App 组件中展示团队任务。CLI 仍是业务操作与本地工具的主要入口。</p><div class="callout"><strong>方案状态：技术方向已确认，作为后续开发指导；新增能力待实现；不是已完成的功能。</strong> 本文不批准新业务需求、不启动专业制作、不迁移服务、不修改现有 JIRA。七日登录主任务 AI9527-5 的已批准需求与 16 项任务保持原样。</div><table><thead><tr><th>决策</th><th>建议方案</th><th>边界</th></tr></thead><tbody><tr><td>编排服务</td><td>扩展现有 GameCLIServer，使用 Node.js + TypeScript；首版单实例、单写入者</td><td>允许多台执行机；暂不做多活调度。现有 C# CLI 保留，不再新建 Python 编排服务。</td></tr><tr><td>通信</td><td>GameCLI 使用 WebSocket 实时调度与 HTTP 业务接口；看板使用 MCP 工具桥接</td><td>本期采用 WebSocket 常驻连接；HTTP 长轮询不列入首版必做项。</td></tr><tr><td>角色</td><td>Design、PM、Art、Development、QA 各自可有多个执行实例</td><td>角色不是机器；一个节点可声明多种能力，每次执行只有一个负责角色。</td></tr><tr><td>界面</td><td>独立网页组件，通过薄 MCP 服务嵌入 Codex</td><td>本机存在实现，账号开关及自建组件端到端渲染尚未验证。保留网页降级。</td></tr><tr><td>权威状态</td><td>JIRA 保存审批、依赖、执行、重试及交付引用</td><td>不引入 SQLite 或第二套业务状态库；运行缓存不能批准、完成或重新派工。</td></tr><tr><td>执行方式</td><td>本期提供后台常驻 GameCLI 自动接单；保留一次性 CLI 用于提交、查询和配置</td><td>MCP 通知、网页显示和 CLI 返回都不能自动唤醒已结束的对话。</td></tr></tbody></table></section><section id="s2"><h2>2. 现有基线与目标架构</h2><p>依据原纲要的状态机、CLI、技能、契约、Unity 验证和人工门禁，并以多 Agent 流程修订及当前实现补充为准。原文中“四个 Agent”、旧串行状态和“所有实现均为 C#”不直接作为新服务架构的约束；实施时再同步正式规范。</p><table><thead><tr><th>能力</th><th>当前基线</th><th>目标</th></tr></thead><tbody><tr><td>需求闭环</td><td>独立 Design 分析、对话澄清、版本批准、附件核验、PM 建单</td><td>服务统一维护版本与发布流程，客户端保留讨论入口。</td></tr><tr><td>任务组织</td><td>同角色多任务、拓扑顺序、未开始任务 replan；每计划最多 20 项</td><td>保持交付项粒度，多需求并行；计划发布按主任务串行。</td></tr><tr><td>执行</td><td>C# 单机 dispatch/watch、依赖门禁、结果评论</td><td>中央领取租约、多节点执行、产物共享及恢复。</td></tr><tr><td>通知</td><td>Node.js GameCLIServer 接收 JIRA 通知并转发 WebSocket</td><td>在现有 GameCLIServer 内增加调度模块；接管项目后禁止旧客户端自行派工。</td></tr><tr><td>看板</td><td>Unity 中的本机列表</td><td>Codex Track 展示项目内跨机器状态，Unity 面板可保留。</td></tr><tr><td>Codex 界面</td><td>本机版本 26.908.9136.0 包含 MCP App 沙箱、工具结果识别及侧方面板组件</td><td>先验证自建 MCP App；不以安装包中存在代码代替已启用验证。</td></tr></tbody></table><div class="flow"><div>Codex 对话：需求与澄清；扩展 UI：人工审批</div><span>↓ 调用角色 SKILL 与 GameCLI</span><div>C# GameCLI：WebSocket 调度连接、HTTP 业务接口、后台接单、Agent 执行、工作区管理</div><span>↕ WebSocket 实时调度＋HTTP 业务接口</span><div>GameCLIServer 编排器：审批、计划、依赖、租约、结果核验、恢复</div><span>↕ JIRA 接口与通知</span><div>JIRA：权威业务记录　｜　Git：版本　｜　产物存储：文件与报告</div></div><p>另一条展示链路：Codex Track 组件 ↔ MCP 工具桥接 ↔ 同一个 GameCLIServer 应用服务。MCP 和 CLI 不各自实现一套状态机，界面也不直接写 JIRA。可选独立网页使用相同服务的只读接口。</p></section><section id="s3"><h2>3. Track 界面与交互</h2><p>这是桌面研发工具，采用桌面侧面板线框；原玩家需求的手机底框不适用于此工具。视图单列按“打开看板 → 选择执行 → 查看日志”排列。以下数据全部为示意，不是当前运行状态。</p>
+<div class="track"><div class="track-head">GameAI Track　项目：AI9527 ▾　节点：全部 ▾　● 已连接</div><div class="track-tabs">All　Orchestrator　Design　PM　Art　Development　QA</div><div class="track-tools">筛选：运行中 ▾　任务编号…　刷新　更新于 17:00:00</div><div class="track-list"><table><tr><th>Agent</th><th>Role</th><th>Task</th><th>Status</th><th>Activity</th><th>Elapsed</th></tr><tr><td>art-02</td><td>Art</td><td>AI9527-9</td><td>执行中</td><td>制作占位图标</td><td>02:31</td></tr><tr><td>dev-01</td><td>Development</td><td>AI9527-7</td><td>阻塞</td><td>等待 AI9527-9</td><td>—</td></tr><tr><td>pm-01</td><td>PM</td><td>另一需求</td><td>执行中</td><td>核对任务覆盖</td><td>01:12</td></tr></table><p>列表占据剩余主要空间；列宽可调，奇偶行区分。</p></div><div class="splitter">━━━━━━━━ 可拖动分隔条 ━━━━━━━━</div><div class="output"><strong>Output　art-02 / AI9527-9</strong><p>17:00:00　接收任务，输入版本已核验<br>17:00:03　正在调用资源工具<br>日志持续追加；暂停滚动时保留阅读位置。</p></div></div>
+<p class="caption">图 3-1：主看板。顶部说明、筛选与分页高度固定，无独立滚动条；只有列表和 Output 独立滚动。拖动列表底部改变两者比例，列表上边缘固定。</p>
+<div class="track"><div class="track-head">执行详情　AI9527-9　返回列表</div><div class="detail"><p><strong>任务：</strong>测试道具占位图标与解析资源</p><p><strong>执行：</strong>执行编号、节点、角色、开始时间、最后心跳、租约状态</p><p><strong>输入：</strong>批准版本、计划版本、Git 基线、上游产物版本</p><p><strong>交付：</strong>资源清单、预览、校验值、验证报告</p><p><strong>依赖：</strong>前置任务与阻塞原因；下游受影响任务</p><p>打开 JIRA　查看交付　请求取消　暂停本节点接单</p></div><div class="splitter">━━━━━━━━ 可拖动分隔条 ━━━━━━━━</div><div class="output">Output：按执行编号过滤日志；旧执行与新执行不得混合。</div></div>
+<p class="caption">图 3-2：由列表选中执行后进入详情，返回时保持筛选、选择和滚动位置。交付和审批分开呈现；Track 本期提供绑定具体版本的“批准此版本并启动流程”，不提供强制完成或绕过依赖的重试按钮。</p><table><thead><tr><th>控件／状态</th><th>行为</th><th>错误与恢复</th></tr></thead><tbody><tr><td>打开／刷新</td><td>请求权限内项目快照，显示读取中；成功后记录更新时间</td><td>失败保留旧数据并标为“数据已过期”，显示原因和手动刷新。</td></tr><tr><td>角色分页／筛选</td><td>All 展示项目执行；Orchestrator 展示队列、发布与恢复活动；专业页按角色筛选</td><td>无数据显示明确空态；项目切换后清除不属于该项目的选中项。</td></tr><tr><td>Task 列</td><td>仅显示真实 JIRA 编号，可打开单据</td><td>链接失败保留编号，禁止猜测单据存在或状态。</td></tr><tr><td>选择执行</td><td>下方 Output 跟随 execution_id，完整标题放详情</td><td>日志缺口、截断和已脱敏明确标记，不以日志结束推断任务完成。</td></tr><tr><td>取消</td><td>有权限的操作者确认取消本次执行；提交后显示“取消中”</td><td>只有执行端确认停止并核对副作用后才释放；超时进入“停止待核实”。</td></tr><tr><td>暂停接单</td><td>暂停指定节点的新任务，不终止进行中的任务</td><td>请求超时先查询操作回执，不能重复触发其他动作。</td></tr><tr><td>断线／权限失效</td><td>显示断线与最后更新时间，暂停操作；恢复后重新取快照</td><td>不显示假在线；组件隐藏后暂停刷新，重新显示时补快照。</td></tr><tr><td>布局</td><td>紧凑英文列名、中文内容；窄窗隐藏次要列，详情可查看全部字段</td><td>不承诺宿主能永久固定侧栏；支持组件内联和独立网页降级。</td></tr></tbody></table><h3>3.1 更新方式</h3><p>首版 MCP 组件通过宿主桥接调用只读快照／增量工具，建议可见时每 3 秒刷新一次；请求的是编排器运行缓存，不逐次读取 JIRA，也不需要每次唤起模型。宿主桥接是否允许定时调用纳入能力验证。不支持时采用手动刷新和独立网页。可选网页通过 HTTP SSE 接收序号事件，断线用游标恢复，存在缺口先重取快照。MCP 内直连 SSE 只有在认证、连接来源许可和宿主实测通过后启用，不作为首版前提。</p><h3>3.2 界面表现交付</h3><p>桌面工具使用简洁列表、状态标记和通用图标；无游戏美术资源、特效或按钮音效需求，不新增打开／关闭动画。列表、错误态、详情和日志为可访问网页组件；持久化筛选与分隔比例属于偏好，不是业务状态。</p></section><h3>3.3 需求审阅与人工批准</h3><div class="track"><div class="track-head">需求审阅　AI9527-5　待批准</div><div class="detail"><p>版本：完整 revision ／ 文档哈希 ／ 与上版的差异</p><p>设计目标 → 综述 → UI 线框 → 配置字段 → 操作交付标准 → 美术范围</p><p>在扩展界面完整展示需求；长文在内容区域滚动，可打开完整 HTML。</p><p><button disabled>提出修改</button>　<button disabled>批准此版本并启动流程</button></p><p>批准后自动安排 PM 建单和依赖就绪的专业任务；美术抽检、最终验收及合并发布仍保留人工门禁。</p></div></div><p class="caption">图 3-3：人工审批线框，按钮仅为不可操作示意。打开需求 → 阅读 → 提出修改或批准 → 显示服务端回执 → 返回 Track。</p><ul><li>审批中禁止重复点击；服务端成功写入 JIRA 后才显示已批准，等待 PM 节点不回退审批。</li><li>服务端校验 expected_revision、document_sha256 和 request_id，批准者取自真实认证身份。</li><li>需求已更新则拒绝旧版本批准，要求刷新审阅；超时显示“审批结果确认中”，先查询回执。</li><li>提出修改返回 Design 修订，不把意见或阅读行为当作批准。</li></ul><section id="s4"><h2>4. 职责、实例与执行模式</h2><table><thead><tr><th>对象</th><th>职责</th><th>不得承担</th></tr></thead><tbody><tr><td>Design</td><td>参考成熟产品形成草案，一次集中澄清，修订后提交完整审阅版</td><td>自行批准需求、直接指挥其他专业。</td></tr><tr><td>PM</td><td>以交付标准拆分任务、维护覆盖清单、依赖及变更影响</td><td>每专业一张大包、并发改写同一主任务的已发布计划。</td></tr><tr><td>Art</td><td>资源制作、导入规范、预览与交付证据</td><td>用文字说明冒充真实资源，代替人工抽检。</td></tr><tr><td>Development</td><td>按明确任务编码、集成、自测及提交可复现版本</td><td>修改未批准规则或绕过上游产物门禁。</td></tr><tr><td>QA</td><td>专项和集成验收，按证据分类缺陷、提交回归结果</td><td>把未执行写成通过，代替开发直接修改业务实现。</td></tr><tr><td>Orchestrator</td><td>确定性状态机、资格筛选、任务占用、校验、失败恢复</td><td>作为另一个大模型自由决定审批或任务完成。</td></tr></tbody></table><p>节点标识一台受控执行环境；Agent 实例标识某个专业会话；执行编号标识一次任务尝试。三者不能共用一个 ID。节点注册声明 project、roles、工具能力、Unity 版本、平台、并发容量及工作区能力。</p><table><thead><tr><th>模式</th><th>启动者</th><th>生命周期</th></tr></thead><tbody><tr><td>对话执行</td><td>当前 Codex 通过 CLI 原子领取任务</td><td>当前对话完成专业工作；本地监护进程续租，检测宿主失联后停止续租并请求核对，不无限续租。</td></tr><tr><td>后台执行</td><td>用户明确启用 GameCLI worker run</td><td>常驻进程通过 WebSocket 接收任务分配，启动独立 Codex 会话、采集日志、处理取消和上传。对话结束不影响该受托管进程。</td></tr><tr><td>观察模式</td><td>用户打开 Track 或 Unity 面板</td><td>只读，不领取、不续租、不通过观察行为启动专业代理。</td></tr></tbody></table><p>本期后台模式默认每节点同时执行 1 项；有隔离工作区及足够资源后按角色提高容量。多个 PM 可处理不同需求；同一需求的版本编辑、批准、计划发布均由服务串行处理。一个 QA 节点可并行处理日志审阅，但启动 Unity 的槽位独立限流。</p></section><h3>4.1 GameCLI 后台生命周期（本期必需）</h3><p>一个常驻 GameCLI 主进程负责注册、WebSocket 连接与重连、心跳、续租、取消、Agent 启动和结果回传。每项任务使用独立专业会话及隔离工作区，结束后释放容量，主进程继续等待；不是每个任务都重启 GameCLI。</p><p>查询、提交和配置保留一次性命令，执行后退出。后台入口建议 GameCLI worker run --role pm --max-concurrency 1（待实现）。开发期可前台查看日志，后台部署由进程管理器托管并隐藏窗口；开机启动和故障恢复要实际实现。</p><p>心跳、续租和取消独立于 Agent 执行与文件上传，不能被耗时操作阻塞。关闭 Track 或结束 Codex 对话不停止已授权后台任务。“暂停接单”不终止当前任务；“停止节点”先暂停再处理当前执行，取消结果未知不能直接释放并重派。</p><section id="s5"><h2>5. 从需求到交付的完整链路</h2><div class="flow"><div>Codex 讨论需求 → Design 草案与集中澄清</div><span>↓</span><div>扩展 UI 展示完整需求 → 人工批准此版本并启动流程</div><span>↓ 云端保存 JIRA 审批，上传并核验附件</span><div>云端选择空闲 PM GameCLI → 内部 PM Agent 拆分建单</div><span>↓ GameCLI 回报结果；云编排器重新核验 JIRA</span><div>云端选择依赖就绪任务和空闲专业 GameCLI</div><span>↓</span><div>后台 GameCLI 启动 Agent → 回传状态和结果 → Track 展示</div></div><p><strong>本期只验收审批、派工、Agent 启动和回传闭环。</strong>下述真实制作、Unity 验证及完整 QA 属于后续生产流程；联调不能把未验证的生产任务标记为完成。</p><ul><li>用户在 Codex 输入文字或文件；CLI 向中央服务登记需求，服务生成主任务或复用已有主任务。需求入口不是 Unity 手填面板。</li><li>Design 执行：先提供真实参考来源；形成推荐草案，所有重要决策一次集中展示。研究工具不可用时由对话宿主提供可核验来源，不伪称已调研。</li><li>用户一次反馈后统一修订；最终 HTML 含线框、交互闭环、配置字段与验收标准。Design 文档保存于目标仓库根相对路径 app/desgin/，不存在自动创建。</li><li>扩展 UI 展示完整需求、线框、配置和交付标准；用户点击“批准此版本并启动流程”。服务校验 expected_revision 和文档哈希，写入 JIRA 中的批准者、时间及启动授权后才显示已批准。重复点击复用回执，旧页面版本过期则拒绝批准。业务规则变化必须重新审阅。</li><li>先上传主任务附件并远端核验；总共最多 3 次上传尝试，响应未知先查附件，失败或无法核验时不启动 PM。</li><li>云编排器选择空闲且具备 PM 能力的后台 GameCLI，由其启动内部 PM Agent 形成按交付标准拆分的完整计划；每个标准映射实现和验收任务。服务校验 ID、角色、依赖无环、拓扑顺序、范围覆盖与现有任务映射；语义覆盖还需审阅，不能声称只靠字段校验可证明完整。</li><li>服务先保存计划及建单意图，授权该 GameCLI 的确定性适配代码创建或复用子任务。GameCLI 回报执行编号、真实单号及计划版本；云端重新读取 JIRA 核验父子关系、依赖、需求版本和附件。全部发布后才开放专业任务领取；同一主任务只允许一个发布执行者。</li><li>UI 的“批准此版本并启动流程”已包含后续自动派工授权，不需要建单后再次下令。后台执行端等待就绪任务；服务读取 JIRA 审批、计划、上游交付与状态，选择能力匹配且有空闲容量的节点，登记执行与租约后返回任务包。</li><li>Art 上传真实资源及证据，校验后进入待抽检；人工确认实际交付版本后才放行其下游。无美术依赖的程序任务无需等待无关资源。</li><li>Development 在独立工作区实现，运行确定性 Unity 检查，提交代码版本、产物清单及报告；通过交付门禁后进入对应 QA，不增设额外程序人工审批。</li><li>QA 按固定版本验证；代码问题交程序，美术问题交美术，需求问题交 Design 重新审批，环境问题进入阻塞。修复由编排器调度，同一任务累计最多 3 次执行尝试；网络投递重试与专业重跑分别计数。</li><li>所有必要制作与专项验收完成后执行集成验收；用户完成最终验收。Git 合并／发布是独立人工关口，不能把需求批准解释为发布授权。</li><li>每次执行成功、失败、阻塞或取消都由服务以执行编号去重写入 JIRA 中文评论，并记录产物与真实验证结果。服务评论写入引发的通知只能重新核对，不能循环派工。</li></ul></section><section id="s6"><h2>6. 状态归属与跨机器一致性</h2><table><thead><tr><th>数据</th><th>权威位置</th><th>缓存规则</th></tr></thead><tbody><tr><td>需求、批准、计划、依赖、任务状态</td><td>JIRA 字段／版本化属性</td><td>界面可缓存展示；派工、提交、审批前必须核对最新值。</td></tr><tr><td>执行编号、租约代次、占用、重试、副作用意图、交付回执</td><td>JIRA 版本化属性</td><td>首版仅单调度实例写入；JIRA 不提供跨系统事务或通用原子比较交换保证。</td></tr><tr><td>节点连接、即时心跳、CPU、最近日志、统计视图</td><td>服务内存，可丢弃重建</td><td>丢失后显示未知；不能据此认定任务未执行、已完成或可重新派工。</td></tr><tr><td>代码及集成版本</td><td>Git 不可变 commit；引用写入 JIRA</td><td>工作树为本地执行空间，不作为跨机器交付位置。</td></tr><tr><td>文档、资源、报告、完整日志</td><td>共享产物存储；地址、哈希及版本登记 JIRA</td><td>下载时校验哈希；以不可变执行目录保存，不覆盖旧版本。</td></tr><tr><td>角色及工具能力配置</td><td>服务受控配置与节点本地配置</td><td>不允许客户端自报角色就获得任意项目权限；本地绝对路径不向其他节点广播。</td></tr></tbody></table><h3>6.1 首版一致性策略</h3><p>云编排器唯一维护审批、计划、租约和推进状态。PM GameCLI 只执行当前有效租约授权的建单操作；可通过云端受控建单接口操作 JIRA，凭据仍仅保存在服务器。GameCLI 不直接覆盖云端工作流属性。完成通知仅触发核验，不是完成凭证。</p><p>在一个服务进程内按主任务及子任务使用串行执行区，保证两个同时 claim 请求只获得一个有效执行。严格只部署一个活动调度器，不开多个 Node.js 应用进程共同派工；可增加只读入口但不增加写入者。重启后先从 JIRA 恢复所有开放执行，核对旧工作进程和副作用，再恢复领取。</p><p>当前不引入独立业务数据库。若以后要求多实例高可用，应另立设计，增加可靠的原子协调与 fencing，并明确协调数据不替代 JIRA 业务事实；不能直接把服务复制两份，也不能以 JIRA 先读后写冒充分布式锁。</p><h3>6.2 版本与体积</h3><p>需求版本、附件哈希、计划版本、任务范围哈希、执行代次、上游交付版本及 Git 基线共同约束提交。现有 gzip-base64-v1 大快照、32000 字节属性限制、1MB 解压上限保持兼容。跨节点前为 TypeScript/Node.js 与 C# 建立黄金样本，保证序列化、哈希、压缩及缺省值一致；不能各算各的需求版本。更大计划后续按任务分属性并用主清单发布版本，不能截断旧历史。当前 20 项上限维持，超限时先报告限制，不把任务重新合并成大包。</p></section><section id="s7"><h2>7. 领取、租约、异常与恢复</h2><p>任务业务状态与执行状态分离：任务可以“待开发”但执行已领取；节点“在线”不等于任务进度正常。执行建议状态：领取登记中 → 已领取 → 执行中 → 结果核验中 → 已交付／失败／阻塞；另设取消中、结果待核实、租约失联待核实。</p><ul><li>领取请求携带 request_id 和可重复使用的 idempotency_key。服务登记 JIRA 执行意图后返回 execution_id、lease_id、generation 及到期时间。写入结果不明时先核对，不能把第二次领取视为新执行。</li><li>建议节点每 15 秒心跳，45 秒无心跳显示失联；租约有效期 180 秒，续租写入 JIRA 建议每 60 秒一次。这些是待压测的初值。心跳只更新运行视图，租约续期由代码处理，不依赖大模型。</li><li>心跳消失或租约到期只进入待核实，不立即把任务转派；必须核对旧进程、上传、Git 版本和其他远端副作用。若无法证明停止，保留阻塞并告警。</li><li>决定重新派工时提高 generation；所有续租和提交必须匹配当前代次。旧执行只能作为迟到证据保留，不得覆盖当前结果。产物写入执行专属目录，禁止覆盖共享可变路径。</li><li>提交采用不可变产物与结果摘要；服务重新验证输入版本和前置状态，成功登记回执后才返回已提交。响应丢失时按 execution_id 查询回执，不能再跑 Agent。</li><li>JIRA 不可用时不领取、不批准、不完成；既有执行可保留局部工作，但不能正式发布。租约将过期时本地监护请求停止，无法确认停止则保持未知。</li><li>取消分两步：服务记录取消意图，执行端停止目标进程并提交证据。不能因界面点击取消立即释放工作区或重派。</li><li>每次真正专业重跑有新的执行编号并计数；超过 3 次进入人工处理。模型提出重试建议不等于服务允许重试。权限失败、需求冲突、用户拒绝和未知副作用禁止盲目自动重跑。</li><li>对旧计划 replan 保持现有边界：只迁移未开始、无交付记录的计划，保留旧计划及编号映射。已经执行的任务走变更流程，不能重置状态掩盖历史。</li></ul></section><section id="s8"><h2>8. HTTP、CLI 与薄 MCP 契约</h2><p>下列接口和命令为拟议契约，除文中列明的旧命令外均未实现。所有适配器调用同一应用服务。普通 HTTP 响应统一包含 schema_version、request_id、ok、data、error、server_time；错误提供 code、message、retryable、outcome_unknown 与可选 retry_after。</p><table><thead><tr><th>用途</th><th>HTTP 接口示意</th><th>CLI 示意</th></tr></thead><tbody><tr><td>节点注册及能力</td><td>POST /api/v1/workers/register</td><td>GameCLI worker register --role art --project &lt;路径&gt;</td></tr><tr><td>心跳与暂停接单</td><td>POST /api/v1/workers/{id}/heartbeat；POST .../drain</td><td>GameCLI worker status；GameCLI worker pause</td></tr><tr><td>主动领取</td><td>POST /api/v1/tasks/claim</td><td>GameCLI task claim --role art --format json</td></tr><tr><td>后台接单</td><td>WebSocket /api/v1/worker-channel：服务端派发，客户端确认</td><td>GameCLI worker run --role art</td></tr><tr><td>续租与取消</td><td>POST /api/v1/executions/{id}/renew；POST .../cancel</td><td>监护进程自动续租；GameCLI task cancel --execution &lt;id&gt;</td></tr><tr><td>执行详情与结果</td><td>GET /api/v1/executions/{id}；POST .../result</td><td>GameCLI task show；GameCLI task submit --manifest &lt;文件&gt;</td></tr><tr><td>审批与附件</td><td>POST /api/v1/requirements/{key}/approve；附件准备／核验接口</td><td>复用旧 orchestrator --approve 意图，明确选择远程模式</td></tr><tr><td>看板</td><td>GET /api/v1/track/snapshot；GET .../events</td><td>GameCLI track --project-key AI9527</td></tr><tr><td>JIRA 通知</td><td>POST /webhooks/jira/&lt;受控回调入口&gt;</td><td>服务接收，客户端不直接订阅 JIRA</td></tr></tbody></table><h3>8.1 任务包</h3><table><thead><tr><th>字段</th><th>用途</th></tr></thead><tbody><tr><td>issue_key、workflow_id、role</td><td>真实任务、主流程与本次专业角色。</td></tr><tr><td>execution_id、lease_id、generation、expires_at</td><td>执行占用与防止旧执行提交。</td></tr><tr><td>requirement_revision、attachment_sha256、plan_revision、task_hash</td><td>需求与任务输入绑定。</td></tr><tr><td>dependency_versions、artifact_manifest</td><td>已审核上游产物及下载位置／校验值。</td></tr><tr><td>repository、base_commit、workspace_policy</td><td>仓库、基线和隔离约定。</td></tr><tr><td>skill_versions、capabilities、allowed_operations</td><td>加载哪个技能版本、必需工具及操作边界。</td></tr><tr><td>acceptance、resource_budget、deadline</td><td>可验证交付要求、容量与超时。</td></tr></tbody></table><h3>8.2 界面层最小工具</h3><p>MCP 提供 track_open、track_snapshot、track_execution、track_logs、requirement_review，以及人工交互专用的 requirement_approve_and_start；另提供受控的暂停接单和取消请求。审批不能由模型或页面自动调用代替人工确认。track_open 关联 text/html;profile=mcp-app 界面资源，其他工具返回结构化数据。是否允许组件直接调用工具由宿主能力与权限决定；界面不获得任意 shell、JIRA Token 或任意文件读写权限。</p><p>CLI 通信、Agent 生命周期、本地检查和产物打包仍由 C# 执行。Unity CLI 留待后续，本期不接入、不调用。远程 MCP 不能直接运行用户电脑上的 CLI；需要本地工作时由 Codex 调用 CLI 或已注册执行端处理。远程身份由服务验证，不能信任组件提交的 approver 名称。返回 202 仅表示受理；CLI 区分已完成、受理中、阻塞、执行失败和结果未知。</p><h3>8.3 实时调度与业务接口分工</h3><table><thead><tr><th>通道</th><th>职责</th></tr></thead><tbody><tr><td>GameCLI ↔ GameCLIServer 编排器：WebSocket</td><td>节点注册、能力和容量上报、心跳、租约续期及确认、任务派发与接单确认、进度、取消通知和确认。</td></tr><tr><td>GameCLI ↔ GameCLIServer 编排器：HTTP</td><td>需求提交、任务详情、文件上传、最终结果提交、断线恢复时核对执行状态。保留单次主动领取接口，但必须复用同一租约与幂等规则。</td></tr><tr><td>JIRA → 编排器：Webhook</td><td>状态变化提示，由编排器统一读取权威状态和依赖。</td></tr><tr><td>扩展 UI ↔ 服务：MCP 工具桥接</td><td>需求审阅、人工审批、Track 查询，复用同一应用服务。</td></tr></tbody></table><p>后台接单首版采用 WebSocket；HTTP 长轮询仅保留为未来有需要时的降级选择，不同时开发两套派工机制。WebSocket 路由及消息字段为待实现协议，不代表现有通知转发服务已具备派工能力。</p><h3>8.4 接单确认与断线恢复</h3><ol><li>云端先在 JIRA 持久化分配记录与执行租约，再向指定节点发送任务；消息发送成功不等于接单成功。</li><li>派发消息携带协议版本、消息编号、任务编号、执行编号、租约代次与到期时间。GameCLI 确认接单并核验有效租约后才启动 Agent；重复消息返回同一确认，不重复启动。</li><li>断线后采用有上限且带随机抖动的重连退避；恢复时上报节点身份、未结束执行及最后确认信息，核对权威状态后再恢复调度，不能只依赖内存消息重放。</li><li>心跳在线不等于业务租约有效，续租必须收到服务端持久化确认。失联或租约过期进入待核实状态；旧执行和副作用未核清前不得立即转派。拒绝旧代次的续租及结果。</li><li>最终结果通过 HTTP 携带执行编号、租约代次和幂等键提交。响应丢失先查回执，重复提交不得重复写评论或推进后续任务；只有持久化并核验成功才推进。</li><li>生产部署使用安全连接和节点身份校验，配置代理连接升级、空闲超时、心跳、消息大小上限和有界发送队列。进度可合并，任务与取消指令必须确认，不得静默丢弃。</li></ol><p>50 人团队不以人数直接判断协议容量：需实测活跃节点数、消息频率、日志量和重连峰值。两种传输都不能解决业务幂等或自动降低 JIRA 写入量；JIRA 通知与核验集中在服务端完成。</p><h3>8.5 通知与负载</h3><p>JIRA Webhook 是变化提示，服务收到后集中合并同一任务事件并读取最新状态。WebSocket 状态同步和看板刷新使用中央缓存／队列；任务派发及状态推进仍须核验并持久化到 JIRA，不导致每客户端轮询 JIRA。丢失通知无法靠传输本身完全解决：启动、重连、缺口后集中重新核对；静默漏通知可配置低频单中心补偿扫描，或明确接受仅人工补偿，不声称零轮询就保证零丢失。JIRA 请求设置统一并发上限、退避及限流处理。</p></section><section id="s9"><h2>9. 工作区、资产与后续 Unity 验证</h2><p><strong>Unity CLI 本期不工作：</strong>不安装、不调用、不作为节点接单或任务启动前置条件。下述 Unity 要求仅用于后续正式制作阶段；缺少真实验证的结果标为“尚未验证”，不能自动通过生产验收。</p><h3>9.1 独立工作区与集成</h3><ul><li>每个代码执行使用独立 Git worktree，分支建议 codex/任务号-执行短编号，保留用户已有改动。禁止多个程序 Agent 共写同一 Unity 项目目录。</li><li>上游代码作为不可变 commit 提供；下游不能读取另一台机器的未提交工作树。PM 计划明确模块接口与实际代码依赖，执行端根据任务包准备集成基线。</li><li>同一目标分支的候选集成串行处理；冲突进入明确集成修复任务，重新跑验证。候选集成分支不是向主分支发布，正式合并仍走人工关口。</li><li>美术保存实际资源、预览、导入参数及可用时的生成模型／种子信息；不支持种子的工具如实注明。Unity 资产保持 .meta GUID，不在多节点重复生成不一致标识。</li><li>产物存储可先使用受控文件服务，后续迁移对象存储；JIRA 仅保存地址、大小、哈希和版本。上传完成不等于交付通过，下载方重新验哈希。</li></ul><h3>9.2 确定性验证契约</h3><p>固定 Unity 精确版本、依赖锁文件、代码 commit、资产哈希、测试输入及随机种子；报告记录环境、命令、退出码、测试明细、日志与截图。确定性指同输入和环境得到可复核结论，不承诺所有二进制逐字节一致。根据平台与许可证选择真实可用执行机，不假定 Unity GUI 测试都能在容器中完成。</p><p>QA 只能针对明确的构建或集成 commit 验收；上游变更后旧结论失效。工具缺失、许可证不足、运行环境不可用进入阻塞；禁止用桩报告冒充真实测试。</p></section><section id="s10"><h2>10. 部署、目录与技能兼容</h2><p>以现有 GameCLIServer 为唯一服务工程，逐步扩展并迁移到 TypeScript，不新建平行编排服务。以下为目标目录；新增模块和构建脚本尚未实现。</p><pre>app/client/LocalPackages/com.oathx.gamecli/
+├── game-cli/                  现有单一职责 SKILL，保留为源文件
+├── Editor/                    现有 Unity 面板与本地桥接
+├── GameCLI~/
+│   ├── GameCLI/               现有 C# CLI；增加远程客户端和执行端
+│   └── GameCLIServer/         现有服务升级：Node.js + TypeScript
+│       ├── src/
+│       │   ├── api/           HTTP、WebSocket、Webhook 与 MCP 适配
+│       │   ├── application/   审批、节点管理、调度、执行、结果与看板用例
+│       │   ├── domain/        状态机、依赖、版本和租约规则
+│       │   └── infrastructure/ JIRA、产物存储、连接与运行缓存
+│       ├── tests/             契约、故障恢复、多节点联调
+│       ├── package.json       开发、构建、启动与测试脚本
+│       └── tsconfig.json      TypeScript 编译配置
+└── CodexPlugin~/              拟建可分发插件包
+    ├── skills/                打包时从 game-cli 复制并验证依赖
+    ├── ui/                    Track 网页组件
+    └── 协议与插件清单          按实施时的官方格式生成
+
+docs/                          架构、协议、迁移和验收方案
+app/desgin/                    玩家功能需求 HTML 及维护源</pre>
+<p>技能源文件只维护一份，插件打包固定版本并记录校验值；一次执行固定技能版本，不随服务器热更新中途变化。沿用 common、design、pm、art、dev、qa、jira、unity、task-delivery、document-format 和 requirement-discovery；新增 worker-execution 专项技能定义领取、停止、提交约束，新增 track 专项技能只负责看板入口与只读解释。</p><p>保留 ICommand、ICLIPlugin、enable/disable。节点禁用角色后停止新领取，已运行任务按明确策略完成或取消，不偷偷终止。旧本机命令保留 local 模式；纳入中央管理的项目必须禁止本地 watch/dispatch 和直写 JIRA 的旧入口并行推进。过渡时要明确写入者归属，不能靠两个不同机器的文件锁互斥。</p><h3>10.1 技术栈与实施约束</h3><ul><li>服务端采用 Node.js 运行时，新增编排模块使用 TypeScript。现有 JavaScript 在保持协议兼容及测试通过的前提下逐步迁移，不因更换语言一次重写服务。</li><li>内部划分 JIRA 接入、需求审批、节点管理、任务调度、执行管理、结果处理与看板接口。HTTP、WebSocket、MCP 复用同一应用用例，不能分别维护状态机。</li><li>TypeScript 启用严格类型检查；网络消息、配置与 JIRA 返回值仍需运行时校验。C# 和 TypeScript 的版本、哈希、压缩和幂等契约使用共同测试样本验证。</li><li>提供构建、启动与测试脚本，由 Node.js 运行编译产物；构建输出和依赖缓存不提交，依赖锁文件提交。实施时固定受支持的运行时及依赖版本。</li><li>主事件循环不得执行长时间同步计算或阻塞 I/O；消息与日志队列有界。耗时计算交给独立工作进程或执行节点，避免阻塞心跳、续租和取消。</li><li>服务器负责决定谁在何时执行哪个任务；C#/.NET GameCLI 负责本地工作区、专业 Agent 启动与结果回传。本期不接入 Unity CLI。</li><li>未来确需 Python 专用计算库时可按需调用独立工具，不引入第二套编排器或业务状态源。</li><li>保留现有服务名称与部署入口，升级时验证 Webhook 和消息兼容；接管项目时停止旧客户端自动派工，只保留一个活动调度写入者。</li></ul><h3>10.2 部署与信任边界</h3><p>服务器可先放局域网，Node.js 由进程管理器托管，浏览器 UI 静态文件与 API 同源部署。开发验证不自动重新启用旧服务中已删除的认证。本方案的跨机派工和远程取消具有新的写入权限，应设计可识别用户、节点和项目的身份机制；公网部署启用 TLS 及可撤销凭据。若继续采用免认证内网模式，应限制为受控试验环境，不宣称具备用户隔离。</p><p>JIRA 凭据只存服务端受控凭据配置；日志隐藏 Token、签名下载地址和敏感输入。备份 JIRA 与产物存储；节点只保存可重建工作区和临时上传缓冲。服务恢复以 JIRA 为准，不靠本地缓存跳过审批。</p></section><section id="s11"><h2>11. 迁移阶段与交付门槛</h2><table><thead><tr><th>阶段</th><th>独立交付</th><th>通过条件</th></tr></thead><tbody><tr><td>阶段 0：界面能力验证</td><td>最小 MCP 任务列表、刷新按钮及组件状态显示</td><td>在当前 Codex 实测资源加载、桥接工具、侧栏展开、关闭恢复、权限失败；失败则保留网页方案，核心 CLI 不受阻。</td></tr><tr><td>阶段 1：中央只读视图</td><td>GameCLIServer 读取 JIRA、通知核对、Track 快照与日志入口</td><td>真实显示 AI9527-5 的 16 项任务；没有虚构运行状态，不修改任务与审批。</td></tr><tr><td>阶段 2：单节点远程领取</td><td>WebSocket 调度、HTTP API、后台常驻执行端、租约、Agent 启动与结果回写</td><td>测试项目跑通 UI 审批、附件核验、PM 建单、云端复核、专业 Agent 启动和回传；覆盖取消和未知结果恢复，不调用 Unity CLI，旧调度禁用。</td></tr><tr><td>阶段 3：多节点同角色</td><td>两个以上隔离节点、能力与容量调度</td><td>不同就绪任务并行，同一任务不重复领取；多 PM 不覆盖同一主计划。</td></tr><tr><td>后续阶段 4：跨机器真实交付（不属本期）</td><td>共享资产、Git 候选集成、Unity 与 QA 证据</td><td>美术交付后程序下载验证，QA 验证相同版本；保留人工门禁。</td></tr><tr><td>后续阶段 5：生产级缺陷与发布闭环</td><td>在本期后台执行端基础上扩展真实验证、缺陷回流与发布</td><td>对话结束仍执行已授权任务，离线不盲目转派，修复次数和最终审批正确。</td></tr></tbody></table><h3>11.1 切换与回退</h3><ol><li>停止旧 watch/dispatch，等待或核对全部运行执行；备份当前 JIRA 属性、技能版本和产物引用。</li><li>先以只读模式比对 TypeScript/Node.js 与 C# 对同一任务的版本、依赖和门禁结论。</li><li>指定项目由中央服务接管写入，节点升级到拒绝旧调度的版本，再开放领取。</li><li>回退先停止新领取，确认已运行执行及远端副作用，完整同步 JIRA 回执后再交回旧单机；不能直接让旧 CLI 解读不兼容的新属性。</li></ol><p>七日登录现有任务可用作只读兼容样本；并发、崩溃和重试实验使用隔离测试任务，不以重跑生产美术／程序来验证协议。</p></section><section id="s12"><h2>12. 验收计划与待验证项</h2><p><strong>以下全部为计划用例，尚未执行；现有单机测试不能替代这些分布式验收。</strong></p><details open><summary>用例 1：MCP 界面加载</summary><ul><li>前置条件：已安装最小组件，当前账户可访问服务</li><li>操作步骤：调用看板工具、刷新并请求侧栏展示</li><li>预期结果：组件显示真实测试数据；不支持时给出准确能力错误和网页入口。</li></ul></details><details open><summary>用例 2：现有契约兼容</summary><ul><li>前置条件：包含明文和压缩快照的固定样本</li><li>操作步骤：TypeScript/Node.js 与 C# 分别读取、校验及计算版本</li><li>预期结果：批准版本和依赖结论一致，损坏及超限快照拒绝。</li></ul></details><details open><summary>用例 3：审批及附件门禁</summary><ul><li>前置条件：需求未批准或附件未核验</li><li>操作步骤：请求建子任务或领取制作任务</li><li>预期结果：明确拒绝；上传最多三次且恢复不清零。</li></ul></details><details open><summary>用例 4：同任务双领取</summary><ul><li>前置条件：两节点同时有空闲容量</li><li>操作步骤：并发领取同一就绪任务</li><li>预期结果：仅一个有效执行；另一请求得到无任务或冲突，不重复派工。</li></ul></details><details open><summary>用例 5：不同任务并发</summary><ul><li>前置条件：同角色两项无依赖任务及两隔离工作区</li><li>操作步骤：两个节点分别领取</li><li>预期结果：不同任务可并行，节点和 Unity 槽位不超额。</li></ul></details><details open><summary>用例 6：领取响应丢失</summary><ul><li>前置条件：JIRA 已记执行而 HTTP 响应丢失</li><li>操作步骤：以相同幂等键重发</li><li>预期结果：返回原执行，不增加尝试次数或创建新租约。</li></ul></details><details open><summary>用例 7：节点失联</summary><ul><li>前置条件：执行端已经启动且可能仍在写文件</li><li>操作步骤：中断心跳直到租约过期</li><li>预期结果：标记待核实，不直接重派；恢复核对旧副作用。</li></ul></details><details open><summary>用例 8：迟到结果</summary><ul><li>前置条件：旧执行已停止核对并生成新代次</li><li>操作步骤：旧执行再次续租和提交</li><li>预期结果：拒绝旧代次，当前记录和产物不被覆盖。</li></ul></details><details open><summary>用例 9：服务重启</summary><ul><li>前置条件：JIRA 有未结束执行或未决提交</li><li>操作步骤：重启单调度服务</li><li>预期结果：先恢复并核对，未决任务不能被当作新任务领取。</li></ul></details><details open><summary>用例 10：JIRA 故障</summary><ul><li>前置条件：领取、续租或提交时 JIRA 不可用</li><li>操作步骤：模拟超时与恢复</li><li>预期结果：暂停业务推进，缓存不产生权威成功；恢复先查回执。</li></ul></details><details open><summary>用例 11：上游变化</summary><ul><li>前置条件：下游已领取指定输入版本</li><li>操作步骤：重新打开上游或替换交付版本后提交下游</li><li>预期结果：阻止旧输入交付放行，列明受影响任务。</li></ul></details><details open><summary>用例 12：取消未知</summary><ul><li>前置条件：执行端不能立即响应取消</li><li>操作步骤：提交取消并模拟断线</li><li>预期结果：保持取消中或停止待核实；不释放后立即重派。</li></ul></details><details open><summary>用例 13：结果与评论重复</summary><ul><li>前置条件：结果已登记但客户端未收到确认</li><li>操作步骤：重复提交结果并触发重复 Webhook</li><li>预期结果：单次业务提交、评论去重，不循环启动 Agent。</li></ul></details><details open><summary>用例 14：代码与资产集成（后续阶段）</summary><ul><li>前置条件：两独立分支修改相同资产或代码</li><li>操作步骤：执行候选集成并运行 Unity 检查</li><li>预期结果：冲突明确阻塞或修复，未经验证不发布；真实 meta 和版本一致。</li></ul></details><details open><summary>用例 15：看板断线与负载</summary><ul><li>前置条件：50 个观察面板和受控模拟执行节点</li><li>操作步骤：运行 30 分钟、断线重连、分页及日志追加</li><li>预期结果：无跨项目泄露、无无界积压；正常状态更新目标 5 秒内，统计服务和 JIRA 实际负载，未达标不宣称容量通过。</li></ul></details><details open><summary>用例 16：最终验收与发布</summary><ul><li>前置条件：专项及集成验收证据完整</li><li>操作步骤：尝试代理自行批准并合并</li><li>预期结果：拒绝越权；人工确认绑定实际版本，正式合并／发布独立授权。</li></ul></details><p>当前必须先验证的外部能力：本机账户 MCP Apps 开关、侧栏展示模式、组件直接调用工具及认证、长时间保活与关闭行为；Codex 独立会话与桌面列表的关联方式；后续接入 Unity 时再验证目标环境的 Unity 执行与资产工具。方案不把这些未验证项写成已支持的产品承诺。</p></section><details open><summary>补充用例：UI 版本审批及自动推进（尚未执行）</summary><ul><li>前置条件：有待批准版本、可用 PM 节点，及可模拟的旧版本页面。</li><li>操作步骤：先从旧页面批准，再从最新页面批准并模拟响应丢失、重复点击。</li><li>预期结果：旧版本被拒绝；当前版本只有一份审批回执，附件核验成功后自动派发 PM，核验建单结果后只启动依赖就绪任务。</li></ul></details><details open><summary>补充用例：后台常驻与无 Unity 启动（尚未执行）</summary><ul><li>前置条件：GameCLI 后台注册完成，本机未配置 Unity CLI。</li><li>操作步骤：关闭看板并结束对话，向测试节点派发两项独立启动联调任务，再暂停接单。</li><li>预期结果：后台持续接单、每任务独立会话、回传结果后释放容量；不调用 Unity，不伪造生产完成；暂停后不接受新任务。</li></ul></details><section id="s13"><h2>13. 依据与后续实施边界</h2><ul><li><a href="全AI流程规划纲要.html">全 AI 流程规划纲要</a>：状态机、CLI、技能体系、契约、Git／资产、Unity 验证与人工门禁。</li><li><a href="agent-workflow-development-guide.md">多 Agent 流程指导纲要</a>：五个专业角色、需求确认、依赖与交付职责。</li><li><a href="gamecli-server-architecture.md">现有协调服务方案</a>：通知转发和单机边界；本方案确定在现有 Node.js 服务内增加 TypeScript 编排模块，不表示这些模块已实现。</li><li><a href="../app/client/LocalPackages/com.oathx.gamecli/Docs/orchestrator-workflow.md">当前编排命令说明</a>：审批附件门禁、replan 和快照兼容基线。</li><li><a href="https://developers.openai.com/plugins/build/chatgpt-ui">OpenAI：MCP 界面开发</a>：资源关联、桥接、隔离及能力检测。官方页面主要说明 ChatGPT，Codex 的本机实现依据独立列明。</li><li>本机只读检查：Codex 26.908.9136.0 安装包存在 MCP App 资源类型、沙箱桥接及 McpAppThreadSidePanelTab；存在 enable_mcp_apps 开关，未进行自建组件端到端验收。</li></ul><p>本次仅交付设计文档。下一项可独立实施的交付是阶段 0 的最小 MCP Track 验证，不应直接一次重写全部编排代码。后续实施按本方案同步项目规范、服务模块、协议、技能与执行实现，并为每阶段建立可独立验收的任务。</p></section>
+<footer class="footer">GameAI 团队协作设计方案 · 所有拟议接口与分布式验收均不表示已实现</footer>
+</main>
+</body>
+</html>
