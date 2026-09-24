@@ -22,6 +22,8 @@ namespace GameCLI.Plugins.Orchestrator
             "resume" => "Resume a recorded workflow without bypassing approval or repeating unknown writes.",
             "revise" => "Replace the unplanned requirement document and rerun Design.",
             "gates" => "读取专业任务依赖、完成状态和交付文件校验结果。",
+            "watch" => "持续接收 JIRA 通知，核对依赖并调度就绪的专业代理。",
+            "development-probe" => "启动只读程序代理联调并将结果写入评论，不修改代码。",
             "art-probe" => "连接事件服务并启动只读 ART 联调代理，不生成资源或完成单据。",
             "dispatch" => "按已批准需求和交付门禁调度专业代理。",
             _ => "Read the authoritative workflow, design and created tasks from JIRA."
@@ -32,7 +34,7 @@ namespace GameCLI.Plugins.Orchestrator
             Name = name;
         }
 
-        private string Usage => "GameCLI orchestrator --" + Name + (Name == "start" ? " --document <UTF-8 .md|.txt>" : " --issue <KEY-123>") + (Name == "approve" ? " --revision <reviewed SHA-256>" : Name == "revise" ? " --document <UTF-8 .md|.txt>" : "") + (Name == "status" ? "" : " --project <directory> [--skills <game-cli>] [--codex <codex.exe>] [--model <model>] [--timeout <seconds>]") + (Name == "dispatch" ? " [--retry-task <KEY-123>]" : "") + (Name == "art-probe" ? " --server <ws://host:port/ws> [--trigger sync|event]" : "") + " [--issue-type <name-or-id>] [--format human|json]";
+        private string Usage => "GameCLI orchestrator --" + Name + (Name == "start" ? " --document <UTF-8 .md|.txt>" : " --issue <KEY-123>") + (Name == "approve" ? " --revision <reviewed SHA-256>" : Name == "revise" ? " --document <UTF-8 .md|.txt>" : "") + (Name == "status" ? "" : " --project <directory> [--skills <game-cli>] [--codex <codex.exe>] [--model <model>] [--timeout <seconds>]") + (Name == "dispatch" ? " [--retry-task <KEY-123>]" : "") + (Name is "art-probe" or "development-probe" or "watch" ? " --server <ws://host:port/ws>" : "") + (Name is "art-probe" or "development-probe" ? " [--trigger sync|event]" : "") + (Name == "watch" ? " [--dispatch-timeout <seconds>]" : "") + " [--issue-type <name-or-id>] [--format human|json]";
 
         /// <inheritdoc />
         public async Task<int> ExecuteAsync(string[] args, CancellationToken cancellationToken)
@@ -83,8 +85,11 @@ namespace GameCLI.Plugins.Orchestrator
                 }
 
                 string skills = Name is "status" or "gates" ? "" : FindSkills(project, options.GetValueOrDefault("--skills"));
-                int seconds = int.Parse(options.GetValueOrDefault("--timeout", "600"));
-                cancellation.CancelAfter(TimeSpan.FromSeconds(seconds));
+                int seconds = int.Parse(options.GetValueOrDefault("--timeout", Name == "watch" ? "0" : "600"));
+                if (seconds > 0)
+                {
+                    cancellation.CancelAfter(TimeSpan.FromSeconds(seconds));
+                }
                 string? document = null;
                 if (options.TryGetValue("--document", out string? documentPath))
                 {
@@ -118,9 +123,9 @@ namespace GameCLI.Plugins.Orchestrator
                     }
                 }
 
-                Guard(Name is "start" or "revise" ? "design" : Name == "approve" ? "pm" : Name == "art-probe" ? "art" : "orchestrator");
+                Guard(Name is "start" or "revise" ? "design" : Name == "approve" ? "pm" : Name == "art-probe" ? "art" : Name == "development-probe" ? "development" : "orchestrator");
                 JiraConnection connection = await JiraConnection.LoadAsync(cancellation.Token);
-                using FileStream? lease = Name is "status" or "gates" ? null : AcquireLease(connection);
+                using FileStream? lease = Name is "status" or "gates" or "watch" ? null : AcquireLease(connection);
                 using HttpClientHandler handler = new()
                 {
                     AllowAutoRedirect = false,
@@ -132,19 +137,33 @@ namespace GameCLI.Plugins.Orchestrator
                     MaxResponseContentBufferSize = 1024 * 1024
                 };
                 store = new JiraWorkflowStore(http, connection, () => Guard("jira"), options.GetValueOrDefault("--issue-type"));
-                CodexWorkflowAgent agent = new(options.GetValueOrDefault("--codex", "codex"), project, skills, options.GetValueOrDefault("--model"), artProbe: Name == "art-probe");
-                if (Name == "art-probe")
+                CodexWorkflowAgent agent = new(options.GetValueOrDefault("--codex", "codex"), project, skills, options.GetValueOrDefault("--model"), probeOnly: Name is "art-probe" or "development-probe");
+                if (Name is "art-probe" or "development-probe")
                 {
                     Uri address = new(options["--server"]);
-                    ArtProbeWorkflow probe = new(store, agent, () => Guard("art"));
-                    ArtProbe receipt = await probe.RunAsync(issue!, address, options.GetValueOrDefault("--trigger", "sync") == "event", cancellation.Token);
+                    string role = Name == "art-probe" ? "Art" : "Development";
+                    AgentProbeWorkflow probe = new(store, agent, () => Guard(role.ToLowerInvariant()), role);
+                    AgentProbe receipt = await probe.RunAsync(issue!, address, options.GetValueOrDefault("--trigger", "sync") == "event", cancellation.Token);
                     Console.WriteLine(WorkflowContract.Serialize(new
                     {
                         ok = true,
-                        mode = "art_probe",
+                        mode = Name,
                         production_complete = false,
                         receipt
                     }));
+                    return 0;
+                }
+
+                if (Name == "watch")
+                {
+                    DeliveryWorkflow delivery = new(store, agent, project, Guard);
+                    DeliveryWatcher watcher = new(store, delivery, () => AcquireLease(connection), () => Guard("orchestrator"), int.Parse(options.GetValueOrDefault("--dispatch-timeout", "600")));
+                    await watcher.RunAsync(issue!, new Uri(options["--server"]), gates => Console.WriteLine(WorkflowContract.Serialize(new
+                    {
+                        type = "orchestrator.reconciled",
+                        issue_key = issue,
+                        gates
+                    })), cancellation.Token);
                     return 0;
                 }
 
@@ -187,6 +206,11 @@ namespace GameCLI.Plugins.Orchestrator
                 }
 
                 return blocked ? 3 : 0;
+            }
+            catch (OperationCanceledException) when (Name == "watch")
+            {
+                Console.WriteLine("{\"type\":\"orchestrator.stopped\",\"message\":\"编排监听已停止。\"}");
+                return 0;
             }
             catch (Exception exception) when (exception is JiraTaskException or ArgumentException or IOException or JsonException or InvalidOperationException or OperationCanceledException or HttpRequestException or Win32Exception or UnauthorizedAccessException or CodexInteractionException or KeyNotFoundException)
             {
@@ -255,10 +279,18 @@ namespace GameCLI.Plugins.Orchestrator
                 allowed.Add("--retry-task");
             }
 
-            if (Name == "art-probe")
+            if (Name is "art-probe" or "development-probe" or "watch")
             {
                 allowed.Add("--server");
-                allowed.Add("--trigger");
+                if (Name != "watch")
+                {
+                    allowed.Add("--trigger");
+                }
+            }
+
+            if (Name == "watch")
+            {
+                allowed.Add("--dispatch-timeout");
             }
 
             Dictionary<string, string> options = new(StringComparer.Ordinal);
@@ -270,12 +302,17 @@ namespace GameCLI.Plugins.Orchestrator
                 }
             }
 
-            if (Name != "status" && !options.ContainsKey("--project") || Name != "start" && !options.ContainsKey("--issue") || Name is "start" or "revise" && !options.ContainsKey("--document") || Name == "approve" && !options.ContainsKey("--revision") || options.GetValueOrDefault("--format", "human") is not ("human" or "json") || !int.TryParse(options.GetValueOrDefault("--timeout", "600"), out int seconds) || seconds is < 1 or > 3600)
+            if (Name != "status" && !options.ContainsKey("--project") || Name != "start" && !options.ContainsKey("--issue") || Name is "start" or "revise" && !options.ContainsKey("--document") || Name == "approve" && !options.ContainsKey("--revision") || options.GetValueOrDefault("--format", "human") is not ("human" or "json") || !int.TryParse(options.GetValueOrDefault("--timeout", Name == "watch" ? "0" : "600"), out int seconds) || seconds < (Name == "watch" ? 0 : 1) || seconds > (Name == "watch" ? 86400 : 3600))
             {
                 throw new ArgumentException(Usage);
             }
 
-            if (Name == "art-probe" && (!Uri.TryCreate(options.GetValueOrDefault("--server"), UriKind.Absolute, out Uri? address) || address.Scheme is not ("ws" or "wss") || address.AbsolutePath != "/ws" || address.Query.Length > 0 || address.Fragment.Length > 0 || address.UserInfo.Length > 0 || options.GetValueOrDefault("--trigger", "sync") is not ("sync" or "event")))
+            if (Name is ("art-probe" or "development-probe" or "watch") && (!Uri.TryCreate(options.GetValueOrDefault("--server"), UriKind.Absolute, out Uri? address) || address.Scheme is not ("ws" or "wss") || address.AbsolutePath != "/ws" || address.Query.Length > 0 || address.Fragment.Length > 0 || address.UserInfo.Length > 0 || options.GetValueOrDefault("--trigger", "sync") is not ("sync" or "event")))
+            {
+                throw new ArgumentException(Usage);
+            }
+
+            if (Name == "watch" && (!int.TryParse(options.GetValueOrDefault("--dispatch-timeout", "600"), out int agentSeconds) || agentSeconds is < 1 or > 3600))
             {
                 throw new ArgumentException(Usage);
             }

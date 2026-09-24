@@ -8,7 +8,7 @@ using GameCLI.Contracts;
 namespace GameCLI.Services
 {
     /// <summary>Persists workflow state and resolves task identities against JIRA, never a local database.</summary>
-    internal sealed class JiraWorkflowStore
+    internal sealed partial class JiraWorkflowStore
     {
         private const string PropertyName = "gamecli.workflow.v1";
 
@@ -96,7 +96,7 @@ namespace GameCLI.Services
             }), cancellation);
         }
 
-        /// <summary>Writes execution evidence and its readable projection in one JIRA issue update.</summary>
+        /// <summary>Writes execution evidence without replacing the requirement description.</summary>
         public async Task SaveDeliveryAsync(Workflow state, PlannedTask task, CreatedTask created, TaskDelivery delivery, CancellationToken cancellation)
         {
             delivery.Validate();
@@ -109,10 +109,6 @@ namespace GameCLI.Services
 
             await SendAsync(HttpMethod.Put, "issue/" + created.Key, JsonSerializer.Serialize(new
             {
-                fields = new
-                {
-                    description = JiraIssueDescription.Task(state, task, IssueUrl(state.IssueKey)) + JiraIssueDescription.Delivery(delivery)
-                },
                 properties = new[]
                 {
                     new
@@ -313,15 +309,15 @@ namespace GameCLI.Services
         }
 
         /// <summary>Reads diagnostic execution evidence without treating it as a production delivery.</summary>
-        public async Task<ArtProbe?> ReadArtProbeAsync(string key, CancellationToken cancellation)
+        public async Task<AgentProbe?> ReadAgentProbeAsync(string key, CancellationToken cancellation, string role = "Art")
         {
             ValidateKey(key);
-            JsonElement property = await SendAsync(HttpMethod.Get, "issue/" + key + "/properties/gamecli.art-probe.v1", null, cancellation, true);
-            return property.ValueKind == JsonValueKind.Undefined ? null : WorkflowContract.Parse<ArtProbe>(property.GetProperty("value").GetRawText());
+            JsonElement property = await SendAsync(HttpMethod.Get, "issue/" + key + "/properties/" + ProbeProperty(role), null, cancellation, true);
+            return property.ValueKind == JsonValueKind.Undefined ? null : WorkflowContract.Parse<AgentProbe>(property.GetProperty("value").GetRawText());
         }
 
         /// <summary>Stores the bounded diagnostic receipt only; does not edit descriptions, approval or native status.</summary>
-        public async Task SaveArtProbeAsync(ArtProbe probe, CancellationToken cancellation)
+        public async Task SaveAgentProbeAsync(AgentProbe probe, CancellationToken cancellation)
         {
             ValidateKey(probe.IssueKey);
             string json = WorkflowContract.Serialize(probe);
@@ -330,7 +326,17 @@ namespace GameCLI.Services
                 throw new JiraTaskException("ART 联调记录超过容量。", 4);
             }
 
-            await SendAsync(HttpMethod.Put, "issue/" + probe.IssueKey + "/properties/gamecli.art-probe.v1", json, cancellation);
+            await SendAsync(HttpMethod.Put, "issue/" + probe.IssueKey + "/properties/" + ProbeProperty(probe.Role), json, cancellation);
+        }
+
+        private static string ProbeProperty(string role)
+        {
+            return role switch
+            {
+                "Art" => "gamecli.art-probe.v1",
+                "Development" => "gamecli.development-probe.v1",
+                _ => throw new ArgumentException("不支持的联调角色。")
+            };
         }
 
         private static string TaskLabel(Workflow state, PlannedTask task)

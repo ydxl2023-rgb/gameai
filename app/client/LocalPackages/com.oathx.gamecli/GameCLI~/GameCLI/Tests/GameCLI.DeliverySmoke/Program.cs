@@ -15,6 +15,12 @@ namespace GameCLI.DeliverySmoke
         private static async Task Main(string[] args)
         {
             Console.OutputEncoding = new UTF8Encoding(false);
+            if (args.Length == 2 && args[0] == "--watch-server")
+            {
+                await TestWatchTransportAsync(new Uri(args[1]));
+                return;
+            }
+
             if (args.Length == 2 && args[0] == "--probe-server")
             {
                 using FakeJira handler = new(false);
@@ -23,17 +29,18 @@ namespace GameCLI.DeliverySmoke
                 {
                 }, null);
                 ProbeAgent agent = new(handler, "slow");
-                ArtProbeWorkflow workflow = new(store, agent, () =>
+                AgentProbeWorkflow workflow = new(store, agent, () =>
                 {
                 });
                 using CancellationTokenSource timeout = new(TimeSpan.FromSeconds(10));
-                ArtProbe receipt = await workflow.RunAsync("GAME-1", new Uri(args[1]), true, timeout.Token);
+                AgentProbe receipt = await workflow.RunAsync("GAME-1", new Uri(args[1]), true, timeout.Token);
                 Require(receipt.Status == "completed" && agent.Calls == 1, "Event-triggered probe");
                 Console.WriteLine("PROBE_TRANSPORT_PASS");
                 return;
             }
 
-            await TestArtProbeAsync();
+            await TestCommentRecoveryAsync();
+            await TestAgentProbeAsync();
             foreach (string mode in new[]
             {
                 "chain",
@@ -229,7 +236,7 @@ namespace GameCLI.DeliverySmoke
             }
         }
 
-        private static async Task RejectAsync(Func<Task<GateReport>> action, string message)
+        private static async Task RejectAsync(Func<Task> action, string message)
         {
             try
             {
@@ -272,6 +279,11 @@ namespace GameCLI.DeliverySmoke
             public async Task<string> RunAsync(string role, string input, object schema, string executionId, Func<JsonElement, CancellationToken, Task<object>>? publish, Func<string, string, CancellationToken, Task> sessionStarted, CancellationToken cancellation)
             {
                 Calls++;
+                if (Mode == "slow")
+                {
+                    await Task.Delay(350, cancellation);
+                }
+
                 await sessionStarted("thread-" + role, "turn-" + Calls, cancellation);
                 OnRun?.Invoke();
                 string path = role + ".txt";
@@ -287,7 +299,114 @@ namespace GameCLI.DeliverySmoke
             }
         }
 
-        private static async Task TestArtProbeAsync()
+        private static async Task TestWatchTransportAsync(Uri address)
+        {
+            string directory = Path.Combine(Path.GetTempPath(), "gamecli-watch-" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(directory);
+            using FakeJira handler = new(false);
+            using HttpClient http = new(handler);
+            JiraWorkflowStore store = new(http, new JiraConnection("https://jira.test", "GAME", "secret"), () =>
+            {
+            }, null);
+            FakeAgent agent = new(directory);
+            agent.Mode = "slow";
+            DeliveryWorkflow delivery = new(store, agent, directory, _ =>
+            {
+            });
+            DeliveryWatcher watcher = new(store, delivery, () => new MemoryStream(), () =>
+            {
+            });
+            using CancellationTokenSource timeout = new(TimeSpan.FromSeconds(15));
+            Task control = Task.Run(async () =>
+            {
+                try
+                {
+                    while (await Console.In.ReadLineAsync(timeout.Token) is string command)
+                    {
+                        if (command == "complete-art")
+                        {
+                            handler.Done.Add("GAME-2");
+                            Console.WriteLine("{\"type\":\"test.art-reviewed\"}");
+                        }
+                        else if (command == "stop")
+                        {
+                            timeout.Cancel();
+                            return;
+                        }
+                    }
+                }
+                catch (OperationCanceledException)
+                {
+                    // The test owns its private control pipe.
+                }
+            });
+            try
+            {
+                await watcher.RunAsync("GAME-1", address, gates => Console.WriteLine(WorkflowContract.Serialize(new
+                {
+                    type = "test.gates",
+                    calls = agent.Calls,
+                    comments = handler.Comments.Count,
+                    gates
+                })), timeout.Token);
+            }
+            catch (OperationCanceledException) when (timeout.IsCancellationRequested)
+            {
+                // The harness stops the persistent watcher after checking its output.
+            }
+            finally
+            {
+                timeout.Cancel();
+                await control;
+            }
+
+            Require(agent.Calls == 3 && handler.Comments.Count == 3 && handler.CommentPosts == 3 && handler.TransitionCalls == 1, "Watch must dispatch Art, Development and QA exactly once");
+            Require(handler.Comments.Any(text => text.Contains("执行角色：程序", StringComparison.Ordinal)), "Development execution comment");
+            Console.WriteLine("{\"type\":\"test.watch-complete\"}");
+        }
+
+        private static async Task TestCommentRecoveryAsync()
+        {
+            foreach (string mode in new[]
+            {
+                "normal", "lost", "unknown", "denied"
+            })
+            {
+                using FakeJira handler = new(false);
+                using HttpClient http = new(handler);
+                JiraWorkflowStore store = new(http, new JiraConnection("https://jira.test", "GAME", "secret"), () =>
+                {
+                }, null);
+                string execution = Guid.NewGuid().ToString("N");
+                handler.CommentFault = mode;
+                async Task Publish() => await store.PublishExecutionCommentAsync("GAME-2", execution, "执行结果：只读联调通过", CancellationToken.None);
+                if (mode == "normal")
+                {
+                    await Publish();
+                }
+                else
+                {
+                    await RejectAsync(Publish, mode);
+                }
+
+                handler.CommentFault = "";
+                if (mode == "unknown")
+                {
+                    await RejectAsync(Publish, mode);
+                    Require(handler.CommentPosts == 1 && handler.Comments.Count == 0, "Unknown POST is not repeated");
+                }
+                else
+                {
+                    await Publish();
+                    await Publish();
+                    Require(handler.Comments.Count == 1 && handler.CommentPosts == (mode == "denied" ? 2 : 1), "Exactly one execution comment");
+                }
+
+                Console.WriteLine("Comment recovery: " + mode + " passed");
+            }
+        }
+
+        private static async Task TestAgentProbeAsync()
         {
             foreach (string mode in new[]
             {
@@ -302,7 +421,7 @@ namespace GameCLI.DeliverySmoke
                 {
                 }, null);
                 ProbeAgent agent = new(handler, mode);
-                ArtProbeWorkflow workflow = new(store, agent, () =>
+                AgentProbeWorkflow workflow = new(store, agent, () =>
                 {
                     if (mode == "disabled")
                     {
@@ -317,9 +436,9 @@ namespace GameCLI.DeliverySmoke
                 bool failed = false;
                 try
                 {
-                    ArtProbe receipt = await workflow.ExecuteAsync("GAME-1", CancellationToken.None);
+                    AgentProbe receipt = await workflow.ExecuteAsync("GAME-1", CancellationToken.None);
                     Require(receipt.Status == "completed" && receipt.Result!.Acknowledged && !receipt.Result.AssetsGenerated, "Probe receipt");
-                    ArtProbe repeated = await workflow.ExecuteAsync("GAME-1", CancellationToken.None);
+                    AgentProbe repeated = await workflow.ExecuteAsync("GAME-1", CancellationToken.None);
                     Require(repeated.ExecutionId == receipt.ExecutionId && agent.Calls == 1, "Probe deduplication");
                 }
                 catch (Exception exception) when (exception is JiraTaskException or HttpRequestException or JsonException or IOException)
@@ -385,7 +504,7 @@ namespace GameCLI.DeliverySmoke
                     handler.State.Revision = "changed";
                 }
 
-                return WorkflowContract.Serialize(new ArtProbeResult("GAME-2", executionId, true, mode == "fabricated-assets", "已接收任务，未生成资源。", new[]
+                return WorkflowContract.Serialize(new AgentProbeResult("GAME-2", executionId, true, mode == "fabricated-assets", "已接收任务，未生成资源。", new[]
                 {
                     "背包界面设计"
                 }));
@@ -394,7 +513,19 @@ namespace GameCLI.DeliverySmoke
 
         private sealed class FakeJira : HttpMessageHandler
         {
-            public ArtProbe? Probe
+            public Dictionary<string, JsonElement> CommentReceipts
+            { get; } = new();
+
+            public List<string> Comments
+            { get; } = new();
+
+            public string CommentFault
+            { get; set; } = "";
+
+            public int CommentPosts
+            { get; private set; }
+
+            public AgentProbe? Probe
             { get; private set; }
 
             public Workflow State
@@ -452,6 +583,63 @@ namespace GameCLI.DeliverySmoke
             {
                 string[] parts = request.RequestUri!.AbsolutePath.Split('/', StringSplitOptions.RemoveEmptyEntries);
                 string key = parts[4];
+                if (parts.Length > 6 && parts[6].StartsWith("gamecli.comment.", StringComparison.Ordinal))
+                {
+                    string marker = key + "/" + parts[6];
+                    if (request.Method == HttpMethod.Get)
+                    {
+                        return CommentReceipts.TryGetValue(marker, out JsonElement receipt) ? Json(new
+                        {
+                            value = receipt
+                        }) : new HttpResponseMessage(HttpStatusCode.NotFound);
+                    }
+
+                    CommentReceipts[marker] = JsonDocument.Parse(await request.Content!.ReadAsStringAsync(cancellationToken)).RootElement.Clone();
+                    return new HttpResponseMessage(HttpStatusCode.NoContent);
+                }
+
+                if (parts.Length > 5 && parts[5] == "comment")
+                {
+                    if (request.Method == HttpMethod.Get)
+                    {
+                        return Json(new
+                        {
+                            total = Comments.Count,
+                            comments = Comments.Select((text, index) => new
+                            {
+                                id = (index + 1).ToString(),
+                                body = text
+                            }).ToArray()
+                        });
+                    }
+
+                    Require(request.Method == HttpMethod.Post, "Comment method");
+                    CommentPosts++;
+                    if (CommentFault == "denied")
+                    {
+                        return new HttpResponseMessage(HttpStatusCode.Forbidden)
+                        {
+                            Content = new StringContent("{}")
+                        };
+                    }
+
+                    if (CommentFault != "unknown")
+                    {
+                        using JsonDocument comment = JsonDocument.Parse(await request.Content!.ReadAsStringAsync(cancellationToken));
+                        Comments.Add(comment.RootElement.GetProperty("body").GetString()!);
+                    }
+
+                    if (CommentFault is "lost" or "unknown")
+                    {
+                        throw new HttpRequestException("Lost comment response");
+                    }
+
+                    return Json(new
+                    {
+                        id = Comments.Count.ToString()
+                    });
+                }
+
                 if (parts.Length > 6 && parts[6] == "gamecli.art-probe.v1")
                 {
                     if (request.Method == HttpMethod.Get)
@@ -463,7 +651,7 @@ namespace GameCLI.DeliverySmoke
                     }
 
                     Require(request.Method == HttpMethod.Put, "Unexpected probe mutation");
-                    Probe = WorkflowContract.Parse<ArtProbe>(await request.Content!.ReadAsStringAsync(cancellationToken));
+                    Probe = WorkflowContract.Parse<AgentProbe>(await request.Content!.ReadAsStringAsync(cancellationToken));
                     if (FailIntent)
                     {
                         throw new HttpRequestException("Lost intent response");

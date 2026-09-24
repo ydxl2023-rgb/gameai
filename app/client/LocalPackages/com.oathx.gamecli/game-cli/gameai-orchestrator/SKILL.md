@@ -51,7 +51,7 @@ description: 用户在 AI 对话中提供游戏需求文档并要求启动流程
 - `orchestrator --resume --issue <KEY> --project <目录>`：核对已有状态再恢复，不绕过批准，也不重复提交结果未知的建单。
 - `orchestrator --revise --issue <KEY> --document <新文档> --project <目录>`：尚未保存 PM 计划前重新策划，旧审批失效。
 
-同一 JIRA 项目当前限定单机器、单用户调度；本机锁不能当作跨机器锁。逻辑阶段、任务依赖及审批保存在 JIRA issue property，不假定项目已有同名 workflow status。依赖保存在 JIRA 属性并展示为描述引用，不创建原生 JIRA issue links。正式专业派工通过 dispatch 显式执行，审核后再次调度；只读联调使用下述 art-probe。
+同一 JIRA 项目当前限定单机器、单用户调度；本机锁不能当作跨机器锁。逻辑阶段、任务依赖及审批保存在 JIRA issue property，不假定项目已有同名 workflow status。依赖保存在 JIRA 属性并展示为描述引用，不创建原生 JIRA issue links。正式专业派工通过 dispatch 执行一次或 watch 常驻接收通知，仍保留审核与依赖；只读联调使用 probe 命令。
 
 ## 专业需求同步登记
 
@@ -70,3 +70,7 @@ description: 用户在 AI 对话中提供游戏需求文档并要求启动流程
 ## ART 联调入口
 
 用户明确要求只启动美术代理、验证通知链路且不制作资源时，使用 `orchestrator --art-probe --issue <主任务> --server <ws或wss地址>/ws --project <目录> --format json`。默认连接注册后核对当前任务；需要只等待后续 JIRA 通知时加 `--trigger event`。这是诊断授权，不是生产审批；代理不得写工程、生成资源或完成单据。回执只保存到 `gamecli.art-probe.v1`，不能当作交付门禁证据。重复执行复用已完成记录；中断或结果未知时先核对会话，不清除记录绕过防重。当前限定一台指定工作机运行，不能当作跨机器租约调度。
+
+## 常驻编排与评论
+
+用户授权通知驱动的正式执行时，调用 `orchestrator --watch --issue <主任务> --server <地址>/ws --project <目录> --format json`。初始连接和重连必须重新核对 JIRA；只调度已批准且前置实际交付有效的任务，不能把美术联调当成审核完成。当前只配置一台执行机；其他连接用 `--connect` 观察，不同时在多台机器运行 watch。专业执行结果由宿主以中文评论写入对应子任务，按执行编号去重；评论响应未知时先恢复回执，不重跑代理或盲目重复 POST。程序启动只读验证用 `--development-probe`，不可伪造生产完成。

@@ -81,4 +81,6 @@ Node.js 服务位于 GameCLI~/GameCLIServer，属于服务器端明确的技术�
 
 GameCLIServer 的局域网 WebSocket 客户端连接无需认证令牌；JIRA Webhook 保留通知令牌校验。
 
-`Contracts/ArtProbe.cs` 保存只读联调契约；`Core/ArtProbeWorkflow.cs` 串联 WebSocket 通知、JIRA 核对和独立 Art 会话，联调记录不作为生产交付。
+`Contracts/AgentProbe.cs` 保存只读联调契约；`Core/AgentProbeWorkflow.cs` 串联 WebSocket 通知、JIRA 核对和独立 Art 会话，联调记录不作为生产交付。
+
+`Core/DeliveryWatcher.cs` 管理串行通知调度；`Services/JiraExecutionComments.cs` 管理评论投递与未知结果恢复；`Services/ExecutionComment.cs` 格式化中文执行结果。Development 只读联调复用现有诊断执行器。

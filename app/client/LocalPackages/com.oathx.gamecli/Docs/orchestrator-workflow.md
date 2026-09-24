@@ -144,3 +144,21 @@ GameCLI.exe orchestrator --dispatch --issue AI9527-1 --project <工程目录> --
 ```powershell
 & './app/client/Library/GameCLI/GameCLI.exe' orchestrator --art-probe --issue AI9527-1 --server ws://192.168.72.39:8088/ws --project './app/client' --timeout 600 --format json
 ```
+
+## 常驻通知调度与执行评论
+
+`orchestrator --watch --issue <需求主任务> --server <ws或wss地址>/ws --project <工程目录> --format json` 持续监听一个需求及其子任务。默认无限等待，Ctrl+C 停止，`--timeout <秒>` 可设置有界运行。首次注册、重连和相关单据通知均触发最新 JIRA 核对；无事件时不轮询 JIRA。
+
+每次核对串行处理就绪任务，保留需求版本审批、美术人工抽检、前置任务实际文件/哈希检查及最终验收门禁。美术审核完成后，Development 获得真实上游交付并启动；程序交付校验通过后处理完成转换，再进入 QA。纯只读联调不能满足生产交付门禁。执行失败或状态不确定时暂停对应任务，不因重复通知自动重跑。
+
+监听和心跳独立于代理执行。断线时取消本次执行，重连后先核对已有记录；初始同步和重复通知不会重复执行已提交任务。事件合并为一次待处理提示，不无限堆积。每次调度期间获取本机项目锁，空闲时释放，允许同机执行批准等命令。当前限定一台指定执行机；固定客户端编号仅拒绝重复连接，不是跨机器的生产租约。
+
+专业执行成功、阻塞、失败和取消结果写入对应子任务的中文评论：角色、结果摘要、会话与轮次、执行编号、产物、检查证据及下一步。`gamecli.delivery.v1` 保存权威执行与版本信息，执行时不再用结果覆盖需求描述。评论不表示人工审批，也不能代替真实交付。
+
+评论使用独立属性 `gamecli.comment.<execution_id>` 保存投递状态，发送前持久化意图。响应丢失后分页查找对应执行编号，已存在则补记回执，尚未确认则停止重复发送；确定的字段/权限拒绝可在修复后重试评论，不重跑 Agent。JIRA 不可用时无法承诺即时写入；重连或再次调度会补齐已保存的终态结果评论。进程被强制结束但没有终态证据的运行记录仍需人工核对。
+
+Development 只读验证使用 `orchestrator --development-probe --issue <主任务> --server <ws或wss地址>/ws --project <目录> --format json`，结果保存在程序子任务的 `gamecli.development-probe.v1` 和评论。它不编写代码、不生成资源、不伪造美术完成，不能解除生产审批/依赖。已有 ART 联调回执在再次运行 `--art-probe` 时补写评论，无需重复启动。
+
+测试：构建并运行 `GameCLI.DeliverySmoke`；服务目录运行 `npm run test:watch`，覆盖真实 WebSocket 传输、美术审核前阻塞、审核后 Development/QA 串行启动、重连及重复事件防重、执行评论。测试中的 JIRA 与专业制作 Agent 是隔离替身，不表示真实生产资源已交付。
+
+常驻命令每轮调度默认最多 600 秒，可通过 `--dispatch-timeout <1至3600秒>` 调整；`--timeout` 则控制整个监听命令的时长。单轮超时会取消所属代理并记录失败，不无限占用执行器。

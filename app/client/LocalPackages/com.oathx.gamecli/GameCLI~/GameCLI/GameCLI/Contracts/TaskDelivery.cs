@@ -47,6 +47,9 @@ namespace GameCLI.Contracts
         public DeliveryResult? Result
         { get; set; }
 
+        public string FailureSummary
+        { get; set; } = "执行未通过，请核对代理会话。";
+
         public string Version
         { get; set; } = "";
 

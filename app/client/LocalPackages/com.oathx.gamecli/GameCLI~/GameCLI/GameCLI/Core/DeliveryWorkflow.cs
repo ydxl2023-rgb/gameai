@@ -123,6 +123,7 @@ namespace GameCLI.Core
         public async Task<GateReport> DispatchAsync(string issue, string? retryTask, CancellationToken cancellation)
         {
             GateReport report = await InspectAsync(issue, cancellation);
+            await PublishResultsAsync(report, cancellation);
             if (retryTask != null && !report.Tasks.Any(task => task.IssueKey == retryTask))
             {
                 throw new ArgumentException("重试单据不属于当前需求。");
@@ -262,6 +263,7 @@ namespace GameCLI.Core
                     await store.SaveDeliveryAsync(state, task, created, delivery, token);
                 }, cancellation);
                 DeliveryResult result = WorkflowContract.Parse<DeliveryResult>(output);
+                delivery.Result = result;
                 WorkflowContract.RequireText(result.Summary, 2000);
                 if (result.Verdict != "pass")
                 {
@@ -282,7 +284,7 @@ namespace GameCLI.Core
                 submissionAttempted = true;
                 await store.SaveDeliveryAsync(state, task, created, delivery, cancellation);
             }
-            catch
+            catch (Exception failure)
             {
                 // An uncertain submission stays untouched; the next read reconciles the server's actual record.
                 if (!submissionAttempted)
@@ -295,7 +297,10 @@ namespace GameCLI.Core
                         if (latest?.ExecutionId == delivery.ExecutionId && latest.Status == "running" && current.Revision == state.Revision && WorkflowContract.Serialize(current.Plan) == WorkflowContract.Serialize(state.Plan))
                         {
                             latest.Status = "failed";
+                            latest.Result = delivery.Result;
+                            latest.FailureSummary = failure is JiraTaskException ? failure.Message : failure is OperationCanceledException ? "执行已取消或超时，未报告完成。" : "执行连接、结果格式或产物校验异常，请核对本次代理会话。";
                             await store.SaveDeliveryAsync(current, task, created, latest, deadline.Token);
+                            await store.PublishExecutionCommentAsync(created.Key, latest.ExecutionId, ExecutionComment.Delivery(task.Role, latest), deadline.Token);
                         }
                     }
                     catch (Exception exception) when (exception is IOException or HttpRequestException or OperationCanceledException or JiraTaskException)
@@ -305,6 +310,19 @@ namespace GameCLI.Core
                 }
 
                 throw;
+            }
+
+            await store.PublishExecutionCommentAsync(created.Key, delivery.ExecutionId, ExecutionComment.Delivery(task.Role, delivery), cancellation);
+        }
+
+        private async Task PublishResultsAsync(GateReport report, CancellationToken cancellation)
+        {
+            foreach (TaskGate task in report.Tasks)
+            {
+                if (task.Delivery is { Status: "submitted" or "failed" } delivery)
+                {
+                    await store.PublishExecutionCommentAsync(task.IssueKey, delivery.ExecutionId, ExecutionComment.Delivery(task.Role, delivery), cancellation);
+                }
             }
         }
 

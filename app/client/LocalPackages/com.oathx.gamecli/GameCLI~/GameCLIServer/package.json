@@ -10,7 +10,8 @@
     "start": "node --env-file-if-exists=.env src/index.js",
     "test": "node --test test/server.test.js",
     "test:cli": "node --test test/cli.test.js",
-    "test:probe": "node --test test/probe.test.js"
+    "test:probe": "node --test test/probe.test.js",
+    "test:watch": "node --test test/watch.test.js"
   },
   "dependencies": {
     "ws": "8.21.3"

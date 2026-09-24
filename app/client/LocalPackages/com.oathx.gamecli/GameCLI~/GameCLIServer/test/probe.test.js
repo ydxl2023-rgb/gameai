@@ -41,14 +41,14 @@ test('JIRA Webhook starts one Art probe through the real C# event listener and k
     unrelated.issue.fields.parent.key = 'GAME-8';
     await post(app, unrelated);
     await new Promise(resolve => setTimeout(resolve, 150));
-    assert.ok(!diagnostics.includes('正在启动 ART'));
+    assert.ok(!diagnostics.includes('正在启动 Art'));
     const related = jiraEvent('GAME-3', 2);
     related.issue.fields.parent.key = 'GAME-1';
     await post(app, related);
     await post(app, related);
     assert.equal(await exited, 0, diagnostics);
     assert.ok(output.includes('PROBE_TRANSPORT_PASS'));
-    assert.equal(diagnostics.match(/正在启动 ART/g)?.length, 1);
+    assert.equal(diagnostics.match(/正在启动 Art/g)?.length, 1);
     assert.ok(logs.filter(item => item.heartbeats > 0 && item.close_code === undefined).length >= 3);
     assert.ok(!logs.some(item => item.message.includes('心跳超时')));
 });

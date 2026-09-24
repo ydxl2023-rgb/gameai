@@ -25,6 +25,8 @@ namespace GameCLI.Plugins.Orchestrator
             new WorkflowCommand("gates"),
             new WorkflowCommand("dispatch"),
             new WorkflowCommand("art-probe"),
+            new WorkflowCommand("development-probe"),
+            new WorkflowCommand("watch"),
             new ConnectCommand()
         });
     }
