@@ -162,3 +162,22 @@ Development 只读验证使用 `orchestrator --development-probe --issue <主任
 测试：构建并运行 `GameCLI.DeliverySmoke`；服务目录运行 `npm run test:watch`，覆盖真实 WebSocket 传输、美术审核前阻塞、审核后 Development/QA 串行启动、重连及重复事件防重、执行评论。测试中的 JIRA 与专业制作 Agent 是隔离替身，不表示真实生产资源已交付。
 
 常驻命令每轮调度默认最多 600 秒，可通过 `--dispatch-timeout <1至3600秒>` 调整；`--timeout` 则控制整个监听命令的时长。单轮超时会取消所属代理并记录失败，不无限占用执行器。
+
+
+## 需求附件上传门禁
+
+用户明确批准完整需求版本后，先上传已审阅 HTML 到已有主任务，核验远端文件与批准时本地文件的 SHA-256 一致，才允许启动 PM 分拆并创建美术、程序及验收子任务。附件不是建单后的补充步骤。主任务和子任务描述保留附件地址、需求版本及文件校验值。
+
+审批命令必须携带 `--attachment <app/desgin/对应文档.html>`，文件必须包含当前完整 revision。宿主固定文件哈希，重试不得换文件；保存需求版本、文件哈希、附件编号及累计上传次数到 JIRA workflow 属性。文件名包含完整 revision 和文件哈希，便于结果核对。当前仅支持不超过 5MB 的 HTML。
+
+同一批准文档最多上传三次（首次加两次重试）。每次发起上传前先保存计数；失败先核对主任务附件列表和实际内容，再决定重试。上传响应丢失但远端已存储相同内容时复用附件，不重复 POST。核验服务不可用、结果仍不明确或发现内容不一致时暂停，不盲目重发。重启和 resume 不清零次数，三次仍未成功进入 attachment_failed，不启动 PM、不创建子任务。
+
+`orchestrator --resume --issue <KEY> --project <目录> [--attachment <同一HTML>]` 恢复核对。远端已核验成功时无需本地文件；需要继续上传时必须提供同一文件。旧版已批准但没有附件记录的流程不能直接绕过门禁开始建单，应先人工核对迁移，不能伪造回执。附件失败不消耗 PM 执行次数。
+
+审批、附件和专业执行仍是不同关口；本规则不授权助手替用户批准需求，不自动启动专业制作。此机制仍限定单机器调度，不声称 JIRA 附件上传具有跨客户端原子幂等性。
+
+附件接口采用 JIRA REST API v2 的 multipart file 与 X-Atlassian-Token: no-check；参见 https://docs.atlassian.com/software/jira/docs/api/10.7.0/com/atlassian/jira/rest/v2/issue/IssueAttachmentsResource.html 。
+
+较大的工作流快照以带 SHA-256 校验的 gzip-base64-v1 封装无损保存于同一个 JIRA 属性；小快照和已有明文属性保持兼容。解压大小上限 1MB，压缩后仍须满足 32000 字节限制，超过时停止，不截断需求、审批或执行历史。
+
+PM 按独立交付标准输出同角色多任务，以 depends_on 表达真实依赖并按拓扑顺序发布。新增 orchestrator --replan，仅迁移尚未开始、无交付记录的已发布计划；PreviousPlan 保留旧计划，原子保存新计划后复用旧任务编号并补建其他任务，最终刷新全部单据依赖编号。执行中断使用 resume，不重新拆分；调度仅在 tasks_created 后允许。当前每计划最多 20 项，显式迁移一次。

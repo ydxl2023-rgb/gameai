@@ -18,7 +18,7 @@ namespace GameCLI.Plugins.Orchestrator
         public string Description => Name switch
         {
             "start" => "Start a Design agent from a document and wait for requirement approval.",
-            "approve" => "Approve the reviewed revision and start a PM agent to create JIRA tasks.",
+            "approve" => "Upload and verify the approved requirement document before starting PM.",
             "resume" => "Resume a recorded workflow without bypassing approval or repeating unknown writes.",
             "revise" => "Replace the unplanned requirement document and rerun Design.",
             "gates" => "读取专业任务依赖、完成状态和交付文件校验结果。",
@@ -34,7 +34,7 @@ namespace GameCLI.Plugins.Orchestrator
             Name = name;
         }
 
-        private string Usage => "GameCLI orchestrator --" + Name + (Name == "start" ? " --document <UTF-8 .md|.txt>" : " --issue <KEY-123>") + (Name == "approve" ? " --revision <reviewed SHA-256>" : Name == "revise" ? " --document <UTF-8 .md|.txt>" : "") + (Name == "status" ? "" : " --project <directory> [--skills <game-cli>] [--codex <codex.exe>] [--model <model>] [--timeout <seconds>]") + (Name == "dispatch" ? " [--retry-task <KEY-123>]" : "") + (Name is "art-probe" or "development-probe" or "watch" ? " --server <ws://host:port/ws>" : "") + (Name is "art-probe" or "development-probe" ? " [--trigger sync|event]" : "") + (Name == "watch" ? " [--dispatch-timeout <seconds>]" : "") + " [--issue-type <name-or-id>] [--format human|json]";
+        private string Usage => "GameCLI orchestrator --" + Name + (Name == "start" ? " --document <UTF-8 .md|.txt>" : " --issue <KEY-123>") + (Name == "approve" ? " --revision <reviewed SHA-256> --attachment <reviewed.html>" : Name == "revise" ? " --document <UTF-8 .md|.txt>" : "") + (Name == "status" ? "" : " --project <directory> [--skills <game-cli>] [--codex <codex.exe>] [--model <model>] [--timeout <seconds>]") + (Name == "resume" ? " [--attachment <same-reviewed.html>]" : "") + (Name == "dispatch" ? " [--retry-task <KEY-123>]" : "") + (Name is "art-probe" or "development-probe" or "watch" ? " --server <ws://host:port/ws>" : "") + (Name is "art-probe" or "development-probe" ? " [--trigger sync|event]" : "") + (Name == "watch" ? " [--dispatch-timeout <seconds>]" : "") + " [--issue-type <name-or-id>] [--format human|json]";
 
         /// <inheritdoc />
         public async Task<int> ExecuteAsync(string[] args, CancellationToken cancellationToken)
@@ -184,8 +184,9 @@ namespace GameCLI.Plugins.Orchestrator
                 Workflow result = Name switch
                 {
                     "start" => await workflow.StartAsync(document!, cancellation.Token),
-                    "approve" => await workflow.ApproveAsync(issue!, options["--revision"], cancellation.Token),
-                    "resume" => await workflow.ResumeAsync(issue!, cancellation.Token),
+                    "approve" => await workflow.ApproveAsync(issue!, options["--revision"], cancellation.Token, options["--attachment"]),
+                    "resume" => await workflow.ResumeAsync(issue!, cancellation.Token, options.GetValueOrDefault("--attachment")),
+                    "replan" => await workflow.ReplanAsync(issue!, cancellation.Token),
                     "revise" => await workflow.ReviseAsync(issue!, document!, cancellation.Token),
                     _ => await store.LoadAsync(issue!, cancellation.Token)
                 };
@@ -202,7 +203,7 @@ namespace GameCLI.Plugins.Orchestrator
                 }));
                 if (!json && result.Stage == "awaiting_approval")
                 {
-                    Console.WriteLine("Review the design above, then run: GameCLI orchestrator --approve --issue " + issue + " --revision " + result.Revision + " --project \"" + project + "\"");
+                    Console.WriteLine("Review the design above, then run: GameCLI orchestrator --approve --issue " + issue + " --revision " + result.Revision + " --attachment <reviewed.html> --project \"" + project + "\"");
                 }
 
                 return blocked ? 3 : 0;
@@ -272,6 +273,12 @@ namespace GameCLI.Plugins.Orchestrator
             if (Name == "approve")
             {
                 allowed.Add("--revision");
+                allowed.Add("--attachment");
+            }
+
+            if (Name == "resume")
+            {
+                allowed.Add("--attachment");
             }
 
             if (Name == "dispatch")
@@ -302,7 +309,7 @@ namespace GameCLI.Plugins.Orchestrator
                 }
             }
 
-            if (Name != "status" && !options.ContainsKey("--project") || Name != "start" && !options.ContainsKey("--issue") || Name is "start" or "revise" && !options.ContainsKey("--document") || Name == "approve" && !options.ContainsKey("--revision") || options.GetValueOrDefault("--format", "human") is not ("human" or "json") || !int.TryParse(options.GetValueOrDefault("--timeout", Name == "watch" ? "0" : "600"), out int seconds) || seconds < (Name == "watch" ? 0 : 1) || seconds > (Name == "watch" ? 86400 : 3600))
+            if (Name != "status" && !options.ContainsKey("--project") || Name != "start" && !options.ContainsKey("--issue") || Name is "start" or "revise" && !options.ContainsKey("--document") || Name == "approve" && (!options.ContainsKey("--revision") || !options.ContainsKey("--attachment")) || options.GetValueOrDefault("--format", "human") is not ("human" or "json") || !int.TryParse(options.GetValueOrDefault("--timeout", Name == "watch" ? "0" : "600"), out int seconds) || seconds < (Name == "watch" ? 0 : 1) || seconds > (Name == "watch" ? 86400 : 3600))
             {
                 throw new ArgumentException(Usage);
             }

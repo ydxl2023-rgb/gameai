@@ -44,6 +44,20 @@ namespace GameCLI.WorkflowSmoke
             "背包逻辑"
         }, Array.Empty<string>());
 
+        private static async Task<Workflow> ApproveWithDocumentAsync(RequirementWorkflow workflow, string key, string revision, CancellationToken cancellation)
+        {
+            string path = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N") + ".html");
+            await File.WriteAllTextAsync(path, "<html><body>" + revision + "</body></html>", cancellation);
+            try
+            {
+                return await workflow.ApproveAsync(key, revision, cancellation, path);
+            }
+            finally
+            {
+                File.Delete(path);
+            }
+        }
+
         private static async Task<int> Main(string[] args)
         {
             if (args.Length > 0 && args[0] == "app-server")
@@ -53,6 +67,25 @@ namespace GameCLI.WorkflowSmoke
             }
 
             string root = Path.GetFullPath(args[0]);
+            using (FakeJira snapshotHandler = new())
+            using (HttpClient snapshotHttp = new(snapshotHandler))
+            {
+                JiraWorkflowStore snapshotStore = new(snapshotHttp, new JiraConnection("https://jira.test", "GAME", "fake-secret"), () =>
+                {
+                }, null);
+                Workflow snapshot = await snapshotStore.StartAsync("快照压缩测试", CancellationToken.None);
+                snapshot.Document = string.Concat(Enumerable.Repeat("完整中文需求，不能丢失批准内容。", 3000));
+                snapshot.DocumentHash = WorkflowContract.Hash(snapshot.Document);
+                await snapshotStore.SaveAsync(snapshot, CancellationToken.None);
+                Workflow restored = await snapshotStore.LoadAsync(snapshot.IssueKey, CancellationToken.None);
+                Require(WorkflowContract.Serialize(restored) == WorkflowContract.Serialize(snapshot), "Large JIRA snapshot round trip lost data.");
+                string encoded = WorkflowSnapshot.Encode(snapshot);
+                Require(Encoding.UTF8.GetByteCount(encoded) <= 32000 && encoded.Contains("gzip-base64-v1"), "Snapshot exceeds property limit.");
+                await ExpectFailureAsync(() => Task.FromResult(WorkflowSnapshot.Decode(encoded.Replace(WorkflowContract.Hash(WorkflowContract.Serialize(snapshot)), new string('0', 64)))));
+                snapshot.Document = new string('大', 400000);
+                await ExpectFailureAsync(() => Task.FromResult(WorkflowSnapshot.Encode(snapshot)));
+                Console.WriteLine("PASS snapshot-compression");
+            }
             string formatted = JiraIssueDescription.Workflow(new Workflow
             {
                 Design = design with
@@ -103,10 +136,59 @@ namespace GameCLI.WorkflowSmoke
                 using CancellationTokenSource deadline = new(TimeSpan.FromSeconds(300));
                 Workflow state = await workflow.StartAsync("开发 Unity 2022.3 Windows 单机原型。唯一需求：启动后屏幕中央显示固定英文 HELLO，白色文字黑色背景，使用 Unity 内置字体。无交互、无存档、无网络、无美术资产需求，不做其他功能。验收：启动进入画面后能看见且只看见 HELLO，无运行错误。以上为完整测试需求，其他表现使用 Unity 默认值。", deadline.Token);
                 Require(state.Stage == "awaiting_approval", "Real Design did not produce a reviewable result.");
-                Workflow done = await workflow.ApproveAsync(state.IssueKey, state.Revision, deadline.Token);
+                Workflow done = await ApproveWithDocumentAsync(workflow, state.IssueKey, state.Revision, deadline.Token);
                 Require(done.Stage == "tasks_created" && done.Created.Count >= 2, "Real PM did not publish tasks through the fake JIRA transport.");
                 Console.WriteLine("REAL_CODEX_FAKE_JIRA_PASSED " + done.Created.Count);
                 return 0;
+            }
+
+            foreach (string uploadMode in new[]
+            {
+                "retry",
+                "exhausted",
+                "lost",
+                "corrupt"
+            })
+            {
+                Environment.SetEnvironmentVariable("GAMECLI_WORKFLOW_MODE", "success");
+                using FakeJira uploadHandler = new()
+                {
+                    UploadFailures = uploadMode == "retry" ? 2 : uploadMode == "exhausted" ? 3 : 0,
+                    LoseUploadResponse = uploadMode == "lost",
+                    CorruptUpload = uploadMode == "corrupt"
+                };
+                using HttpClient uploadHttp = new(uploadHandler);
+                JiraWorkflowStore uploadStore = new(uploadHttp, new JiraConnection("https://jira.test", "GAME", "fake-secret"), () =>
+                {
+                }, null);
+                RequirementWorkflow uploadWorkflow = new(uploadStore, new CodexWorkflowAgent(Environment.ProcessPath!, root, skills, null), _ =>
+                {
+                });
+                Workflow draft = await uploadWorkflow.StartAsync("附件测试", CancellationToken.None);
+                await ExpectFailureAsync(() => uploadWorkflow.ApproveAsync(draft.IssueKey, draft.Revision, CancellationToken.None));
+                Require(uploadHandler.UploadPosts == 0 && uploadHandler.ChildPosts == 0, "Missing attachment bypassed gate.");
+                if (uploadMode is "exhausted" or "corrupt")
+                {
+                    await ExpectFailureAsync(() => ApproveWithDocumentAsync(uploadWorkflow, draft.IssueKey, draft.Revision, CancellationToken.None));
+                    Workflow failed = await uploadStore.LoadAsync(draft.IssueKey, CancellationToken.None);
+                    Require(uploadHandler.ChildPosts == 0 && !failed.Executions.Any(item => item.Role == "PM"), "Upload failure started PM.");
+                    await ExpectFailureAsync(() => uploadWorkflow.ResumeAsync(draft.IssueKey, CancellationToken.None));
+                    Require(uploadHandler.UploadPosts == (uploadMode == "exhausted" ? 3 : 1), "Upload attempt budget reset or corruption was reposted.");
+                }
+                else
+                {
+                    Workflow done = await ApproveWithDocumentAsync(uploadWorkflow, draft.IssueKey, draft.Revision, CancellationToken.None);
+                    Require(done.Stage == "tasks_created" && done.Attachment?.Id != null, "Verified attachment did not permit PM.");
+                    Require(uploadHandler.UploadPosts == (uploadMode == "retry" ? 3 : 1), "Lost upload response caused duplicate POST.");
+                    await uploadWorkflow.ResumeAsync(draft.IssueKey, CancellationToken.None);
+                    Require(uploadHandler.ChildPosts == 3, "Resume duplicated child tasks.");
+                    uploadHandler.RemoveAttachments();
+                    await ExpectFailureAsync(() => uploadStore.VerifyAttachmentAsync(done, CancellationToken.None));
+                    await ExpectFailureAsync(() => uploadStore.CreateTaskAsync(done, plan.Tasks[0], CancellationToken.None));
+                    Require(uploadHandler.ChildPosts == 3, "Deleted attachment did not stop direct child creation.");
+                }
+
+                Console.WriteLine("PASS attachment-" + uploadMode);
             }
 
             foreach (string mode in new[]
@@ -189,14 +271,14 @@ namespace GameCLI.WorkflowSmoke
                 if (mode == "questions")
                 {
                     Require(state.Stage == "needs_clarification", "Questions must block approval.");
-                    await ExpectFailureAsync(() => workflow.ApproveAsync(state.IssueKey, state.Revision, token));
+                    await ExpectFailureAsync(() => ApproveWithDocumentAsync(workflow, state.IssueKey, state.Revision, token));
                     Environment.SetEnvironmentVariable("GAMECLI_WORKFLOW_MODE", "success");
                     Workflow clarified = await workflow.ReviseAsync(state.IssueKey, "已补充全部规则的背包需求", token);
                     Require(clarified.Stage == "awaiting_approval" && clarified.ApprovedRevision == null && httpHandler.ChildPosts == 0, "Clarification must still wait for human approval.");
                 }
                 else if (mode == "wrong-revision")
                 {
-                    await ExpectFailureAsync(() => workflow.ApproveAsync(state.IssueKey, "stale", token));
+                    await ExpectFailureAsync(() => ApproveWithDocumentAsync(workflow, state.IssueKey, "stale", token));
                     Workflow waiting = await workflow.ResumeAsync(state.IssueKey, token);
                     Require(waiting.Stage == "awaiting_approval" && httpHandler.ChildPosts == 0, "Resume bypassed approval.");
                 }
@@ -204,7 +286,7 @@ namespace GameCLI.WorkflowSmoke
                 {
                     Workflow updated = await workflow.ReviseAsync(state.IssueKey, "更新的背包需求", token);
                     Require(updated.Revision != state.Revision && updated.ApprovedRevision == null && updated.ArtCreated == null && httpHandler.ChildPosts == 0, "Revision did not invalidate approval.");
-                    await ExpectFailureAsync(() => workflow.ApproveAsync(state.IssueKey, state.Revision, token));
+                    await ExpectFailureAsync(() => ApproveWithDocumentAsync(workflow, state.IssueKey, state.Revision, token));
                 }
                 else
                 {
@@ -213,7 +295,7 @@ namespace GameCLI.WorkflowSmoke
                     httpHandler.LoseOnChild = 2;
                     if (mode == "success")
                     {
-                        Workflow done = await workflow.ApproveAsync(state.IssueKey, state.Revision, token);
+                        Workflow done = await ApproveWithDocumentAsync(workflow, state.IssueKey, state.Revision, token);
                         Require(done.Stage == "tasks_created" && done.Created.Count == 3 && httpHandler.ChildPosts == 3, "Missing tasks.");
                         Require(done.Executions.Select(item => item.Role).SequenceEqual(new[]
                         {
@@ -225,10 +307,21 @@ namespace GameCLI.WorkflowSmoke
                         Require(httpHandler.ChildPosts == 3, "Completed resume duplicated tasks.");
                         await workflow.StartAsync("背包需求", token);
                         Require(httpHandler.RootPosts == 1 && httpHandler.ChildPosts == 3, "Repeated start duplicated the workflow.");
+                        httpHandler.SetStatus(done.Created[0].Key, "indeterminate");
+                        await ExpectFailureAsync(() => workflow.ReplanAsync(state.IssueKey, token));
+                        Require((await store.LoadAsync(state.IssueKey, token)).PreviousPlan == null, "Blocked replan mutated the plan.");
+                        httpHandler.SetStatus(done.Created[0].Key, "new");
+                        Environment.SetEnvironmentVariable("GAMECLI_WORKFLOW_MODE", "replan");
+                        Workflow refined = await workflow.ReplanAsync(state.IssueKey, token);
+                        Require(refined.Created.Count == 5 && httpHandler.ChildPosts == 5 && refined.PreviousPlan?.Tasks.Length == 3, "Replan lost identities or duplicated issues.");
+                        Require(refined.Created.Take(3).SequenceEqual(done.Created), "Replan changed existing issue keys.");
+                        await workflow.ResumeAsync(state.IssueKey, token);
+                        Require(httpHandler.ChildPosts == 5, "Replan resume duplicated tasks.");
+                        await ExpectFailureAsync(() => workflow.ReplanAsync(state.IssueKey, token));
                     }
                     else
                     {
-                        await ExpectFailureAsync(() => workflow.ApproveAsync(state.IssueKey, state.Revision, token));
+                        await ExpectFailureAsync(() => ApproveWithDocumentAsync(workflow, state.IssueKey, state.Revision, token));
                         if (mode is "lost-response" or "index-delay")
                         {
                             Require(httpHandler.ChildPosts == 2, "Lost POST repeated.");
@@ -258,7 +351,7 @@ namespace GameCLI.WorkflowSmoke
             return 0;
         }
 
-        private static async Task ExpectFailureAsync(Func<Task<Workflow>> operation)
+        private static async Task ExpectFailureAsync(Func<Task> operation)
         {
             try
             {
@@ -301,7 +394,7 @@ namespace GameCLI.WorkflowSmoke
                     Require(root.GetProperty("result").GetProperty("success").GetBoolean(), "Tool failed.");
                     string text = root.GetProperty("result").GetProperty("contentItems")[0].GetProperty("text").GetString()!;
                     using JsonDocument result = JsonDocument.Parse(text);
-                    Require(result.RootElement.GetProperty("tasks").GetArrayLength() == 3, "Tool omitted results.");
+                    Require(result.RootElement.GetProperty("tasks").GetArrayLength() == (mode == "replan" ? 5 : 3), "Tool omitted results.");
                     Complete(thread, turn, "{\"status\":\"success\",\"summary\":\"created\"}");
                     continue;
                 }
@@ -437,7 +530,14 @@ namespace GameCLI.WorkflowSmoke
                             },
                             plan.Tasks[1],
                             plan.Tasks[2]
-                        }) : new TaskPlan(EarlyTaskPublisher.BuildTasks(design));
+                        }) : new TaskPlan(EarlyTaskPublisher.BuildTasks(design));                            if (mode == "replan")
+                            {
+                                submitted = new TaskPlan(submitted.Tasks.Concat(new[]
+                                {
+                                    new PlannedTask("config", "Development", "配置校验", "交付配置解析和校验", new[] { "拒绝无效配置" }, Array.Empty<string>()),
+                                    new PlannedTask("integration", "QA", "集成验收", "验证完整链路", new[] { "配置与背包行为一致" }, new[] { "qa-requirements", "config" })
+                                }).ToArray());
+                            }
                             Send(new
                         {
                             id = "tool-1",
@@ -508,6 +608,40 @@ namespace GameCLI.WorkflowSmoke
 
             private readonly Dictionary<string, string> properties = new();
 
+            private readonly List<object> attachments = new();
+
+            private byte[] attachmentBytes = Array.Empty<byte>();
+
+            public int UploadPosts
+            { get; private set; }
+
+            public int UploadFailures
+            { get; set; }
+
+            public bool LoseUploadResponse
+            { get; set; }
+
+            public bool CorruptUpload
+            { get; set; }
+
+            public void SetStatus(string key, string category)
+            {
+                Dictionary<string, JsonElement> fields = issues[key].EnumerateObject().ToDictionary(field => field.Name, field => field.Value.Clone());
+                fields["status"] = JsonSerializer.SerializeToElement(new
+                {
+                    statusCategory = new
+                    {
+                        key = category
+                    }
+                });
+                issues[key] = JsonSerializer.SerializeToElement(fields);
+            }
+
+            public void RemoveAttachments()
+            {
+                attachments.Clear();
+            }
+
             public int RootPosts
             { get; private set; }
 
@@ -531,6 +665,56 @@ namespace GameCLI.WorkflowSmoke
             {
                 Require(request.Headers.Authorization?.Parameter == "fake-secret", "Missing auth.");
                 string path = request.RequestUri!.AbsolutePath.Replace("/rest/api/2/", "");
+                if (path == "issue/GAME-1/attachments")
+                {
+                    UploadPosts++;
+                    Require(request.Headers.GetValues("X-Atlassian-Token").Single() == "no-check", "Missing upload header.");
+                    if (UploadPosts <= UploadFailures)
+                    {
+                        return Response(new {}, HttpStatusCode.ServiceUnavailable);
+                    }
+
+                    HttpContent part = ((MultipartFormDataContent)request.Content!).Single();
+                    attachmentBytes = await part.ReadAsByteArrayAsync(cancellationToken);
+                    if (CorruptUpload)
+                    {
+                        attachmentBytes = new byte[] { 0 };
+                    }
+
+                    attachments.Add(new
+                    {
+                        id = "10",
+                        filename = part.Headers.ContentDisposition!.FileName!.Trim('"'),
+                        content = "https://jira.test/rest/api/2/attachment-content/10"
+                    });
+                    if (LoseUploadResponse)
+                    {
+                        LoseUploadResponse = false;
+                        throw new HttpRequestException("Upload response lost after commit.");
+                    }
+
+                    return Response(attachments);
+                }
+
+                if (path == "attachment-content/10")
+                {
+                    return new HttpResponseMessage(HttpStatusCode.OK)
+                    {
+                        Content = new ByteArrayContent(attachmentBytes)
+                    };
+                }
+
+                if (path == "issue/GAME-1" && request.Method == HttpMethod.Get && request.RequestUri.Query == "?fields=attachment")
+                {
+                    return Response(new
+                    {
+                        fields = new
+                        {
+                            attachment = attachments
+                        }
+                    });
+                }
+
                 if (path == "project/GAME")
                 {
                     return Response(new
@@ -577,6 +761,7 @@ namespace GameCLI.WorkflowSmoke
                         id = isRoot ? "1" : "2",
                         subtask = !isRoot
                     });
+                    stored["status"] = JsonSerializer.SerializeToElement(new { statusCategory = new { key = "new" } });
                     issues.Add(key, JsonSerializer.SerializeToElement(stored));
                     string description = fields.GetProperty("description").GetString()!;
                     Require(!description.Contains("GAMECLI_WORKFLOW_BOOTSTRAP") && !description.Contains("Acceptance:") && !description.Contains("Workflow:"), "Machine state or English prose leaked into description.");
@@ -588,6 +773,8 @@ namespace GameCLI.WorkflowSmoke
                     }
                     else
                     {
+                        Require(attachments.Count > 0, "Child created without requirement attachment.");
+                        Require(description.Contains("需求文档附件"), "Child missing verified attachment reference.");
                         ChildPosts++;
                         if (LoseResponse && ChildPosts == LoseOnChild)
                         {
@@ -659,7 +846,8 @@ namespace GameCLI.WorkflowSmoke
                         }
 
                         JsonElement state = updates[0].GetProperty("value");
-                        if (state.GetProperty("design").ValueKind != JsonValueKind.Null && state.GetProperty("design").GetProperty("acceptance").GetArrayLength() > 0)
+                        Workflow decoded = WorkflowSnapshot.Decode(state.GetRawText());
+                        if (decoded.Design != null && decoded.Design.Acceptance.Length > 0)
                         {
                             Require(fields["description"].GetString()!.Contains("测试用例与验收标准"), "Design projection was not refreshed.");
                         }

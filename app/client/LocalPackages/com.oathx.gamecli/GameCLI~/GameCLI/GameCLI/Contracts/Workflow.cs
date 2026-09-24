@@ -17,6 +17,28 @@ namespace GameCLI.Contracts
 
     internal sealed record AgentExecution(string Role, string ExecutionId, string ThreadId, string TurnId, string Status, DateTimeOffset StartedAt);
 
+    /// <summary>Binds upload attempts and the verified receipt to the approved document bytes.</summary>
+    internal sealed class RequirementAttachment
+    {
+        public string Revision
+        { get; set; } = "";
+
+        public string Sha256
+        { get; set; } = "";
+
+        public string FileName
+        { get; set; } = "";
+
+        public int Attempts
+        { get; set; }
+
+        public string? Id
+        { get; set; }
+
+        public string? Url
+        { get; set; }
+    }
+
     internal sealed class EarlyTaskPublication
     {
         public PlannedTask Task
@@ -74,7 +96,16 @@ namespace GameCLI.Contracts
         public DateTimeOffset? ApprovedAt
         { get; set; }
 
+        public RequirementAttachment? Attachment
+        { get; set; }
+
         public TaskPlan? Plan
+        { get; set; }
+
+        public TaskPlan? PreviousPlan
+        { get; set; }
+
+        public bool Replanning
         { get; set; }
 
         public PlannedTask? ArtTask
@@ -212,9 +243,14 @@ namespace GameCLI.Contracts
                 throw new JsonException("Invalid persisted workflow identity or execution/task records.");
             }
 
-            if (state.Stage is not ("design_pending" or "design_running" or "design_failed" or "needs_clarification" or "awaiting_approval" or "pm_pending" or "pm_running" or "publishing" or "pm_failed" or "outcome_unknown" or "tasks_created"))
+            if (state.Stage is not ("design_pending" or "design_running" or "design_failed" or "needs_clarification" or "awaiting_approval" or "pm_pending" or "pm_running" or "publishing" or "pm_failed" or "outcome_unknown" or "tasks_created" or "attachment_pending" or "attachment_failed"))
             {
                 throw new JsonException("Unknown workflow stage.");
+            }
+
+            if (state.Attachment is RequirementAttachment attachment && (attachment.Revision != state.Revision || attachment.Attempts is < 0 or > 3 || !Regex.IsMatch(attachment.Sha256 ?? "", "^[a-f0-9]{64}$")))
+            {
+                throw new JsonException("Invalid requirement attachment binding or retry count.");
             }
 
             if (state.Design != null)

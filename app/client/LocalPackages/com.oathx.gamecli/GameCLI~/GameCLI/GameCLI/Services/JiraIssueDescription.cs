@@ -8,6 +8,19 @@ namespace GameCLI.Services
     /// <summary>Builds the human-readable projection without exposing workflow storage data.</summary>
     internal static class JiraIssueDescription
     {
+        private static void Attachment(StringBuilder text, Workflow state)
+        {
+            if (state.Attachment?.Id != null)
+            {
+                Section(text, "需求文档附件", new[]
+                {
+                    "已核验文档：" + state.Attachment.Url,
+                    "需求版本：" + state.Attachment.Revision,
+                    "文件校验值：" + state.Attachment.Sha256
+                });
+            }
+        }
+
         /// <summary>Uses the design title when available and a bounded source title during analysis.</summary>
         public static string Title(Workflow state) => state.Design?.Title ?? "需求分析：" + state.Document.Replace('\r', ' ').Replace('\n', ' ')[..Math.Min(100, state.Document.Length)];
 
@@ -30,6 +43,8 @@ namespace GameCLI.Services
                 "awaiting_approval" => "待用户确认策划方案",
                 "tasks_created" => "专业任务单据已创建，尚不代表开发或验收完成",
                 "design_failed" => "策划分析失败，等待处理或恢复",
+                "attachment_pending" => "需求已批准，正在上传或核验附件，尚未启动项目管理",
+                "attachment_failed" => "需求附件三次上传未成功，停止项目管理与建单",
                 "pm_failed" => "专业任务整理或发布失败，等待处理或恢复",
                 "outcome_unknown" => "建单结果待核实，禁止重复创建",
                 _ => state.ApprovedRevision == null ? "策划分析中，尚未批准" : "方案已批准，正在组织专业任务"
@@ -53,7 +68,7 @@ namespace GameCLI.Services
                 TestCases(text, design.Acceptance);
                 Section(text, "专业执行顺序", new[]
                 {
-                    design.ArtRequirements.Length > 0 ? "美术设计与资源交付并审核完成后，程序方可开始实现。" : "本需求无美术前置任务，需求获批后进入程序开发。",
+                    "各子任务按实际前置交付执行；使用美术产物的程序任务等待对应美术审核，不等待无关产物。",
                     "程序交付校验完成后，编排器自动完成程序子任务，验收代理针对同一交付版本执行测试。",
                     "验收代理提交报告与证据，由用户进行最终验收。"
                 });
@@ -71,6 +86,7 @@ namespace GameCLI.Services
                 });
             }
 
+            Attachment(text, state);
             if (state.ArtCreated != null)
             {
                 Section(text, "美术需求单据", new[]
@@ -101,6 +117,7 @@ namespace GameCLI.Services
             {
                 task.Description
             });
+            Attachment(text, state);
             TestCases(text, task.Acceptance);
             Section(text, "前置依赖", task.DependsOn.Select(id => state.Created.Find(item => item.Id == id)?.Key ?? state.EarlyTasks.Find(item => item.Task.Id == id)?.Created?.Key ?? (state.ArtCreated?.Id == id ? state.ArtCreated.Key : id)));
             Section(text, "启动条件", new[]

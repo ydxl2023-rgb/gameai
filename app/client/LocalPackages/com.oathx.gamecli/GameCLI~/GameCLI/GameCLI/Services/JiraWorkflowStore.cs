@@ -40,6 +40,17 @@ namespace GameCLI.Services
 
         public string IssueUrl(string key) => connection.Address + "/browse/" + Uri.EscapeDataString(key);
 
+        /// <summary>Prevents plan migration from replacing in-progress or delivered work.</summary>
+        public async Task RequireUnstartedAsync(string key, CancellationToken cancellation)
+        {
+            ValidateKey(key);
+            JsonElement issue = await SendAsync(HttpMethod.Get, "issue/" + key + "?fields=status", null, cancellation);
+            if (issue.GetProperty("fields").GetProperty("status").GetProperty("statusCategory").GetProperty("key").GetString() != "new" || await ReadDeliveryAsync(key, cancellation) != null)
+            {
+                throw new JiraTaskException("任务已开始、已完成或已有交付记录，禁止直接重新拆分：" + key, 3);
+            }
+        }
+
         /// <summary>Reads native workflow completion instead of inferring it from description text.</summary>
         public async Task<JiraTaskState> ReadTaskStateAsync(string key, CancellationToken cancellation)
         {
@@ -197,7 +208,7 @@ namespace GameCLI.Services
             }
             else
             {
-                state = WorkflowContract.Parse<Workflow>(property.GetProperty("value").GetRawText());
+                state = WorkflowSnapshot.Decode(property.GetProperty("value").GetRawText());
                 // The creation snapshot cannot know its issue key until the POST completes.
                 if (state.IssueKey == "" && state.Stage == "design_pending" && state.Design == null && state.Executions.Count == 0 && issue.GetProperty("fields").GetProperty("labels").EnumerateArray().Any(label => label.GetString() == "gamecli-run-" + state.Id))
                 {
@@ -280,6 +291,7 @@ namespace GameCLI.Services
         /// <summary>Creates one professional task with its marker in the same POST as the task content.</summary>
         public async Task<CreatedTask> CreateTaskAsync(Workflow state, PlannedTask task, CancellationToken cancellation)
         {
+            await VerifyAttachmentAsync(state, cancellation);
             guard();
             string description = JiraIssueDescription.Task(state, task, IssueUrl(state.IssueKey));
             JiraTaskResult result = await new JiraTaskClient(http).CreateAsync(connection.Address, connection.Token, state.ProjectKey, "【" + JiraIssueDescription.Role(task.Role) + "】" + task.Title, description, null, cancellation, new[]
@@ -382,13 +394,7 @@ namespace GameCLI.Services
 
         private static string Encode(Workflow state)
         {
-            string json = WorkflowContract.Serialize(state);
-            if (Encoding.UTF8.GetByteCount(json) > 32000)
-            {
-                throw new JiraTaskException("Workflow snapshot exceeds 32000 bytes. Use a smaller requirement document or task plan.", 4);
-            }
-
-            return json;
+            return WorkflowSnapshot.Encode(state);
         }
 
         private static void ValidateKey(string key)

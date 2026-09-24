@@ -42,6 +42,7 @@ namespace GameCLI.Core
             state.Document = document;
             state.DocumentHash = WorkflowContract.Hash(document);
             state.Design = null;
+            state.Attachment = null;
             state.SuggestedRules = Array.Empty<string>();
             state.Revision = "";
             state.ApprovedRevision = null;
@@ -53,7 +54,7 @@ namespace GameCLI.Core
         }
 
         /// <summary>Records the caller-confirmed exact revision under the authenticated JIRA identity before starting PM.</summary>
-        public async Task<Workflow> ApproveAsync(string key, string revision, CancellationToken cancellation)
+        public async Task<Workflow> ApproveAsync(string key, string revision, CancellationToken cancellation, string? attachmentPath = null)
         {
             Workflow state = await store.LoadAsync(key, cancellation);
             if (state.Stage != "awaiting_approval" || state.Design == null || state.Design.Questions.Length > 0 || revision != state.Revision || revision != Revision(state))
@@ -61,16 +62,18 @@ namespace GameCLI.Core
                 throw new JiraTaskException("Approval requires the current reviewed revision with no unresolved questions. Use --status or --revise first.", 3);
             }
 
+            state.Attachment = await JiraWorkflowStore.PrepareAttachmentAsync(revision, attachmentPath, cancellation);
             state.ApprovedBy = await store.CurrentUserAsync(cancellation);
             state.ApprovedAt = DateTimeOffset.UtcNow;
             state.ApprovedRevision = revision;
-            state.Stage = "pm_pending";
+            state.Stage = "attachment_pending";
             await store.SaveAsync(state, cancellation);
+            await store.EnsureAttachmentAsync(state, attachmentPath, cancellation);
             return await PublishAsync(state, cancellation);
         }
 
         /// <summary>Resumes an interrupted phase while preserving approval and unknown-write guards.</summary>
-        public async Task<Workflow> ResumeAsync(string key, CancellationToken cancellation)
+        public async Task<Workflow> ResumeAsync(string key, CancellationToken cancellation, string? attachmentPath = null)
         {
             Workflow state = await store.LoadAsync(key, cancellation);
             if (state.Stage is "awaiting_approval" or "needs_clarification")
@@ -84,6 +87,13 @@ namespace GameCLI.Core
                 return await AnalyzeAsync(state, cancellation);
             }
 
+            if (state.Stage is "attachment_pending" or "attachment_failed")
+            {
+                RequireApproved(state);
+                await store.EnsureAttachmentAsync(state, attachmentPath, cancellation);
+                return await PublishAsync(state, cancellation);
+            }
+
             if (state.Stage is "pm_pending" or "pm_running" or "pm_failed" or "publishing" or "outcome_unknown")
             {
                 return await PublishAsync(state, cancellation);
@@ -92,6 +102,28 @@ namespace GameCLI.Core
             return state;
         }
 
+        /// <summary>Refines only unstarted tasks, preserving original identities and the approved requirement.</summary>
+        public async Task<Workflow> ReplanAsync(string key, CancellationToken cancellation)
+        {
+            Workflow state = await store.LoadAsync(key, cancellation);
+            RequireApproved(state);
+            await store.VerifyAttachmentAsync(state, cancellation);
+            if (state.Stage != "tasks_created" || state.Plan == null || state.PendingTask != null || state.PreviousPlan != null)
+            {
+                throw new JiraTaskException("仅支持对尚未迁移且已完成建单的计划重新拆分；中断后使用 resume。", 3);
+            }
+
+            foreach (CreatedTask created in state.Created)
+            {
+                await store.RequireUnstartedAsync(created.Key, cancellation);
+            }
+
+            state.PreviousPlan = state.Plan;
+            state.Replanning = true;
+            state.Stage = "pm_pending";
+            await store.SaveAsync(state, cancellation);
+            return await PublishAsync(state, cancellation);
+        }
         private async Task<Workflow> AnalyzeAsync(Workflow state, CancellationToken cancellation)
         {
             guard("design");
@@ -124,6 +156,7 @@ namespace GameCLI.Core
         private async Task<Workflow> PublishAsync(Workflow state, CancellationToken cancellation)
         {
             RequireApproved(state);
+            await store.VerifyAttachmentAsync(state, cancellation);
             guard("pm");
             AgentExecution execution = await BeginExecutionAsync(state, "PM", "pm_running", cancellation);
             try
@@ -146,11 +179,14 @@ namespace GameCLI.Core
                     issue_key = state.IssueKey,
                     revision = state.Revision,
                     design = state.Design,
-                    saved_plan = state.Plan,
+                    requirement_attachment = state.Attachment,
+                    saved_plan = state.Replanning ? null : state.Plan,
                     existing_art_task = state.Design!.ArtRequirements.Length > 0 ? state.ArtTask : null,
                     existing_art_issue = state.ArtCreated,
-                    existing_tasks = EarlyTaskPublisher.BuildTasks(state.Design!),
-                    existing_issues = EarlyTaskPublisher.Created(state).ToArray(),
+                    existing_tasks = state.Replanning ? state.PreviousPlan!.Tasks : Array.Empty<PlannedTask>(),
+                    replan = state.Replanning,
+                    planning_instruction = "按 PM 技能的交付标准拆分，允许同角色多项。重新拆分时保留已有任务 ID 和角色，将其收窄为对应的一项交付并新增其余任务；按拓扑顺序提交。每项 description 标明来源、交付物和启动条件，acceptance 给出可执行验收用例。",
+                    existing_issues = state.Created.Concat(EarlyTaskPublisher.Created(state)).DistinctBy(item => item.Id).ToArray(),
                     created = state.Created
                 });
                 bool toolSucceeded = false;
@@ -158,6 +194,7 @@ namespace GameCLI.Core
                 {
                     Workflow current = await store.LoadAsync(state.IssueKey, token);
                     RequireApproved(current);
+                    await store.VerifyAttachmentAsync(current, token);
                     if (current.Revision != state.Revision || current.Executions.LastOrDefault()?.ExecutionId != execution.ExecutionId)
                     {
                         throw new JiraTaskException("Workflow changed during PM execution. Stop and reload JIRA.", 3);
@@ -167,20 +204,37 @@ namespace GameCLI.Core
                     TaskPlan plan = WorkflowContract.Parse<TaskPlan>(arguments.GetRawText());
                     WorkflowContract.ValidatePlan(plan, state.Design!);
                     MobileRequirementPolicy.Validate(plan);
-                    foreach (PlannedTask registered in EarlyTaskPublisher.BuildTasks(state.Design!))
-                    {
-                        PlannedTask[] matches = plan.Tasks.Where(task => task.Role == registered.Role).ToArray();
-                        if (matches.Length != 1 || WorkflowContract.Serialize(matches[0]) != WorkflowContract.Serialize(registered))
-                        {
-                            throw new JiraTaskException("Reuse existing_tasks unchanged; do not duplicate registered professional scopes.", 4);
-                        }
-                    }
-
-                    if (state.Plan != null && WorkflowContract.Serialize(state.Plan) != WorkflowContract.Serialize(plan))
+                    if (!state.Replanning && state.Plan != null && WorkflowContract.Serialize(state.Plan) != WorkflowContract.Serialize(plan))
                     {
                         throw new JiraTaskException("Resume must use the saved task plan unchanged.", 3);
                     }
 
+                    if (state.Replanning)
+                    {
+                        foreach (CreatedTask created in state.Created)
+                        {
+                            PlannedTask original = state.PreviousPlan!.Tasks.Single(task => task.Id == created.Id);
+                            if (!plan.Tasks.Any(task => task.Id == original.Id && task.Role == original.Role))
+                            {
+                                throw new JiraTaskException("重新拆分必须保留已有任务 ID 及负责角色。", 4);
+                            }
+
+                            await store.RequireUnstartedAsync(created.Key, token);
+                        }
+                    }
+
+                    HashSet<string> preceding = new();
+                    foreach (PlannedTask task in plan.Tasks)
+                    {
+                        if (task.DependsOn.Any(id => !preceding.Contains(id)))
+                        {
+                            throw new JiraTaskException("任务必须按前置交付在先的拓扑顺序提交。", 4);
+                        }
+
+                        preceding.Add(task.Id);
+                    }
+
+                    state.Replanning = false;
                     state.Plan = plan;
                     foreach (CreatedTask created in EarlyTaskPublisher.Created(state))
                     {
@@ -206,6 +260,11 @@ namespace GameCLI.Core
                     throw new JiraTaskException("PM did not complete verified task publication. Resume the workflow after checking JIRA.", 3);
                 }
 
+                foreach (CreatedTask created in state.Created)
+                {
+                    await store.UpdateTaskAsync(state, state.Plan!.Tasks.Single(task => task.Id == created.Id), created, cancellation);
+                }
+
                 state.Stage = "tasks_created";
                 CompleteExecution(state, execution, "completed");
                 await store.SaveAsync(state, cancellation);
@@ -220,12 +279,23 @@ namespace GameCLI.Core
 
         private async Task CreateTasksAsync(Workflow state, CancellationToken cancellation)
         {
+            // Refresh reused issues before creating dependent tasks; retries repeat only idempotent PUTs.
+            if (state.PreviousPlan != null)
+            {
+                foreach (CreatedTask existing in state.Created)
+                {
+                    await store.RequireUnstartedAsync(existing.Key, cancellation);
+                    await store.UpdateTaskAsync(state, state.Plan!.Tasks.Single(task => task.Id == existing.Id), existing, cancellation);
+                }
+            }
+
             // Persist an intent before each POST. An unresolved intent is never automatically posted again.
             foreach (PlannedTask task in state.Plan!.Tasks)
             {
                 guard("pm");
                 Workflow current = await store.LoadAsync(state.IssueKey, cancellation);
                 RequireApproved(current);
+                await store.VerifyAttachmentAsync(current, cancellation);
                 if (current.Revision != state.Revision || current.Executions.LastOrDefault()?.ExecutionId != state.Executions.Last().ExecutionId || WorkflowContract.Serialize(current.Plan) != WorkflowContract.Serialize(state.Plan))
                 {
                     throw new JiraTaskException("Workflow changed while publishing tasks. Reload JIRA before continuing.", 3);

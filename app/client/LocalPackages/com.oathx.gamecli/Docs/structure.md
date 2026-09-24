@@ -90,3 +90,9 @@ GameCLIServer 的局域网 WebSocket 客户端连接无需认证令牌；JIRA We
 需求讨论由当前 Codex 对话承接，`RequirementWorkflow` 的 start/revise 只执行 Design，待澄清或待确认的 resume 不建单；approve 绑定具体版本后启动 PM，通过其工具回调创建专业子任务。
 
 `gameai-requirement-discovery/SKILL.md` 单独约定同类产品调研、完整推荐草案及集中选择题；当前对话完成联网调研，Design 宿主显式加载该技能并使用来源摘要，全部选择收齐后统一修订。
+
+需求附件上传由 `Services/JiraWorkflowStore.Attachments.cs` 执行，审批后先进入 `attachment_pending`，远端内容核验成功才进入 PM；最多三次上传，失败为 `attachment_failed`。回执与计数保存在 JIRA 属性，HTML 位于仓库根 `app/desgin/`。
+
+较大的工作流快照以带 SHA-256 校验的 gzip-base64-v1 封装无损保存于同一个 JIRA 属性；小快照和已有明文属性保持兼容。解压大小上限 1MB，压缩后仍须满足 32000 字节限制，超过时停止，不截断需求、审批或执行历史。
+
+PM 按独立交付标准输出同角色多任务，以 depends_on 表达真实依赖并按拓扑顺序发布。新增 orchestrator --replan，仅迁移尚未开始、无交付记录的已发布计划；PreviousPlan 保留旧计划，原子保存新计划后复用旧任务编号并补建其他任务，最终刷新全部单据依赖编号。执行中断使用 resume，不重新拆分；调度仅在 tasks_created 后允许。当前每计划最多 20 项，显式迁移一次。
