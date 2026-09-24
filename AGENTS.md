@@ -18,3 +18,7 @@ The conversation is the requirement input, review and approval surface. Invoke
 GameCLI on the user's behalf; do not ask the user to enter documents or operate
 workflow buttons in the Unity panel. Merely attaching a document for discussion
 does not authorize starting the workflow or creating JIRA issues.
+
+For user-facing document deliverables, apply `app/client/LocalPackages/com.oathx.gamecli/game-cli/gameai-document-format/SKILL.md`. Deliver outline-style standalone HTML with a cover, linked contents and print styling; the conversation host renders structured agent results. Keep SKILL.md, CLI schemas and JIRA body formats unchanged.
+
+Design document artifacts must be saved under `app/desgin/` relative to this repository root; preserve this spelling and create the directory automatically when absent. The conversation host writes artifacts there when the Design process cannot write files. Do not resolve this path relative to `app/client/`.

@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{TITLE}}</title>
+<style>
+  :root {
+    --bg: #ffffff;
+    --fg: #1f2328;
+    --muted: #57606a;
+    --border: #d0d7de;
+    --code-bg: #f6f8fa;
+    --accent: #0969da;
+    --accent-soft: #ddf4ff;
+    --warn: #bf8700;
+    --warn-soft: #fff8c5;
+    --ok: #1a7f37;
+    --ok-soft: #dafbe1;
+    --err: #cf222e;
+    --err-soft: #ffebe9;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: #f6f8fa;
+    color: var(--fg);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+                 "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue",
+                 Arial, sans-serif;
+    font-size: 14px;
+    line-height: 1.7;
+  }
+
+  .page {
+    max-width: 900px;
+    margin: 0 auto;
+    background: var(--bg);
+    padding: 60px 70px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+  }
+
+  /* 封面 */
+  .cover {
+    text-align: center;
+    padding: 80px 0 60px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 48px;
+  }
+  .cover h1 {
+    font-size: 34px;
+    margin: 0 0 16px;
+    letter-spacing: 1px;
+  }
+  .cover .subtitle {
+    font-size: 16px;
+    color: var(--muted);
+    margin-bottom: 30px;
+  }
+  .cover .meta {
+    display: inline-block;
+    text-align: left;
+    font-size: 13px;
+    color: var(--muted);
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    padding: 12px 30px;
+  }
+  .cover .meta span { display: inline-block; min-width: 90px; color: var(--fg); }
+
+  /* 标题 */
+  h1 { font-size: 26px; margin: 48px 0 16px; padding-bottom: 8px; border-bottom: 2px solid var(--fg); }
+  h2 { font-size: 20px; margin: 36px 0 12px; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
+  h3 { font-size: 16px; margin: 24px 0 8px; color: #24292f; }
+  h4 { font-size: 14px; margin: 16px 0 6px; color: var(--muted); }
+
+  p { margin: 8px 0; }
+
+  /* 代码 */
+  code {
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    background: var(--code-bg);
+    padding: 2px 5px;
+    border-radius: 4px;
+    font-size: 12.5px;
+  }
+  pre {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 14px 16px;
+    overflow-x: auto;
+    font-size: 12px;
+    line-height: 1.6;
+    margin: 12px 0;
+  }
+  pre code {
+    background: none;
+    padding: 0;
+    font-size: 12px;
+  }
+
+  /* 表格 */
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 14px 0;
+    font-size: 13px;
+  }
+  th, td {
+    border: 1px solid var(--border);
+    padding: 8px 10px;
+    text-align: left;
+    vertical-align: top;
+  }
+  th { background: #f6f8fa; font-weight: 600; }
+  tr:nth-child(even) td { background: #fafbfc; }
+
+  /* 引用 */
+  blockquote {
+    border-left: 4px solid var(--accent);
+    margin: 12px 0;
+    padding: 6px 14px;
+    background: var(--accent-soft);
+    border-radius: 0 6px 6px 0;
+    color: #0a3069;
+    font-size: 13.5px;
+  }
+
+  /* 提示框 */
+  .callout {
+    padding: 12px 16px;
+    border-radius: 6px;
+    margin: 14px 0;
+    font-size: 13.5px;
+    border-left: 4px solid;
+  }
+  .callout.info { background: var(--accent-soft); border-color: var(--accent); }
+  .callout.warn { background: var(--warn-soft); border-color: var(--warn); }
+  .callout.ok   { background: var(--ok-soft);   border-color: var(--ok); }
+  .callout.err  { background: var(--err-soft);  border-color: var(--err); }
+
+  /* 列表 */
+  ul, ol { padding-left: 24px; margin: 8px 0; }
+  li { margin: 4px 0; }
+
+  /* 图表容器 */
+  .diagram {
+    margin: 24px 0;
+    padding: 20px;
+    background: #fafbfc;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow-x: auto;
+    text-align: center;
+  }
+  .diagram svg { max-width: 100%; height: auto; }
+  .diagram .caption {
+    font-size: 12.5px;
+    color: var(--muted);
+    margin-top: 10px;
+    font-style: italic;
+  }
+
+  /* 目录 */
+  .toc {
+    background: #fafbfc;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px 28px;
+    margin: 24px 0 40px;
+  }
+  .toc h3 { margin-top: 0; }
+  .toc ol { margin: 0; padding-left: 20px; }
+  .toc a { color: var(--accent); text-decoration: none; }
+  .toc a:hover { text-decoration: underline; }
+
+  /* 打印 */
+  @page {
+    size: A4;
+    margin: 18mm 16mm;
+  }
+  @media print {
+    html, body { background: #fff; font-size: 11.5pt; }
+    .page { box-shadow: none; padding: 0; max-width: 100%; }
+    h1 { page-break-before: auto; }
+    h2 { page-break-after: avoid; }
+    pre, table, .diagram { page-break-inside: avoid; }
+    .cover { page-break-after: always; }
+    .no-print { display: none; }
+    a { color: var(--fg); text-decoration: none; }
+  }
+
+  /* 页脚 */
+  .footer {
+    margin-top: 60px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border);
+    text-align: center;
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  .print-btn {
+    position: fixed;
+    right: 24px;
+    bottom: 24px;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 999px;
+    padding: 12px 22px;
+    font-size: 14px;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(9,105,218,0.35);
+    z-index: 100;
+  }
+  .print-btn:hover { background: #0860ca; }
+
+.page { overflow-wrap: anywhere; }
+@media screen and (max-width: 700px) { .page { padding: 24px 18px; } .cover { padding: 30px 0; } .cover h1 { font-size: 26px; } .toc { padding: 16px; } }
+.wire-gallery { display: flex; flex-direction: column; gap: 24px; }
+.wire-step { width: 100%; }
+</style>
+</head>
+<body>
+<button class="print-btn no-print" onclick="window.print()">打印 / 导出文档</button>
+<main class="page">
+<header class="cover">
+<h1>{{TITLE}}</h1>
+<div class="subtitle">{{SUBTITLE}}</div>
+<div class="meta">{{META}}</div>
+</header>
+<nav class="toc" aria-label="目录"><h3>目录</h3><ol>{{TOC}}</ol></nav>
+{{CONTENT}}
+<footer class="footer">{{FOOTER}}</footer>
+</main>
+</body>
+</html>

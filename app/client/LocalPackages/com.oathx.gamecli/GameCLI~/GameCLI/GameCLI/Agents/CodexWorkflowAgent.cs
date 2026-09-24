@@ -46,10 +46,16 @@ namespace GameCLI.Agents
                 "gameai-jira",
                 "gameai-jira-issue-writing",
                 "gameai-mobile-requirements",
+                "gameai-document-format",
                 "gameai-" + (role == "Development" ? "dev" : role.ToLowerInvariant())
             })
             {
                 instructions.AppendLine(await File.ReadAllTextAsync(Path.Combine(skillRoot, name, "SKILL.md"), cancellation));
+            }
+
+            if (role == "Design")
+            {
+                instructions.AppendLine(await File.ReadAllTextAsync(Path.Combine(skillRoot, "gameai-requirement-discovery", "SKILL.md"), cancellation));
             }
 
             instructions.AppendLine(await File.ReadAllTextAsync(Path.Combine(skillRoot, "gameai-task-delivery", "SKILL.md"), cancellation));
@@ -77,7 +83,7 @@ namespace GameCLI.Agents
             else
             {
                 instructions.AppendLine("Never invoke shell, filesystem writes, MCP tools, or external services. Only the explicitly provided dynamic tool may write to JIRA.");
-                instructions.AppendLine(role == "Design" ? "Analyze gameplay requirements only. Return unresolved blocking questions explicitly. Return title, specification, acceptance, art_requirements, development_requirements, questions. Do not create issues." : "Consume only the approved design. Do not invent gameplay rules. Call jira_publish_tasks with the complete plan (2 to 20 tasks), covering Development, QA and Art if requested. Use stable local task IDs and acyclic dependencies; QA must depend on implementation. On recovery pass the saved plan unchanged. Only report success after the tool returns all real issue keys. Do not call the tool again after an error.");
+                instructions.AppendLine(role == "Design" ? "Analyze gameplay requirements only. The current Codex conversation is the mandatory human discussion and approval surface. Use the source-backed comparable-product research supplied by the conversation host before drafting; do not claim independent web access or fabricate research. Return a complete recommended draft and ALL material unresolved decisions together in questions, with stable identifiers, recommended options and alternatives clearly marked as unconfirmed. Do not impose an arbitrary five-question limit or drip-feed ordinary boundary questions. The conversation host collects the entire batch before one revision; routine implementation details belong in the draft, not a questionnaire. Do not invent accepted business rules. Incorporate the full revised document and preserve previously confirmed constraints. Return the draft to the host; do not wait for interactive input inside this child agent. Return title, specification, acceptance, art_requirements, development_requirements, questions. Do not create issues." : "Consume only the approved design. Do not invent gameplay rules. Call jira_publish_tasks with the complete plan (2 to 20 tasks), covering Development, QA and Art if requested. Use stable local task IDs and acyclic dependencies; QA must depend on implementation. On recovery pass the saved plan unchanged. Only report success after the tool returns all real issue keys. Do not call the tool again after an error.");
             }
 
             string? threadId = null;

@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>七日累计登录活动需求案</title>
+<style>
+  :root {
+    --bg: #ffffff;
+    --fg: #1f2328;
+    --muted: #57606a;
+    --border: #d0d7de;
+    --code-bg: #f6f8fa;
+    --accent: #0969da;
+    --accent-soft: #ddf4ff;
+    --warn: #bf8700;
+    --warn-soft: #fff8c5;
+    --ok: #1a7f37;
+    --ok-soft: #dafbe1;
+    --err: #cf222e;
+    --err-soft: #ffebe9;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: #f6f8fa;
+    color: var(--fg);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+                 "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue",
+                 Arial, sans-serif;
+    font-size: 14px;
+    line-height: 1.7;
+  }
+
+  .page {
+    max-width: 900px;
+    margin: 0 auto;
+    background: var(--bg);
+    padding: 60px 70px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+  }
+
+  /* 封面 */
+  .cover {
+    text-align: center;
+    padding: 80px 0 60px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 48px;
+  }
+  .cover h1 {
+    font-size: 34px;
+    margin: 0 0 16px;
+    letter-spacing: 1px;
+  }
+  .cover .subtitle {
+    font-size: 16px;
+    color: var(--muted);
+    margin-bottom: 30px;
+  }
+  .cover .meta {
+    display: inline-block;
+    text-align: left;
+    font-size: 13px;
+    color: var(--muted);
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    padding: 12px 30px;
+  }
+  .cover .meta span { display: inline-block; min-width: 90px; color: var(--fg); }
+
+  /* 标题 */
+  h1 { font-size: 26px; margin: 48px 0 16px; padding-bottom: 8px; border-bottom: 2px solid var(--fg); }
+  h2 { font-size: 20px; margin: 36px 0 12px; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
+  h3 { font-size: 16px; margin: 24px 0 8px; color: #24292f; }
+  h4 { font-size: 14px; margin: 16px 0 6px; color: var(--muted); }
+
+  p { margin: 8px 0; }
+
+  /* 代码 */
+  code {
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    background: var(--code-bg);
+    padding: 2px 5px;
+    border-radius: 4px;
+    font-size: 12.5px;
+  }
+  pre {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 14px 16px;
+    overflow-x: auto;
+    font-size: 12px;
+    line-height: 1.6;
+    margin: 12px 0;
+  }
+  pre code {
+    background: none;
+    padding: 0;
+    font-size: 12px;
+  }
+
+  /* 表格 */
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 14px 0;
+    font-size: 13px;
+  }
+  th, td {
+    border: 1px solid var(--border);
+    padding: 8px 10px;
+    text-align: left;
+    vertical-align: top;
+  }
+  th { background: #f6f8fa; font-weight: 600; }
+  tr:nth-child(even) td { background: #fafbfc; }
+
+  /* 引用 */
+  blockquote {
+    border-left: 4px solid var(--accent);
+    margin: 12px 0;
+    padding: 6px 14px;
+    background: var(--accent-soft);
+    border-radius: 0 6px 6px 0;
+    color: #0a3069;
+    font-size: 13.5px;
+  }
+
+  /* 提示框 */
+  .callout {
+    padding: 12px 16px;
+    border-radius: 6px;
+    margin: 14px 0;
+    font-size: 13.5px;
+    border-left: 4px solid;
+  }
+  .callout.info { background: var(--accent-soft); border-color: var(--accent); }
+  .callout.warn { background: var(--warn-soft); border-color: var(--warn); }
+  .callout.ok   { background: var(--ok-soft);   border-color: var(--ok); }
+  .callout.err  { background: var(--err-soft);  border-color: var(--err); }
+
+  /* 列表 */
+  ul, ol { padding-left: 24px; margin: 8px 0; }
+  li { margin: 4px 0; }
+
+  /* 图表容器 */
+  .diagram {
+    margin: 24px 0;
+    padding: 20px;
+    background: #fafbfc;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow-x: auto;
+    text-align: center;
+  }
+  .diagram svg { max-width: 100%; height: auto; }
+  .diagram .caption {
+    font-size: 12.5px;
+    color: var(--muted);
+    margin-top: 10px;
+    font-style: italic;
+  }
+
+  /* 目录 */
+  .toc {
+    background: #fafbfc;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px 28px;
+    margin: 24px 0 40px;
+  }
+  .toc h3 { margin-top: 0; }
+  .toc ol { margin: 0; padding-left: 20px; }
+  .toc a { color: var(--accent); text-decoration: none; }
+  .toc a:hover { text-decoration: underline; }
+
+  /* 打印 */
+  @page {
+    size: A4;
+    margin: 18mm 16mm;
+  }
+  @media print {
+    html, body { background: #fff; font-size: 11.5pt; }
+    .page { box-shadow: none; padding: 0; max-width: 100%; }
+    h1 { page-break-before: auto; }
+    h2 { page-break-after: avoid; }
+    pre, table, .diagram { page-break-inside: avoid; }
+    .cover { page-break-after: always; }
+    .no-print { display: none; }
+    a { color: var(--fg); text-decoration: none; }
+  }
+
+  /* 页脚 */
+  .footer {
+    margin-top: 60px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border);
+    text-align: center;
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  .print-btn {
+    position: fixed;
+    right: 24px;
+    bottom: 24px;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 999px;
+    padding: 12px 22px;
+    font-size: 14px;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(9,105,218,0.35);
+    z-index: 100;
+  }
+  .print-btn:hover { background: #0860ca; }
+
+.page { overflow-wrap: anywhere; }
+@media screen and (max-width: 700px) { .page { padding: 24px 18px; } .cover { padding: 30px 0; } .cover h1 { font-size: 26px; } .toc { padding: 16px; } }
+.wire-gallery { display: flex; flex-direction: column; gap: 24px; }
+.wire-step { width: 100%; }
+.cover{padding:24px 0 20px;margin-bottom:20px}.cover h1{font-size:28px}.phone{margin:16px 0 28px;break-inside:avoid}.phone svg{display:block;width:100%;height:auto;font-family:"Microsoft YaHei",sans-serif}.phone figcaption{font-size:12px;color:#687482}summary{padding:12px;background:#f6f8fa;cursor:pointer;font-weight:600}details{margin:18px 0}@media print{details::details-content{display:block;content-visibility:visible}details>*{display:block!important}summary{display:none!important}}</style>
+</head>
+<body>
+<button class="print-btn no-print" onclick="window.print()">打印 / 导出文档</button>
+<main class="page">
+<header class="cover">
+<h1>七日累计登录活动需求案</h1>
+<div class="subtitle">最新规范重跑 · 四节审阅版</div>
+<div class="meta"><div>日期：2026-09-24</div><div>状态：等待完整版本确认</div><div>主任务：<a href="http://ctjira1.lmdgame.com:8080/browse/AI9527-5">AI9527-5</a></div><div>版本：<code>0d9841ed96ff2296e19960a6219a96b0f5816eb1d9afa205a72a6054f6bf7d8e</code></div><div>输出目录：<code>app/desgin/</code></div></div>
+</header>
+<nav class="toc" aria-label="目录"><h3>目录</h3><ol><li><a href="#s1">设计目标</a></li><li><a href="#s2">功能综述</a></li><li><a href="#s3">界面与交互</a></li><li><a href="#s4">美术与表现需求</a></li><li><a href="#excel-config">Excel 配置字段</a></li><li><a href="#appendix">调研与验收附录</a></li></ol></nav>
+<h1 id="s1">1. 设计目标</h1><ul><li>为所有玩家提供每账号一次的七日累计登录活动，角色与设备共享进度和奖励状态。</li><li>本稿用于 AI9527-5 审阅，不代表批准或专业子任务建单。奖励仅用于测试，不接入正式经济；不含付费、补签、额外任务或重复参与。</li></ul><h1 id="s2">2. 功能综述</h1><ul><li>已登录玩家点击主界面入口：首次进入创建个人活动并计首日，已开启读取原活动，已结束仍可查看且不重开。主界面不自动弹出活动。</li><li>开启时锁定玩家时区，由服务器时间按该时区当地日历计算日期，包含夏令时变化，不受设备改时影响。开启当天为第1活动日，第15日00:00到期，共14个活动日，不按固定小时数替代日历计算。</li><li>累计7个不同活动日登录，漏登不清零、不补计，同日去重；在线跨日计入，开启后无需每日打开活动页。进度封顶7天，达到7天不提前结束。</li><li>固定7档，累计1至7天分别解锁；各档独立手动领取，可乱序补领。开启时保存完整奖励快照，包含道具标识、名称、图标、数量及顺序，新配置只影响新开账号。</li><li>到期停止计日和手动领取，离线账号同样结算；仅补发已解锁未领取档位，不补已领取或未解锁档位。无补发内容不生成空邮件。</li><li>测试邮件为已补发记录，无需领取附件。结算中断可恢复并去重。同账号同档整组奖励共用幂等约束，手动领取和到期补发不得部分重复或漏发。</li><li>到期前已校验且提交成功的领取保留结果；否则到期交由结算处理，并遵守已解锁未领取条件。</li></ul><h1 id="s3">3. 界面与交互</h1><h2 id="ui-wireframes">3.1 界面线框布局</h2><p>低保真触屏方案，不是正式美术。左侧刘海手机为设计底框，不代表某款手机的原生尺寸；开发按真实设备安全区适配。多个界面按逻辑单列显示，成功与失败互斥，邮件为独立分支。图中奖励使用下方测试配置。</p><h3>入口：主界面</h3><p>点击01进入活动；首次创建，已开启读取，已结束不重开。</p><figure class="phone"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2000 1160" role="img" aria-label="入口：主界面"><title>入口：主界面</title><rect x="4" y="4" width="1992" height="1152" rx="110" fill="#20252c"/><svg x="40" y="40" width="1920" height="1080" viewBox="0 0 1920 1080"><rect width="1920" height="1080" rx="80" fill="#eef0f3"/><rect x="130" y="65" width="1660" height="905" rx="16" fill="none" stroke="#b7c1ce" stroke-width="2" stroke-dasharray="10 12"/><text x="180" y="160" font-size="44" text-anchor="start" fill="#34404d">游戏主界面</text><rect x="1440" y="110" width="300" height="76" rx="16" fill="#fff" stroke="#929ca8" stroke-width="3"/><text x="1590.0" y="159" font-size="30" text-anchor="middle" fill="#34404d">01 七日登录</text><circle cx="1735" cy="113" r="14" fill="#bd4444"/><rect x="180" y="240" width="1550" height="630" rx="16" fill="#e5e9ed" stroke="#929ca8" stroke-width="3"/><text x="950" y="560" font-size="48" text-anchor="middle" fill="#34404d">现有游戏内容区域</text><text x="950" y="630" font-size="32" text-anchor="middle" fill="#34404d">不自动弹出活动</text><path d="M0 335 H38 Q80 335 80 380 V700 Q80 745 38 745 H0 Z" fill="#20252c"/><rect x="700" y="1020" width="520" height="12" rx="6" fill="#333b46"/></svg></svg><figcaption>入口：主界面 · 1920×1080横屏设计画布，虚线为安全区示意。</figcaption></figure><h3>主页面：七档奖励</h3><p>04领取，05关闭，08查看邮件。示例第五日累计三天。</p><figure class="phone"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2000 1160" role="img" aria-label="主页面：七档奖励"><title>主页面：七档奖励</title><rect x="4" y="4" width="1992" height="1152" rx="110" fill="#20252c"/><svg x="40" y="40" width="1920" height="1080" viewBox="0 0 1920 1080"><rect width="1920" height="1080" rx="80" fill="#eef0f3"/><rect x="130" y="65" width="1660" height="905" rx="16" fill="none" stroke="#b7c1ce" stroke-width="2" stroke-dasharray="10 12"/><rect x="160" y="90" width="1600" height="840" rx="16" fill="#fff" stroke="#929ca8" stroke-width="3"/><text x="220" y="165" font-size="46" text-anchor="start" fill="#34404d">七日累计登录</text><rect x="1480" y="120" width="210" height="76" rx="16" fill="#fff" stroke="#929ca8" stroke-width="3"/><text x="1585.0" y="169" font-size="30" text-anchor="middle" fill="#34404d">05 关闭</text><text x="220" y="240" font-size="34" text-anchor="start" fill="#34404d">02 活动第5 / 14日 · 累计登录3 / 7天</text><text x="220" y="296" font-size="30" text-anchor="start" fill="#34404d">结束：9月15日00:00　锁定时区：亚洲／上海（示例）</text><rect x="220" y="345" width="190" height="365" rx="16" fill="#f7f8fa" stroke="#929ca8" stroke-width="3"/><text x="315" y="397" font-size="32" text-anchor="middle" fill="#34404d">第1天</text><rect x="265" y="426" width="100" height="95" rx="16" fill="#e5e9ee" stroke="#929ca8" stroke-width="3"/><text x="315" y="483" font-size="27" text-anchor="middle" fill="#34404d">图标</text><text x="315" y="566" font-size="27" text-anchor="middle" fill="#34404d">金币 × 8</text><text x="315" y="611" font-size="27" text-anchor="middle" fill="#34404d">材料 × 6</text><text x="315" y="683" font-size="27" text-anchor="middle" fill="#34404d">已领取</text><rect x="430" y="345" width="190" height="365" rx="16" fill="#f7f8fa" stroke="#929ca8" stroke-width="3"/><text x="525" y="397" font-size="32" text-anchor="middle" fill="#34404d">第2天</text><rect x="475" y="426" width="100" height="95" rx="16" fill="#e5e9ee" stroke="#929ca8" stroke-width="3"/><text x="525" y="483" font-size="27" text-anchor="middle" fill="#34404d">图标</text><text x="525" y="566" font-size="27" text-anchor="middle" fill="#34404d">金币 × 8</text><text x="525" y="611" font-size="27" text-anchor="middle" fill="#34404d">材料 × 6</text><rect x="445" y="633" width="160" height="76" rx="16" fill="#fff" stroke="#929ca8" stroke-width="3"/><text x="525.0" y="682" font-size="30" text-anchor="middle" fill="#34404d">04 领取</text><rect x="640" y="345" width="190" height="365" rx="16" fill="#f7f8fa" stroke="#929ca8" stroke-width="3"/><text x="735" y="397" font-size="32" text-anchor="middle" fill="#34404d">第3天</text><rect x="685" y="426" width="100" height="95" rx="16" fill="#e5e9ee" stroke="#929ca8" stroke-width="3"/><text x="735" y="483" font-size="27" text-anchor="middle" fill="#34404d">图标</text><text x="735" y="566" font-size="27" text-anchor="middle" fill="#34404d">金币 × 8</text><text x="735" y="611" font-size="27" text-anchor="middle" fill="#34404d">材料 × 6</text><rect x="655" y="633" width="160" height="76" rx="16" fill="#fff" stroke="#929ca8" stroke-width="3"/><text x="735.0" y="682" font-size="30" text-anchor="middle" fill="#34404d">04 领取</text><rect x="850" y="345" width="190" height="365" rx="16" fill="#f7f8fa" stroke="#929ca8" stroke-width="3"/><text x="945" y="397" font-size="32" text-anchor="middle" fill="#34404d">第4天</text><rect x="895" y="426" width="100" height="95" rx="16" fill="#e5e9ee" stroke="#929ca8" stroke-width="3"/><text x="945" y="483" font-size="27" text-anchor="middle" fill="#34404d">图标</text><text x="945" y="566" font-size="27" text-anchor="middle" fill="#34404d">金币 × 8</text><text x="945" y="611" font-size="27" text-anchor="middle" fill="#34404d">材料 × 6</text><text x="945" y="683" font-size="27" text-anchor="middle" fill="#34404d">未解锁</text><rect x="1060" y="345" width="190" height="365" rx="16" fill="#f7f8fa" stroke="#929ca8" stroke-width="3"/><text x="1155" y="397" font-size="32" text-anchor="middle" fill="#34404d">第5天</text><rect x="1105" y="426" width="100" height="95" rx="16" fill="#e5e9ee" stroke="#929ca8" stroke-width="3"/><text x="1155" y="483" font-size="27" text-anchor="middle" fill="#34404d">图标</text><text x="1155" y="566" font-size="27" text-anchor="middle" fill="#34404d">金币 × 8</text><text x="1155" y="611" font-size="27" text-anchor="middle" fill="#34404d">材料 × 6</text><text x="1155" y="683" font-size="27" text-anchor="middle" fill="#34404d">未解锁</text><rect x="1270" y="345" width="190" height="365" rx="16" fill="#f7f8fa" stroke="#929ca8" stroke-width="3"/><text x="1365" y="397" font-size="32" text-anchor="middle" fill="#34404d">第6天</text><rect x="1315" y="426" width="100" height="95" rx="16" fill="#e5e9ee" stroke="#929ca8" stroke-width="3"/><text x="1365" y="483" font-size="27" text-anchor="middle" fill="#34404d">图标</text><text x="1365" y="566" font-size="27" text-anchor="middle" fill="#34404d">金币 × 8</text><text x="1365" y="611" font-size="27" text-anchor="middle" fill="#34404d">材料 × 6</text><text x="1365" y="683" font-size="27" text-anchor="middle" fill="#34404d">未解锁</text><rect x="1480" y="345" width="190" height="365" rx="16" fill="#f7f8fa" stroke="#929ca8" stroke-width="3"/><text x="1575" y="397" font-size="32" text-anchor="middle" fill="#34404d">第7天</text><rect x="1525" y="426" width="100" height="95" rx="16" fill="#e5e9ee" stroke="#929ca8" stroke-width="3"/><text x="1575" y="483" font-size="27" text-anchor="middle" fill="#34404d">图标</text><text x="1575" y="566" font-size="27" text-anchor="middle" fill="#34404d">金币 × 8</text><text x="1575" y="611" font-size="27" text-anchor="middle" fill="#34404d">材料 × 6</text><text x="1575" y="683" font-size="27" text-anchor="middle" fill="#34404d">未解锁</text><text x="220" y="796" font-size="28" text-anchor="start" fill="#34404d">漏登不清零，每档一次；到期补发已解锁未领取奖励。</text><text x="220" y="863" font-size="29" text-anchor="start" fill="#34404d">账号所有角色共享</text><rect x="1400" y="820" width="300" height="76" rx="16" fill="#fff" stroke="#929ca8" stroke-width="3"/><text x="1550.0" y="869" font-size="30" text-anchor="middle" fill="#34404d">08 测试邮件</text><path d="M0 335 H38 Q80 335 80 380 V700 Q80 745 38 745 H0 Z" fill="#20252c"/><rect x="700" y="1020" width="520" height="12" rx="6" fill="#333b46"/></svg></svg><figcaption>主页面：七档奖励 · 1920×1080横屏设计画布，虚线为安全区示意。</figcaption></figure><h3>领取分支：成功窗口</h3><p>仅确认成功后直接弹出06奖励层；任意位置关闭，不穿透触发下层。</p><figure class="phone"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2000 1160" role="img" aria-label="领取分支：成功窗口"><title>领取分支：成功窗口</title><rect x="4" y="4" width="1992" height="1152" rx="110" fill="#20252c"/><svg x="40" y="40" width="1920" height="1080" viewBox="0 0 1920 1080"><rect width="1920" height="1080" rx="80" fill="#eef0f3"/><rect x="130" y="65" width="1660" height="905" rx="16" fill="none" stroke="#b7c1ce" stroke-width="2" stroke-dasharray="10 12"/><rect x="330" y="160" width="1260" height="680" rx="16" fill="#f9fafb" stroke="#929ca8" stroke-width="3"/><text x="960" y="290" font-size="64" text-anchor="middle" fill="#34404d">领取成功</text><rect x="615" y="355" width="170" height="170" rx="16" fill="#e5e9ef" stroke="#929ca8" stroke-width="3"/><text x="700" y="455" font-size="32" text-anchor="middle" fill="#34404d">道具图标</text><text x="700" y="594" font-size="36" text-anchor="middle" fill="#34404d">测试金币 × 8</text><rect x="1075" y="355" width="170" height="170" rx="16" fill="#e5e9ef" stroke="#929ca8" stroke-width="3"/><text x="1160" y="455" font-size="32" text-anchor="middle" fill="#34404d">道具图标</text><text x="1160" y="594" font-size="36" text-anchor="middle" fill="#34404d">测试材料 × 6</text><text x="960" y="775" font-size="28" text-anchor="middle" fill="#747e89">点击任意地方退出</text><path d="M0 335 H38 Q80 335 80 380 V700 Q80 745 38 745 H0 Z" fill="#20252c"/><rect x="700" y="1020" width="520" height="12" rx="6" fill="#333b46"/></svg></svg><figcaption>领取分支：成功窗口 · 1920×1080横屏设计画布，虚线为安全区示意。</figcaption></figure><h3>领取分支：原因提示</h3><p>07为原因提示条；网络超时显示“网络异常，领取结果确认中”，无专门操作。</p><figure class="phone"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2000 1160" role="img" aria-label="领取分支：原因提示"><title>领取分支：原因提示</title><rect x="4" y="4" width="1992" height="1152" rx="110" fill="#20252c"/><svg x="40" y="40" width="1920" height="1080" viewBox="0 0 1920 1080"><rect width="1920" height="1080" rx="80" fill="#eef0f3"/><rect x="130" y="65" width="1660" height="905" rx="16" fill="none" stroke="#b7c1ce" stroke-width="2" stroke-dasharray="10 12"/><rect x="180" y="150" width="1560" height="760" rx="16" fill="#e5e9ed" stroke="#929ca8" stroke-width="3"/><text x="960" y="270" font-size="42" text-anchor="middle" fill="#34404d">原活动界面（背景示意）</text><text x="960" y="425" font-size="30" text-anchor="middle" fill="#34404d">↑ 向上飘动一段后消失</text><rect x="420" y="490" width="1080" height="110" rx="16" fill="#414a55" stroke="#929ca8" stroke-width="3"/><text x="960" y="560" font-size="36" text-anchor="middle" fill="#fff">活动已结束，不能继续领取</text><text x="960" y="730" font-size="28" text-anchor="middle" fill="#34404d">无按钮，不可操作；网络异常同样使用此提示条</text><path d="M0 335 H38 Q80 335 80 380 V700 Q80 745 38 745 H0 Z" fill="#20252c"/><rect x="700" y="1020" width="520" height="12" rx="6" fill="#333b46"/></svg></svg><figcaption>领取分支：原因提示 · 1920×1080横屏设计画布，虚线为安全区示意。</figcaption></figure><h3>查看分支：测试邮件</h3><p>从08进入，09返回活动。此图为到期后的时间点，并非领取后必经步骤。</p><figure class="phone"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2000 1160" role="img" aria-label="查看分支：测试邮件"><title>查看分支：测试邮件</title><rect x="4" y="4" width="1992" height="1152" rx="110" fill="#20252c"/><svg x="40" y="40" width="1920" height="1080" viewBox="0 0 1920 1080"><rect width="1920" height="1080" rx="80" fill="#eef0f3"/><rect x="130" y="65" width="1660" height="905" rx="16" fill="none" stroke="#b7c1ce" stroke-width="2" stroke-dasharray="10 12"/><rect x="160" y="90" width="1600" height="840" rx="16" fill="#fff" stroke="#929ca8" stroke-width="3"/><rect x="220" y="125" width="280" height="76" rx="16" fill="#fff" stroke="#929ca8" stroke-width="3"/><text x="360.0" y="174" font-size="30" text-anchor="middle" fill="#34404d">09 返回活动</text><text x="960" y="180" font-size="46" text-anchor="middle" fill="#34404d">测试邮件记录</text><text x="220" y="285" font-size="32" text-anchor="start" fill="#34404d">七日登录活动已结束</text><rect x="220" y="350" width="1480" height="145" rx="16" fill="#f5f7f9" stroke="#929ca8" stroke-width="3"/><text x="260" y="415" font-size="36" text-anchor="start" fill="#34404d">第2档：测试金币 × 8、测试材料 × 6</text><text x="1550" y="440" font-size="32" text-anchor="middle" fill="#34404d">已补发</text><rect x="220" y="525" width="1480" height="145" rx="16" fill="#f5f7f9" stroke="#929ca8" stroke-width="3"/><text x="260" y="590" font-size="36" text-anchor="start" fill="#34404d">第3档：测试金币 × 8、测试材料 × 6</text><text x="1550" y="615" font-size="32" text-anchor="middle" fill="#34404d">已补发</text><text x="220" y="760" font-size="30" text-anchor="start" fill="#34404d">此记录代表已补发，不提供附件领取按钮。</text><text x="220" y="820" font-size="28" text-anchor="start" fill="#34404d">无记录时：暂无测试邮件补发记录</text><path d="M0 335 H38 Q80 335 80 380 V700 Q80 745 38 745 H0 Z" fill="#20252c"/><rect x="700" y="1020" width="520" height="12" rx="6" fill="#333b46"/></svg></svg><figcaption>查看分支：测试邮件 · 1920×1080横屏设计画布，虚线为安全区示意。</figcaption></figure><h2 id="excel-config">3.2 Excel 配置表设计</h2><p>工作簿：<code>七日登录配置.xlsx</code>；尚未生成实际工作簿或实现导入。固定规则及玩家运行数据不放入配置。</p><h3>测试道具表：每行一个道具</h3><table><tr><th>字段</th><th>类型</th><th>约束</th></tr><tr><td><code>ItemId</code></td><td><code>int</code></td><td>必填主键，正整数且唯一，例如40、10。</td></tr><tr><td><code>DisplayName</code></td><td><code>string</code></td><td>必填非空中文名称，例如测试金币、测试材料。</td></tr><tr><td><code>IconKey</code></td><td><code>string</code></td><td>必填，能解析到项目实际占位图标，不虚构已存在路径。</td></tr></table><h3>七日奖励表：固定七行，每档一行</h3><table><tr><th>字段</th><th>配置类型</th><th>约束</th></tr><tr><td>LoginDay</td><td><code>int</code></td><td>必填主键，完整覆盖1～7，表示累计登录天数。</td></tr><tr><td>Rewards</td><td><code>List&lt;(int:ItemId,int:Number)&gt;</code></td><td>必填非空；每项严格两个整数，ItemId有效外键，Number为正int，单位为个。顺序即展示顺序。</td></tr></table><p>填写 <code>{{40,8},{10,6}}</code>；单项也写作 <code>{{40,8}}</code>。对应 C#：<code>List&lt;(int ItemId, int Number)&gt;</code>。不包含第三项，不拆成同档多行。所有字段均无隐式默认值。</p><table><tr><th>LoginDay</th><th>Rewards（测试示例）</th></tr><tr><td>1</td><td><code>{{40,8},{10,6}}</code></td></tr><tr><td>2</td><td><code>{{40,8},{10,6}}</code></td></tr><tr><td>3</td><td><code>{{40,8},{10,6}}</code></td></tr><tr><td>4</td><td><code>{{40,8},{10,6}}</code></td></tr><tr><td>5</td><td><code>{{40,8},{10,6}}</code></td></tr><tr><td>6</td><td><code>{{40,8},{10,6}}</code></td></tr><tr><td>7</td><td><code>{{40,8},{10,6}}</code></td></tr></table><details><summary>配置加载、校验与生效规则</summary><ul><li>工作簿：七日登录配置.xlsx。测试道具表每行定义一个测试道具；七日奖励表每行定义一档奖励，恰好7行。</li><li>测试道具表：ItemId为int，必填、正整数唯一主键；DisplayName为string，必填非空；IconKey为string，必填且可解析。示例ItemId为40、10，名称和图标使用项目有效测试资源。</li><li>七日奖励表：LoginDay为int，必填主键，完整覆盖1至7，单位为累计登录天数；Rewards必填非空，配置类型标记为List&lt;(int:ItemId,int:Number)&gt;，代码类型为List&lt;(int ItemId, int Number)&gt;。</li><li>Rewards单元格使用{{40,8},{10,6}}，表示道具40发8个、道具10发6个；单奖励也写作{{40,8}}。列表顺序即展示顺序，每档一行，不拆同档多行、不增加第三项。上述道具及数量仅为测试示例。</li><li>每项ItemId为关联测试道具表的有效外键，Number为正int，单位为道具个数。整数单元格填写十进制整数，列表严格解析括号、元组长度、类型和范围；字段不设隐式默认值。</li><li>配置加载或替换时整体校验主键、七档完整性、引用、图标及完整奖励列表；无效配置拒绝替换并保留原有效版本，无有效配置时不新开活动。发奖前验证整组奖励，不能跳过错误条目部分发放。</li><li>新有效版本供后续新开账号生成快照；已有账号继续使用原快照及可解析图标。固定业务规则和账号运行数据不进入Excel。本稿仅定义表结构，不代表已生成工作簿。</li></ul></details><h2>3.3 操作交付标准</h2><h3>01 打开活动</h3><table><tr><th>前置条件</th><td>账号已登录，无需预先开启活动。</td></tr><tr><th>操作与处理中</th><td>点击入口，显示加载反馈；不重复创建，未确认状态前不可领取。</td></tr><tr><th>成功反馈</th><td>首次创建并计首日，已开启显示原进度，已结束显示结果且不重开。</td></tr><tr><th>失败反馈</th><td>失败原因在屏幕中央长条提示，上浮一段后消失，无按钮。</td></tr><tr><th>异常恢复</th><td>网络恢复或再次进入时自动查询，创建响应丢失不能重复开启。</td></tr><tr><th>测试场景</th><td>首次／重复／结束后进入，跨设备与创建响应丢失。</td></tr></table><h3>04 单档领取</h3><table><tr><th>前置条件</th><td>活动有效，该档已解锁未领取，权威状态已确认。</td></tr><tr><th>操作与处理中</th><td>点击领取，该档显示领取中并防重复。</td></tr><tr><th>成功反馈</th><td>整组奖励成功后直接弹出06，显示实际图标、名称和数量；同步档位与红点。</td></tr><tr><th>失败反馈</th><td>仅使用中央原因提示条，上浮消失；无可操作失败框。</td></tr><tr><th>异常恢复</th><td>超时提示“网络异常，领取结果确认中”；恢复后自动核对，已发恢复成功，确认未发且有效才恢复原领取按钮，到期走补发；查询失败不重发。</td></tr><tr><th>测试场景</th><td>乱序、重复点击、多设备并发、部分结果恢复、到期竞争。</td></tr></table><h3>06 奖励层退出</h3><table><tr><th>前置条件</th><td>已收到成功结果或查询确认已发，成功层已显示。</td></tr><tr><th>操作与处理中</th><td>点击整层任意位置退出，不设确定按钮；点击不穿透。</td></tr><tr><th>成功反馈</th><td>关闭奖励层，返回原界面，保留已领取结果。</td></tr><tr><th>失败反馈</th><td>本地显示操作，无业务失败分支。</td></tr><tr><th>异常恢复</th><td>关闭不撤销发奖；重复展示或关闭不再次发奖。</td></tr><tr><th>测试场景</th><td>标题、道具及留白均可退出；下层按钮不被触发。</td></tr></table><h3>08 查看邮件</h3><table><tr><th>前置条件</th><td>账号已登录，从活动页邮件入口进入。</td></tr><tr><th>操作与处理中</th><td>加载补发记录，避免重复请求。</td></tr><tr><th>成功反馈</th><td>显示实际已补发列表或真实空记录，无附件领取按钮。</td></tr><tr><th>失败反馈</th><td>失败使用同一上浮原因提示条，不能将读取失败当作空列表。</td></tr><tr><th>异常恢复</th><td>网络恢复或重新进入自动查询，不增加网络重试控件，不重复发放。</td></tr><tr><th>测试场景</th><td>离线结算、记录一致性、空记录、结算中断恢复。</td></tr></table><h3>05 关闭／09 返回</h3><table><tr><th>前置条件</th><td>对应页面已显示。</td></tr><tr><th>操作与处理中</th><td>点击关闭或返回，本地隐藏当前页面，连续点击不作用于下层控件。</td></tr><tr><th>成功反馈</th><td>05返回主界面；09返回活动界面，不改变业务结果。</td></tr><tr><th>失败反馈</th><td>无业务请求，无网络失败分支。</td></tr><tr><th>异常恢复</th><td>进行中的业务重新进入时查询；返回页的数据同步独立处理。</td></tr><tr><th>测试场景</th><td>返回目标正确，断网可导航，不触发领取或重置进度。</td></tr></table><h1 id="s4">4. 美术与表现需求</h1><table><tr><th>类别</th><th>交付范围</th></tr><tr><th>界面</th><td>入口、活动奖励页、成功窗口、原因提示条及邮件记录使用占位界面，适配横屏安全区、触屏点击区域及移动端可读性。</td></tr><tr><th>图标</th><td>使用可解析的测试占位道具图标，与开启快照及实际发放内容一致。</td></tr><tr><th>特效</th><td>正式特效本期不制作。</td></tr><tr><th>动画</th><td>仅制作原因提示条从中央出现、上浮并消失的表现，适用于业务失败和网络异常，不固定未经指定的时长与位移数值；其余界面即时切换。</td></tr><tr><th>按钮音效</th><td>本期不新增。</td></tr></table><details id="appendix"><summary>附录：调研依据与完整验收用例（尚未执行）</summary><p>资料附注：沿用宿主提供的2026-09-24官方搜索索引，原神1.3“富贵登门”https://www.hoyolab.com/article/162571 、星穹铁道3.7“巡星之礼”https://www.hoyolab.com/article/42166551 。仅参考七日目标与分日奖励；个人14日、锁定时区及补发为用户选择。直接网页为动态壳，未实机观察，未独立联网核验。</p><h3>1. 账号活动唯一性（尚未执行）</h3><ul><li>前置条件：账号未开启活动。</li><li>操作步骤：首次点击入口，再以其他角色和设备进入。</li><li>预期结果：仅创建一次并计首日，共享状态，结束后不重开，不自动弹窗。</li></ul><h3>2. 日历与累计进度（尚未执行）</h3><ul><li>前置条件：活动已开启，覆盖夏令时切换。</li><li>操作步骤：同日重登、漏登、在线跨日并修改设备时间。</li><li>预期结果：按锁定时区及服务器日期去重累计，漏登不清零不补计，7天封顶且不提前结束。</li></ul><h3>3. 独立领取与红点（尚未执行）</h3><ul><li>前置条件：有效期内有多个已解锁档位。</li><li>操作步骤：乱序领取并重复点击。</li><li>预期结果：各档整组仅发一次，领取中防重复；红点仅在有效期内有可领档位时显示。</li></ul><h3>4. 成功窗口关闭（尚未执行）</h3><ul><li>前置条件：领取已确认成功。</li><li>操作步骤：核对窗口，点击奖励层不同位置并重复关闭。</li><li>预期结果：显示领取成功、实际图标名称数量及退出小字，无确定按钮，关闭不穿透、不再发奖。</li></ul><h3>5. 失败与网络提示（尚未执行）</h3><ul><li>前置条件：可触发业务失败、断线和超时。</li><li>操作步骤：分别触发并观察提示。</li><li>预期结果：原因准确，未知结果不称失败；中央长条上浮消失，无按钮、不可点击、不阻塞操作，无异常区。</li></ul><h3>6. 未知结果自动恢复（尚未执行）</h3><ul><li>前置条件：领取响应丢失。</li><li>操作步骤：恢复网络或重新进入，覆盖已发、未发、到期及查询失败。</li><li>预期结果：自动查询并恢复正确状态，仅未发且有效时恢复领取，查询失败不重复提交。</li></ul><h3>7. 到期与离线补发（尚未执行）</h3><ul><li>前置条件：含已领、已解锁未领及未解锁档位。</li><li>操作步骤：离线跨至第15日00:00，模拟结算中断后恢复。</li><li>预期结果：停止计日领取，仅补应补整组且去重，无内容无空邮件。</li></ul><h3>8. 领取与结算竞争（尚未执行）</h3><ul><li>前置条件：存在临近到期的领取请求。</li><li>操作步骤：分别在到期前完成校验并提交成功，以及未完成提交，交错运行结算。</li><li>预期结果：前者保留领取结果，后者按结算处理，同档整组不重发不漏发。</li></ul><h3>9. 配置与账号快照（尚未执行）</h3><ul><li>前置条件：已有开启账号及有效七档配置。</li><li>操作步骤：加载合法列表，再提交缺档、无效引用、第三项等错误配置。</li><li>预期结果：错误整表拒绝，无有效配置不新开；有效更新仅影响新账号，旧快照保持名称图标数量顺序。</li></ul><h3>10. 邮件与本地返回（尚未执行）</h3><ul><li>前置条件：存在已补发记录。</li><li>操作步骤：查看邮件并返回，关闭活动页，加载时模拟异常。</li><li>预期结果：记录与实际奖励一致，无附件领取；本地返回目标正确且不穿透，异常提示及自动查询符合公共规则。</li></ul></details>
+<footer class="footer">JIRA 为版本与审批唯一可信来源。尚未批准，未启动项目管理建单。</footer>
+</main>
+</body>
+</html>

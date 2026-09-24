@@ -27,11 +27,6 @@ namespace GameCLI.Core
         {
             guard("design");
             Workflow state = await store.StartAsync(document, cancellation);
-            if (state.Stage is "awaiting_approval" or "needs_clarification")
-            {
-                await new EarlyTaskPublisher(store, guard).PublishAsync(state, cancellation);
-            }
-
             return state.Stage == "design_pending" ? await AnalyzeAsync(state, cancellation) : state;
         }
 
@@ -71,7 +66,6 @@ namespace GameCLI.Core
             state.ApprovedRevision = revision;
             state.Stage = "pm_pending";
             await store.SaveAsync(state, cancellation);
-            await new EarlyTaskPublisher(store, guard).PublishAsync(state, cancellation);
             return await PublishAsync(state, cancellation);
         }
 
@@ -81,7 +75,7 @@ namespace GameCLI.Core
             Workflow state = await store.LoadAsync(key, cancellation);
             if (state.Stage is "awaiting_approval" or "needs_clarification")
             {
-                await new EarlyTaskPublisher(store, guard).PublishAsync(state, cancellation);
+                // Discussion and repeated status checks must never publish professional tasks.
                 return state;
             }
 
@@ -124,18 +118,12 @@ namespace GameCLI.Core
                 throw;
             }
 
-            await new EarlyTaskPublisher(store, guard).PublishAsync(state, cancellation);
             return state;
         }
 
         private async Task<Workflow> PublishAsync(Workflow state, CancellationToken cancellation)
         {
             RequireApproved(state);
-            if (state.Plan == null)
-            {
-                await new EarlyTaskPublisher(store, guard).PublishAsync(state, cancellation);
-            }
-
             guard("pm");
             AgentExecution execution = await BeginExecutionAsync(state, "PM", "pm_running", cancellation);
             try

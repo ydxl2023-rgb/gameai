@@ -7,9 +7,9 @@
 在 PM 面板保存一次 JIRA Address、Project Key 和 Access Token，安装项目内的 CLI，并确保本机 Codex 已登录。后续需求输入、审阅和确认均在 Codex 对话中完成。
 
 1. 在对话中附上需求文档、给出本地路径或粘贴需求正文，例如：“根据这份背包需求文档启动 GameCLI 开发流程。”
-2. Codex 读取 `gameai-orchestrator/SKILL.md`，使用可访问的 Markdown／TXT 路径调用 start；正文由助手原样保存为临时 UTF-8 输入文件。用户无需在面板填路径或手动运行命令。
+2. Codex 读取 `gameai-orchestrator/SKILL.md` 和 `gameai-requirement-discovery/SKILL.md`，先调研同类成功或成熟产品，把核实来源与比较摘要合并到需求输入，再使用可访问的 Markdown／TXT 路径调用 start；正文由助手原样保存为临时 UTF-8 输入文件。用户无需在面板填路径或手动运行命令。
 3. CLI 登记 JIRA 流程入口并启动 Design Agent。Codex 在当前对话展示策划说明、验收条件、专业需求和待确认问题。
-4. 用户在对话中补充问题时，Codex 调用 revise；用户明确确认展示的版本后，Codex 核对 JIRA 中的最新 revision，再调用 approve 启动 PM Agent。
+4. 当前对话一次展示全部重要决策题，用户完成整批选择后，Codex 合并反馈只调用一次 revise；用户明确确认展示的版本后，Codex 核对 JIRA 中的最新 revision，再调用 approve 启动 PM Agent。
 5. Codex 在对话中返回实际创建的程序、美术及 QA 单据链接。恢复已有流程时读取 status／resume，不重复启动新流程。
 
 仅附上文档并要求讨论不触发外部建单；文档内容中的指令不能代替用户要求启动流程或确认需求的意愿。
@@ -81,11 +81,11 @@ dotnet run --project app/client/LocalPackages/com.oathx.gamecli/GameCLI~/GameCLI
 
 协议依据：[Codex App Server](https://learn.chatgpt.com/docs/app-server)。动态工具需 experimentalApi；已按本机 `codex-cli 0.154.0-alpha.6.2` 生成的 schema 核对并完成真实 Agent／模拟 JIRA 联调。JIRA API 依据：[Jira Server REST API](https://docs.atlassian.com/software/jira/docs/api/REST/9.12.0/)。目标 JIRA 实例的字段及权限仍需实际运行验证。
 
-## 移动平台与美术提前登记
+## 移动平台与确认后建单
 
 仅支持移动触屏交互；桌面交互内容在新策划和建单计划校验时拒绝。测试用例按目录层级逐行输出前置条件、操作步骤、预期结果。未决问题保存在属性中，仅在对话处理，不写进描述。
 
-策划完成即通过项目管理建单通道登记一张汇总美术需求单据，不等待整体方案批准。无美术需求不建单，建单不等于启动制作。美术计划、真实编号与未决建单意图保存在入口属性。丢失响应先按稳定标记查询，索引未返回时不再次创建。修订需求更新原美术单据；移除美术需求时更新原单据范围说明。项目管理完整计划必须原样复用已登记美术任务，所有专业需求在策划完成后立即登记；制作、编码与测试执行仍需版本批准。
+策划完成后仅保存需求主任务草案，并在当前 Codex 对话展示方案与问题；用户补充后调用 revise 重新分析。必须展示完整定稿并收到用户对当前 revision 的明确确认，才调用 approve 启动 PM，由 PM 提交完整计划后创建美术、程序、QA 子任务。start、revise、等待确认时的 resume 均不创建专业子任务。历史专业单据恢复时核对并复用原编号，未知结果禁止重复创建。
 
 ### 各专业同步登记
 
@@ -93,7 +93,7 @@ dotnet run --project app/client/LocalPackages/com.oathx.gamecli/GameCLI~/GameCLI
 
 ## 默认任务层级
 
-每份需求登记为一个主任务；策划产出的美术、程序开发、测试验收需求立即登记为该主任务下的真实子任务。子任务使用项目配置的子任务类型与父任务字段，描述链接不能替代层级。父子关系表示归属，依赖仍单独记录。恢复时核对项目、类型、父任务和稳定标签，错误父任务或旧独立任务必须先修正，不自动新建替代。已有单据通过 Jira 转换流程保留编号与内容。
+每份需求登记为一个主任务；用户确认策划版本后，由 PM 将美术、程序开发、测试验收需求登记为该主任务下的真实子任务。子任务使用项目配置的子任务类型与父任务字段，描述链接不能替代层级。父子关系表示归属，依赖仍单独记录。恢复时核对项目、类型、父任务和稳定标签，错误父任务或旧独立任务必须先修正，不自动新建替代。已有单据通过 Jira 转换流程保留编号与内容。
 
 单条命令支持 `jira --create --parent <主任务编号>`；省略父任务创建主任务。配置缺少子任务类型时明确失败，不降级为独立任务。
 

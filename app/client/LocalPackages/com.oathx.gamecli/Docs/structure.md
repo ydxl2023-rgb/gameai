@@ -86,3 +86,7 @@ GameCLIServer 的局域网 WebSocket 客户端连接无需认证令牌；JIRA We
 `Core/DeliveryWatcher.cs` 管理串行通知调度；`Services/JiraExecutionComments.cs` 管理评论投递与未知结果恢复；`Services/ExecutionComment.cs` 格式化中文执行结果。Development 只读联调复用现有诊断执行器。
 
 `Editor/AgentMonitorPanel.cs` 为当前工程提供运行列表：Orchestrator 汇总五个角色，Design、PM、Art、Development、QA 页面按角色筛选。`Services/LiveRun.cs` 仅发布本机临时运行元数据（角色、单号、任务标题、执行模式、会话与进程），退出后移除；不保存权威任务状态，不查询或轮询 JIRA。
+
+需求讨论由当前 Codex 对话承接，`RequirementWorkflow` 的 start/revise 只执行 Design，待澄清或待确认的 resume 不建单；approve 绑定具体版本后启动 PM，通过其工具回调创建专业子任务。
+
+`gameai-requirement-discovery/SKILL.md` 单独约定同类产品调研、完整推荐草案及集中选择题；当前对话完成联网调研，Design 宿主显式加载该技能并使用来源摘要，全部选择收齐后统一修订。

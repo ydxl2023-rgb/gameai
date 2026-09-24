@@ -185,10 +185,12 @@ namespace GameCLI.Contracts
         {
             RequireText(design.Title, 200);
             RequireText(design.Specification, 6000);
-            RequireList(design.Acceptance, true);
-            RequireList(design.ArtRequirements, false);
-            RequireList(design.DevelopmentRequirements, true);
             RequireList(design.Questions, false);
+            // Discussion drafts may lack executable scope; approval still requires a complete design.
+            bool complete = design.Questions.Length == 0;
+            RequireList(design.Acceptance, complete);
+            RequireList(design.ArtRequirements, false);
+            RequireList(design.DevelopmentRequirements, complete);
         }
 
         /// <summary>Rejects malformed persisted state before it can authorize execution or suppress task creation.</summary>

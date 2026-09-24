@@ -9,7 +9,7 @@ description: 按授权读写 JIRA 任务、状态与执行记录；用于各角�
 
 - `GameCLI jira --create --summary "任务标题" [--description "任务描述"] [--parent <主任务编号>] --format json`：使用 PM 面板保存的 JIRA Address、Project Key 和 Windows 凭据创建一条任务，不在命令行传递 Token。
 - 默认解析项目内的 `Task`／`任务` 非子任务类型；自定义名称可用 `--issue-type <名称或ID>`。`jira --create` 仍是单条最小建单，不提供自定义字段写入。
-- 文档驱动的建单通过 [Orchestrator](../gameai-orchestrator/SKILL.md) 执行：先登记需求主任务，策划分析后立即登记对应专业子任务；用户确认具体版本后，项目管理提交计划并复用已有子任务。状态与依赖保存在入口的 `gamecli.workflow.v1` issue property；专业单据携带执行与任务标签，恢复时查询标签并核对已有结果。
+- 文档驱动的建单通过 [Orchestrator](../gameai-orchestrator/SKILL.md) 执行：先登记需求主任务保存草案；策划与用户在当前 Codex 对话反复沟通，用户确认具体版本后，项目管理提交计划并创建或复用专业子任务。状态与依赖保存在入口的 `gamecli.workflow.v1` issue property；专业单据携带执行与任务标签，恢复时查询标签并核对已有结果。
 - 创建属于外部写入，只在用户已授权创建对应任务时执行。成功读取真实 `key` 和 `url`；失败读取退出码与 `message`。`outcome_unknown: true` 表示可能已创建，必须先到 JIRA 核对，不能自动重试。
 
 ## 工作流约束

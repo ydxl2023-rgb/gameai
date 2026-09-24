@@ -81,7 +81,7 @@ namespace GameCLI.WorkflowSmoke
                     Environment.SetEnvironmentVariable("GAMECLI_WORKFLOW_MODE", "professional-" + role);
                     CodexWorkflowAgent worker = new(Environment.ProcessPath!, root, skills, null);
                     using CancellationTokenSource deadline = new(TimeSpan.FromSeconds(15));
-                    string output = await worker.RunAsync(role, "测试专业协议，不执行实际制作。", TaskDelivery.ResultSchema, Guid.NewGuid().ToString("N"), null, (_, _, _) => Task.CompletedTask, deadline.Token);
+                    string output = await worker.RunAsync(role, "{}", TaskDelivery.ResultSchema, Guid.NewGuid().ToString("N"), null, (_, _, _) => Task.CompletedTask, deadline.Token);
                     Require(WorkflowContract.Parse<DeliveryResult>(output).Verdict == "blocked", "Professional result protocol failed.");
                     Console.WriteLine("PASS professional-" + role);
                 }
@@ -123,8 +123,6 @@ namespace GameCLI.WorkflowSmoke
                 "revise",
                 "cancel",
                 "bootstrap",
-                "early-lost",
-                "early-disabled",
                 "no-art",
                 "mobile-invalid"
             })
@@ -146,35 +144,6 @@ namespace GameCLI.WorkflowSmoke
                 });
                 using CancellationTokenSource timeout = new(TimeSpan.FromSeconds(25));
                 CancellationToken token = timeout.Token;
-                if (mode is "early-lost" or "lost-response" or "index-delay")
-                {
-                    httpHandler.LoseResponse = true;
-                    httpHandler.LoseOnChild = mode == "lost-response" ? 2 : mode == "index-delay" ? 3 : 1;
-                    await ExpectFailureAsync(() => workflow.StartAsync("背包需求", token));
-                    Require(httpHandler.ChildPosts == httpHandler.LoseOnChild, "Expected publication was not attempted.");
-                    httpHandler.HideSearch = true;
-                    await ExpectFailureAsync(() => workflow.ResumeAsync(store.LastCreatedIssueKey!, token));
-                    Require(httpHandler.ChildPosts == httpHandler.LoseOnChild, "Unknown outcome caused duplicate POST.");
-                    httpHandler.HideSearch = false;
-                    Workflow recovered = await workflow.ResumeAsync(store.LastCreatedIssueKey!, token);
-                    await workflow.ResumeAsync(recovered.IssueKey, token);
-                    Require(recovered.ArtCreated != null && !recovered.ArtPending && recovered.ApprovedRevision == null && recovered.EarlyTasks.Count == 2 && httpHandler.ChildPosts == 3, "Art recovery failed.");
-                    Console.WriteLine("PASS " + mode);
-                    continue;
-                }
-
-                if (mode == "early-disabled")
-                {
-                    disabled = true;
-                    await ExpectFailureAsync(() => workflow.StartAsync("背包需求", token));
-                    Require(httpHandler.ChildPosts == 0, "Disabled PM registered art.");
-                    disabled = false;
-                    Workflow recovered = await workflow.ResumeAsync(store.LastCreatedIssueKey!, token);
-                    Require(recovered.ArtCreated != null && recovered.EarlyTasks.Count == 2 && httpHandler.ChildPosts == 3, "Art did not resume after enabling PM.");
-                    Console.WriteLine("PASS " + mode);
-                    continue;
-                }
-
                 if (mode == "mobile-invalid")
                 {
                     await ExpectFailureAsync(() => workflow.StartAsync("背包需求", token));
@@ -186,7 +155,7 @@ namespace GameCLI.WorkflowSmoke
                 if (mode == "no-art")
                 {
                     Workflow withoutArt = await workflow.StartAsync("背包需求", token);
-                    Require(withoutArt.ArtCreated == null && withoutArt.EarlyTasks.Count == 2 && httpHandler.ChildPosts == 2, "Absent art scope still created an issue.");
+                    Require(withoutArt.ArtCreated == null && withoutArt.EarlyTasks.Count == 0 && httpHandler.ChildPosts == 0, "Absent art scope still created an issue.");
                     Console.WriteLine("PASS " + mode);
                     continue;
                 }
@@ -213,28 +182,35 @@ namespace GameCLI.WorkflowSmoke
                 }
 
                 Workflow state = await workflow.StartAsync("背包需求", token);
-                Require(httpHandler.RootPosts == 1 && httpHandler.ChildPosts == 3 && state.ArtCreated != null && state.EarlyTasks.Count == 2 && state.ApprovedRevision == null, "Design must immediately register art without approving development.");
+                Require(httpHandler.RootPosts == 1 && httpHandler.ChildPosts == 0 && state.ArtCreated == null && state.EarlyTasks.Count == 0 && state.ApprovedRevision == null, "Design must wait for explicit approval without publishing tasks.");
+                await workflow.ResumeAsync(state.IssueKey, token);
+                await workflow.StartAsync("背包需求", token);
+                Require(httpHandler.ChildPosts == 0, "Waiting workflow published tasks on resume or repeated start.");
                 if (mode == "questions")
                 {
                     Require(state.Stage == "needs_clarification", "Questions must block approval.");
                     await ExpectFailureAsync(() => workflow.ApproveAsync(state.IssueKey, state.Revision, token));
+                    Environment.SetEnvironmentVariable("GAMECLI_WORKFLOW_MODE", "success");
+                    Workflow clarified = await workflow.ReviseAsync(state.IssueKey, "已补充全部规则的背包需求", token);
+                    Require(clarified.Stage == "awaiting_approval" && clarified.ApprovedRevision == null && httpHandler.ChildPosts == 0, "Clarification must still wait for human approval.");
                 }
                 else if (mode == "wrong-revision")
                 {
                     await ExpectFailureAsync(() => workflow.ApproveAsync(state.IssueKey, "stale", token));
                     Workflow waiting = await workflow.ResumeAsync(state.IssueKey, token);
-                    Require(waiting.Stage == "awaiting_approval" && httpHandler.ChildPosts == 3, "Resume bypassed approval.");
+                    Require(waiting.Stage == "awaiting_approval" && httpHandler.ChildPosts == 0, "Resume bypassed approval.");
                 }
                 else if (mode == "revise")
                 {
                     Workflow updated = await workflow.ReviseAsync(state.IssueKey, "更新的背包需求", token);
-                    Require(updated.Revision != state.Revision && updated.ApprovedRevision == null && updated.ArtCreated!.Key == state.ArtCreated!.Key && httpHandler.ChildPosts == 3, "Revision did not invalidate approval.");
+                    Require(updated.Revision != state.Revision && updated.ApprovedRevision == null && updated.ArtCreated == null && httpHandler.ChildPosts == 0, "Revision did not invalidate approval.");
                     await ExpectFailureAsync(() => workflow.ApproveAsync(state.IssueKey, state.Revision, token));
                 }
                 else
                 {
                     disabled = mode == "disabled";
                     httpHandler.LoseResponse = mode is "lost-response" or "index-delay";
+                    httpHandler.LoseOnChild = 2;
                     if (mode == "success")
                     {
                         Workflow done = await workflow.ApproveAsync(state.IssueKey, state.Revision, token);
@@ -269,7 +245,7 @@ namespace GameCLI.WorkflowSmoke
                         }
                         else
                         {
-                            Require(httpHandler.ChildPosts == 3, "Invalid execution published development or duplicated art.");
+                            Require(httpHandler.ChildPosts == 0, "Invalid execution published tasks.");
                         }
                     }
                 }
@@ -373,6 +349,11 @@ namespace GameCLI.WorkflowSmoke
                         }
 
                         pm = parameters.GetProperty("developerInstructions").GetString()!.Contains("# PM Agent");
+                        if (!pm && !professional)
+                        {
+                            Require(parameters.GetProperty("developerInstructions").GetString()!.Contains("# 同类功能调研与集中决策"), "Design research and batch-decision skill missing.");
+                        }
+
                         Require(parameters.GetProperty("dynamicTools").GetArrayLength() == (pm ? 1 : 0), "Wrong role tools.");
                         Send(new
                     {
@@ -431,6 +412,8 @@ namespace GameCLI.WorkflowSmoke
 
                             Complete(thread, turn, WorkflowContract.Serialize(mode == "questions" ? design with
                         {
+                            Acceptance = Array.Empty<string>(),
+                            DevelopmentRequirements = Array.Empty<string>(),
                             Questions = new[]
                             {
                                 "容量是多少？"
@@ -454,7 +437,7 @@ namespace GameCLI.WorkflowSmoke
                             },
                             plan.Tasks[1],
                             plan.Tasks[2]
-                        }) : plan;
+                        }) : new TaskPlan(EarlyTaskPublisher.BuildTasks(design));
                             Send(new
                         {
                             id = "tool-1",
@@ -676,7 +659,7 @@ namespace GameCLI.WorkflowSmoke
                         }
 
                         JsonElement state = updates[0].GetProperty("value");
-                        if (state.GetProperty("design").ValueKind != JsonValueKind.Null)
+                        if (state.GetProperty("design").ValueKind != JsonValueKind.Null && state.GetProperty("design").GetProperty("acceptance").GetArrayLength() > 0)
                         {
                             Require(fields["description"].GetString()!.Contains("测试用例与验收标准"), "Design projection was not refreshed.");
                         }
