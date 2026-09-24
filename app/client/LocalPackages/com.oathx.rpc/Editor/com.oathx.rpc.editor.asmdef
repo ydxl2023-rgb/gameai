@@ -1,0 +1,18 @@
+{
+    "name": "Oathx.Rpc.editor",
+    "rootNamespace": "",
+    "references": [
+        "GUID:e5b4d4bfbfeb56245af48b8d42511b31"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

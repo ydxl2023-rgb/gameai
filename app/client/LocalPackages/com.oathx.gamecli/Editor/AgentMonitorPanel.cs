@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.IO;
 
 using UnityEditor;
+using UnityEditor.IMGUI.Controls;
 using UnityEngine;
 
 namespace Oathx.GameCLI.Editor
@@ -16,13 +17,22 @@ namespace Oathx.GameCLI.Editor
 
         private string selectedExecution;
 
-        private Vector2 tableScroll;
+        private Vector2 detailScroll;
+
+        private AgentTable table;
+
+        private int snapshotVersion;
+
+        private int displayedVersion = -1;
+
+        private string displayedRole;
 
         /// <summary>
         /// Refreshes transient execution records and filters out exited or reused process IDs.
         /// </summary>
         public void Refresh(string project)
         {
+            snapshotVersion++;
             runs.Clear();
             error = null;
             string directory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".gamecli", "runs");
@@ -88,34 +98,25 @@ namespace Oathx.GameCLI.Editor
                 EditorGUILayout.HelpBox(error, MessageType.Warning);
             }
 
-            tableScroll = EditorGUILayout.BeginScrollView(tableScroll, GUILayout.ExpandHeight(true));
-            using (new EditorGUILayout.VerticalScope(GUILayout.MinWidth(770)))
+            if (table == null)
             {
-                using (new EditorGUILayout.HorizontalScope(EditorStyles.toolbar))
-                {
-                    Cell("角色", 105, true);
-                    Cell("JIRA 任务", 115, true);
-                    Cell("正在处理的工作", 235, true);
-                    Cell("运行状态", 100, true);
-                    Cell("执行模式", 90, true);
-                    Cell("已运行", 85, true);
-                    Cell("详情", 40, true);
-                }
-
-                foreach (Run run in visible)
-                {
-                    DrawRow(run);
-                }
-
-                if (visible.Count == 0)
-                {
-                    GUILayout.Label(role == null ? "当前没有正在工作的 Agent。" : "当前没有正在工作的 " + role + " Agent。", EditorStyles.centeredGreyMiniLabel);
-                }
+                table = new AgentTable(this);
             }
+
+            if (displayedVersion != snapshotVersion || displayedRole != role)
+            {
+                table.SetRuns(visible);
+                displayedVersion = snapshotVersion;
+                displayedRole = role;
+            }
+
+            Rect tableRect = GUILayoutUtility.GetRect(0, 100000, 0, 100000, GUILayout.ExpandWidth(true), GUILayout.ExpandHeight(true));
+            table.OnGUI(tableRect);
 
             Run selected = visible.Find(run => run.executionId == selectedExecution);
             if (selected != null)
             {
+                detailScroll = EditorGUILayout.BeginScrollView(detailScroll, GUILayout.Height(130));
                 using (new EditorGUILayout.VerticalScope(EditorStyles.helpBox))
                 {
                     DrawValue("执行编号", selected.executionId);
@@ -127,34 +128,200 @@ namespace Oathx.GameCLI.Editor
                         EditorGUIUtility.systemCopyBuffer = selected.role + " | " + selected.issueKey + "\n" + selected.taskTitle + "\n" + selected.executionId + "\n" + selected.threadId + "\n" + selected.turnId;
                     }
                 }
+                EditorGUILayout.EndScrollView();
             }
-            EditorGUILayout.EndScrollView();
         }
 
-        private void DrawRow(Run run)
+        /// <summary>
+        /// Uses Unity's native table controls without coupling monitoring to the RPC package.
+        /// </summary>
+        private sealed class AgentTable : TreeView
         {
-            using (new EditorGUILayout.HorizontalScope(EditorStyles.helpBox, GUILayout.Height(24)))
+            private readonly AgentMonitorPanel owner;
+
+            private readonly Dictionary<string, int> rowIds = new Dictionary<string, int>();
+
+            private List<Run> rows = new List<Run>();
+
+            private int nextId = 1;
+
+            public AgentTable(AgentMonitorPanel owner)
+                : base(new TreeViewState(), CreateHeader())
             {
-                Cell(run.role, 101);
-                Cell(string.IsNullOrEmpty(run.issueKey) ? "未关联 / 旧版记录" : run.issueKey, 115);
-                Cell(string.IsNullOrEmpty(run.taskTitle) ? "未提供任务标题" : run.taskTitle, 235);
-                string stage = string.IsNullOrEmpty(run.threadId) ? "启动会话" : string.IsNullOrEmpty(run.turnId) ? "准备任务" : "工作中";
-                GUIStyle stateStyle = new GUIStyle(EditorStyles.label);
-                stateStyle.normal.textColor = string.IsNullOrEmpty(run.turnId) ? new Color(0.9f, 0.65f, 0.2f) : new Color(0.2f, 0.75f, 0.4f);
-                GUILayout.Label(stage, stateStyle, GUILayout.Width(100));
-                Cell(run.mode == "probe" ? "只读联调" : run.mode == "draft" ? "需求草案" : string.IsNullOrEmpty(run.mode) ? "未标注" : "正式执行", 90);
-                TimeSpan elapsed = TimeSpan.FromMilliseconds(Math.Max(0, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - run.started));
-                Cell(((int)elapsed.TotalHours).ToString("00") + elapsed.ToString(@"\:mm\:ss"), 85);
-                if (GUILayout.Button(selectedExecution == run.executionId ? "收起" : "查看", EditorStyles.miniButton, GUILayout.Width(40)))
+                this.owner = owner;
+                rowHeight = 20;
+                showAlternatingRowBackgrounds = true;
+                showBorder = true;
+                multiColumnHeader.sortingChanged += header => Reload();
+                Reload();
+            }
+
+            public void SetRuns(List<Run> current)
+            {
+                rows = current;
+                HashSet<string> active = new HashSet<string>();
+                foreach (Run run in rows)
                 {
-                    selectedExecution = selectedExecution == run.executionId ? null : run.executionId;
+                    active.Add(run.executionId);
+                    if (!rowIds.ContainsKey(run.executionId))
+                    {
+                        rowIds.Add(run.executionId, nextId++);
+                    }
+                }
+
+                // Keep identities stable across refresh and sorting, but discard ended executions.
+                foreach (string id in new List<string>(rowIds.Keys))
+                {
+                    if (!active.Contains(id))
+                    {
+                        rowIds.Remove(id);
+                    }
+                }
+
+                Reload();
+            }
+
+            private static MultiColumnHeader CreateHeader()
+            {
+                string[] labels =
+                {
+                    "Role",
+                    "Task ID",
+                    "Status",
+                    "Mode",
+                    "Elapsed",
+                    "Details"
+                };
+                float[] widths =
+                {
+                    95,
+                    90,
+                    70,
+                    75,
+                    70,
+                    55
+                };
+                var columns = new MultiColumnHeaderState.Column[labels.Length];
+                for (int index = 0; index < columns.Length; index++)
+                {
+                    columns[index] = new MultiColumnHeaderState.Column
+                    {
+                        headerContent = new GUIContent(labels[index]),
+                        width = widths[index],
+                        minWidth = index == 5 ? 45 : 55,
+                        autoResize = index == 1,
+                        canSort = index != 5,
+                        allowToggleVisibility = false
+                    };
+                }
+
+                return new MultiColumnHeader(new MultiColumnHeaderState(columns));
+            }
+
+            protected override TreeViewItem BuildRoot()
+            {
+                var root = new TreeViewItem(0, -1, "Root")
+                {
+                    children = new List<TreeViewItem>()
+                };
+                List<Run> sorted = new List<Run>(rows);
+                int column = multiColumnHeader.sortedColumnIndex;
+                sorted.Sort((left, right) => CompareRuns(left, right, column));
+                foreach (Run run in sorted)
+                {
+                    root.AddChild(new AgentRow(rowIds[run.executionId], run));
+                }
+
+                return root;
+            }
+
+            private int CompareRuns(Run left, Run right, int column)
+            {
+                int order;
+                if (column < 0 || column == 4)
+                {
+                    // Elapsed time is compared numerically, independent of the display format.
+                    order = column < 0 ? left.started.CompareTo(right.started) : right.started.CompareTo(left.started);
+                }
+                else
+                {
+                    order = StringComparer.OrdinalIgnoreCase.Compare(Value(left, column), Value(right, column));
+                }
+
+                if (column >= 0 && !multiColumnHeader.IsSortedAscending(column))
+                {
+                    order = -order;
+                }
+
+                return order == 0 ? StringComparer.Ordinal.Compare(left.executionId, right.executionId) : order;
+            }
+
+            protected override void RowGUI(RowGUIArgs args)
+            {
+                Run run = ((AgentRow)args.item).Run;
+                for (int index = 0; index < args.GetNumVisibleColumns(); index++)
+                {
+                    int column = args.GetColumn(index);
+                    Rect cell = args.GetCellRect(index);
+                    CenterRectUsingSingleLineHeight(ref cell);
+                    cell.xMin += 4;
+                    cell.xMax -= 4;
+                    if (column == 5)
+                    {
+                        if (GUI.Button(cell, owner.selectedExecution == run.executionId ? "收起" : "查看", EditorStyles.miniButton))
+                        {
+                            owner.selectedExecution = owner.selectedExecution == run.executionId ? null : run.executionId;
+                        }
+                    }
+                    else
+                    {
+                        GUIStyle style = new GUIStyle(EditorStyles.label);
+                        if (column == 2)
+                        {
+                            style.normal.textColor = string.IsNullOrEmpty(run.turnId) ? new Color(0.9f, 0.65f, 0.2f) : new Color(0.2f, 0.75f, 0.4f);
+                        }
+
+                        string value = Value(run, column);
+                        GUI.Label(cell, new GUIContent(value, value), style);
+                    }
                 }
             }
-        }
 
-        private static void Cell(string value, float width, bool header = false)
-        {
-            GUILayout.Label(new GUIContent(value ?? "", value ?? ""), header ? EditorStyles.miniBoldLabel : EditorStyles.label, GUILayout.Width(width));
+            private static string Value(Run run, int column)
+            {
+                switch (column)
+                {
+                    case 0:
+                        return run.role ?? "";
+                    case 1:
+                        return string.IsNullOrEmpty(run.issueKey) ? "—" : run.issueKey;
+                    case 2:
+                        return string.IsNullOrEmpty(run.threadId) ? "启动会话" : string.IsNullOrEmpty(run.turnId) ? "准备任务" : "工作中";
+                    case 3:
+                        return run.mode == "probe" ? "只读联调" : run.mode == "draft" ? "需求草案" : string.IsNullOrEmpty(run.mode) ? "未标注" : "正式执行";
+                    case 4:
+                        TimeSpan elapsed = TimeSpan.FromMilliseconds(Math.Max(0, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - run.started));
+                        return ((int)elapsed.TotalHours).ToString("00") + elapsed.ToString(@"\:mm\:ss");
+                    default:
+                        return "";
+                }
+            }
+
+            protected override bool CanMultiSelect(TreeViewItem item)
+            {
+                return false;
+            }
+
+            private sealed class AgentRow : TreeViewItem
+            {
+                public Run Run
+                { get; }
+
+                public AgentRow(int id, Run run) : base(id, 0, run.taskTitle ?? "")
+                {
+                    Run = run;
+                }
+            }
         }
 
         private static void DrawValue(string label, string value)

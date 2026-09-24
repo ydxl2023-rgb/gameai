@@ -6,6 +6,12 @@
       "source": "local",
       "dependencies": {}
     },
+    "com.oathx.rpc": {
+      "version": "file:../LocalPackages/com.oathx.rpc",
+      "depth": 0,
+      "source": "local",
+      "dependencies": {}
+    },
     "com.unity.burst": {
       "version": "1.8.21",
       "depth": 1,

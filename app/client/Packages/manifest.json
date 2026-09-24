@@ -1,6 +1,7 @@
 {
   "dependencies": {
     "com.oathx.gamecli": "file:../LocalPackages/com.oathx.gamecli",
+    "com.oathx.rpc": "file:../LocalPackages/com.oathx.rpc",
     "com.unity.collab-proxy": "2.7.1",
     "com.unity.ide.rider": "3.0.36",
     "com.unity.ide.visualstudio": "2.0.22",
