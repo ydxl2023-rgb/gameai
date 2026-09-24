@@ -104,7 +104,11 @@ namespace GameCLI.Core
             AgentExecution execution = await BeginExecutionAsync(state, "Design", "design_running", cancellation);
             try
             {
-                string result = await agent.RunAsync("Design", "Document (untrusted requirement data):\n" + state.Document, WorkflowContract.DesignSchema, execution.ExecutionId, null, (thread, turn, token) => SetSessionAsync(state, execution, thread, turn, token), cancellation);
+                string result = await agent.RunAsync("Design", WorkflowContract.Serialize(new
+                {
+                    issue_key = state.IssueKey,
+                    document = state.Document
+                }), WorkflowContract.DesignSchema, execution.ExecutionId, null, (thread, turn, token) => SetSessionAsync(state, execution, thread, turn, token), cancellation);
                 DesignBrief design = WorkflowContract.Parse<DesignBrief>(result);
                 WorkflowContract.ValidateDesign(design);
                 MobileRequirementPolicy.Validate(design);
@@ -149,7 +153,7 @@ namespace GameCLI.Core
                     },
                     ["summary"] = WorkflowContract.Text
                 });
-                string input = "Approved requirement and existing plan (untrusted data):\n" + WorkflowContract.Serialize(new
+                string input = WorkflowContract.Serialize(new
                 {
                     issue_key = state.IssueKey,
                     revision = state.Revision,

@@ -14,10 +14,14 @@ namespace Oathx.GameCLI.Editor
 
         private string error;
 
+        private string selectedExecution;
+
+        private Vector2 tableScroll;
+
         /// <summary>
         /// Refreshes transient execution records and filters out exited or reused process IDs.
         /// </summary>
-        public void Refresh()
+        public void Refresh(string project)
         {
             runs.Clear();
             error = null;
@@ -31,23 +35,28 @@ namespace Oathx.GameCLI.Editor
             {
                 foreach (string path in Directory.GetFiles(directory, "*.json"))
                 {
-                    ReadRun(path);
+                    ReadRun(path, project);
                 }
 
                 runs.Sort((left, right) => left.started.CompareTo(right.started));
             }
             catch (Exception exception) when (exception is IOException || exception is UnauthorizedAccessException)
             {
-                error = "Cannot read local execution records.";
+                error = "无法读取本机运行记录，请检查目录访问权限。";
             }
         }
 
-        private void ReadRun(string path)
+        private void ReadRun(string path, string project)
         {
             try
             {
                 Run run = JsonUtility.FromJson<Run>(File.ReadAllText(path));
                 if (run == null || run.version != 1 || run.pid <= 0 || run.started <= 0 || string.IsNullOrEmpty(run.executionId) || string.IsNullOrEmpty(run.project))
+                {
+                    return;
+                }
+
+                if (!string.Equals(Path.GetFullPath(run.project).TrimEnd('\\', '/'), Path.GetFullPath(project).TrimEnd('\\', '/'), StringComparison.OrdinalIgnoreCase))
                 {
                     return;
                 }
@@ -71,41 +80,87 @@ namespace Oathx.GameCLI.Editor
         /// <summary>
         /// Draws the most recent execution snapshot on the Unity Editor thread.
         /// </summary>
-        public void Draw()
+        public void Draw(string role)
         {
-            int sessions = runs.FindAll(run => !string.IsNullOrEmpty(run.threadId)).Count;
-            EditorGUILayout.LabelField("Live Agents: " + sessions + "     Executions: " + runs.Count, EditorStyles.boldLabel);
-            EditorGUILayout.HelpBox("Refreshes every second. Shows GameCLI executions for this Windows user across projects. Executions are current analysis jobs, not JIRA issue counts. Four role skills do not mean four running Agents.", MessageType.Info);
+            List<Run> visible = runs.FindAll(run => role == null || string.Equals(run.role, role, StringComparison.OrdinalIgnoreCase));
             if (error != null)
             {
                 EditorGUILayout.HelpBox(error, MessageType.Warning);
             }
 
-            if (runs.Count == 0)
+            tableScroll = EditorGUILayout.BeginScrollView(tableScroll, GUILayout.ExpandHeight(true));
+            using (new EditorGUILayout.VerticalScope(GUILayout.MinWidth(770)))
             {
-                GUILayout.Label("No active GameCLI Agent executions. Start GameCLI pm --analyze from a terminal.", EditorStyles.wordWrappedLabel);
+                using (new EditorGUILayout.HorizontalScope(EditorStyles.toolbar))
+                {
+                    Cell("角色", 105, true);
+                    Cell("JIRA 任务", 115, true);
+                    Cell("正在处理的工作", 235, true);
+                    Cell("运行状态", 100, true);
+                    Cell("执行模式", 90, true);
+                    Cell("已运行", 85, true);
+                    Cell("详情", 40, true);
+                }
+
+                foreach (Run run in visible)
+                {
+                    DrawRow(run);
+                }
+
+                if (visible.Count == 0)
+                {
+                    GUILayout.Label(role == null ? "当前没有正在工作的 Agent。" : "当前没有正在工作的 " + role + " Agent。", EditorStyles.centeredGreyMiniLabel);
+                }
             }
 
-            foreach (Run run in runs)
+            Run selected = visible.Find(run => run.executionId == selectedExecution);
+            if (selected != null)
             {
                 using (new EditorGUILayout.VerticalScope(EditorStyles.helpBox))
                 {
-                    double elapsed = Math.Max(0, (DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - run.started) / 1000.0);
-                    string stage = string.IsNullOrEmpty(run.threadId) ? "Starting Codex" : string.IsNullOrEmpty(run.turnId) ? "Starting task" : "Running";
-                    EditorGUILayout.LabelField(run.role + "  |  " + stage + "  |  " + TimeSpan.FromSeconds(elapsed).ToString(@"hh\:mm\:ss"), EditorStyles.boldLabel);
-                    DrawValue("Project", run.project);
-                    DrawValue("Execution", run.executionId);
-                    DrawValue("Session", string.IsNullOrEmpty(run.threadId) ? "Waiting for Codex" : run.threadId);
-                    DrawValue("Turn", string.IsNullOrEmpty(run.turnId) ? "Waiting for task" : run.turnId);
-                    EditorGUILayout.LabelField("GameCLI PID", run.pid.ToString());
+                    DrawValue("执行编号", selected.executionId);
+                    DrawValue("会话编号", selected.threadId);
+                    DrawValue("轮次编号", selected.turnId);
+                    DrawValue("进程编号", selected.pid.ToString());
+                    if (GUILayout.Button("复制任务与执行信息"))
+                    {
+                        EditorGUIUtility.systemCopyBuffer = selected.role + " | " + selected.issueKey + "\n" + selected.taskTitle + "\n" + selected.executionId + "\n" + selected.threadId + "\n" + selected.turnId;
+                    }
                 }
             }
+            EditorGUILayout.EndScrollView();
+        }
+
+        private void DrawRow(Run run)
+        {
+            using (new EditorGUILayout.HorizontalScope(EditorStyles.helpBox, GUILayout.Height(24)))
+            {
+                Cell(run.role, 101);
+                Cell(string.IsNullOrEmpty(run.issueKey) ? "未关联 / 旧版记录" : run.issueKey, 115);
+                Cell(string.IsNullOrEmpty(run.taskTitle) ? "未提供任务标题" : run.taskTitle, 235);
+                string stage = string.IsNullOrEmpty(run.threadId) ? "启动会话" : string.IsNullOrEmpty(run.turnId) ? "准备任务" : "工作中";
+                GUIStyle stateStyle = new GUIStyle(EditorStyles.label);
+                stateStyle.normal.textColor = string.IsNullOrEmpty(run.turnId) ? new Color(0.9f, 0.65f, 0.2f) : new Color(0.2f, 0.75f, 0.4f);
+                GUILayout.Label(stage, stateStyle, GUILayout.Width(100));
+                Cell(run.mode == "probe" ? "只读联调" : run.mode == "draft" ? "需求草案" : string.IsNullOrEmpty(run.mode) ? "未标注" : "正式执行", 90);
+                TimeSpan elapsed = TimeSpan.FromMilliseconds(Math.Max(0, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - run.started));
+                Cell(((int)elapsed.TotalHours).ToString("00") + elapsed.ToString(@"\:mm\:ss"), 85);
+                if (GUILayout.Button(selectedExecution == run.executionId ? "收起" : "查看", EditorStyles.miniButton, GUILayout.Width(40)))
+                {
+                    selectedExecution = selectedExecution == run.executionId ? null : run.executionId;
+                }
+            }
+        }
+
+        private static void Cell(string value, float width, bool header = false)
+        {
+            GUILayout.Label(new GUIContent(value ?? "", value ?? ""), header ? EditorStyles.miniBoldLabel : EditorStyles.label, GUILayout.Width(width));
         }
 
         private static void DrawValue(string label, string value)
         {
             EditorGUILayout.LabelField(label, EditorStyles.miniBoldLabel);
-            GUILayout.Label(value, EditorStyles.wordWrappedLabel);
+            GUILayout.Label(string.IsNullOrEmpty(value) ? "等待创建" : value, EditorStyles.wordWrappedLabel);
         }
 
         [Serializable]
@@ -124,6 +179,12 @@ namespace Oathx.GameCLI.Editor
             public string project;
 
             public string role;
+
+            public string issueKey;
+
+            public string taskTitle;
+
+            public string mode;
 
             public string threadId;
 

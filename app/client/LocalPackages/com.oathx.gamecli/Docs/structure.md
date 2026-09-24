@@ -84,3 +84,5 @@ GameCLIServer 的局域网 WebSocket 客户端连接无需认证令牌；JIRA We
 `Contracts/AgentProbe.cs` 保存只读联调契约；`Core/AgentProbeWorkflow.cs` 串联 WebSocket 通知、JIRA 核对和独立 Art 会话，联调记录不作为生产交付。
 
 `Core/DeliveryWatcher.cs` 管理串行通知调度；`Services/JiraExecutionComments.cs` 管理评论投递与未知结果恢复；`Services/ExecutionComment.cs` 格式化中文执行结果。Development 只读联调复用现有诊断执行器。
+
+`Editor/AgentMonitorPanel.cs` 为当前工程提供运行列表：Orchestrator 汇总五个角色，Design、PM、Art、Development、QA 页面按角色筛选。`Services/LiveRun.cs` 仅发布本机临时运行元数据（角色、单号、任务标题、执行模式、会话与进程），退出后移除；不保存权威任务状态，不查询或轮询 JIRA。

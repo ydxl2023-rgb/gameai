@@ -43,7 +43,10 @@ namespace Oathx.GameCLI.Editor
 
         private Vector2 scroll;
 
-        private Vector2 windowScroll;
+        private float headerContentHeight = 320;
+
+        [SerializeField]
+        private float listRatio = 0.8f;
 
         private JiraConnectionPanel jiraPanel;
 
@@ -81,20 +84,91 @@ namespace Oathx.GameCLI.Editor
 
         private void RefreshMonitor()
         {
-            if (selectedPage == 0 && EditorApplication.timeSinceStartup >= nextMonitorRefresh)
+            if (EditorApplication.timeSinceStartup >= nextMonitorRefresh)
             {
                 nextMonitorRefresh = EditorApplication.timeSinceStartup + 1;
-                agentMonitor.Refresh();
+                agentMonitor.Refresh(unityProject);
                 Repaint();
             }
         }
 
         private void OnGUI()
         {
+            // The header owns its natural height; only the lower list/output boundary is draggable.
+            EditorGUILayout.BeginVertical(GUILayout.ExpandHeight(false));
+            DrawHeader();
+            EditorGUILayout.EndVertical();
+            if (Event.current.type == EventType.Repaint)
+            {
+                float measuredHeight = GUILayoutUtility.GetLastRect().yMax;
+                if (Mathf.Abs(headerContentHeight - measuredHeight) > 1)
+                {
+                    headerContentHeight = measuredHeight;
+                    Repaint();
+                }
+            }
+
+            float headerHeight = headerContentHeight;
+            const float dividerHeight = 6;
+            float availableHeight = Mathf.Max(0, position.height - headerHeight - dividerHeight);
+            float minimumList = Mathf.Min(100, availableHeight * 0.5f);
+            float minimumOutput = Mathf.Min(60, availableHeight * 0.3f);
+            float listHeight = Mathf.Clamp(availableHeight * listRatio, minimumList, availableHeight - minimumOutput);
+            Rect divider = new Rect(0, headerHeight + listHeight, position.width, dividerHeight);
+            DrawDivider(divider, headerHeight, availableHeight, minimumList, minimumOutput);
+
+            // Explicit pane bounds prevent nested scroll views from consuming the output area.
+            GUILayout.BeginArea(new Rect(0, headerHeight, position.width, listHeight));
+            agentMonitor.Draw(selectedPage == 0 ? null : commandPages[selectedPage]);
+            GUILayout.EndArea();
+
+            GUILayout.BeginArea(new Rect(0, divider.yMax, position.width, availableHeight - listHeight));
+            EditorGUILayout.LabelField("Output", EditorStyles.miniBoldLabel);
+            scroll = EditorGUILayout.BeginScrollView(scroll, GUILayout.ExpandHeight(true));
+            EditorGUILayout.TextArea(output.ToString(), GUILayout.ExpandHeight(true));
+            EditorGUILayout.EndScrollView();
+            GUILayout.EndArea();
+        }
+
+        private void DrawDivider(Rect divider, float top, float availableHeight, float minimumList, float minimumOutput)
+        {
+            int control = GUIUtility.GetControlID("GameCliPaneDivider".GetHashCode(), FocusType.Passive);
+            EditorGUIUtility.AddCursorRect(divider, MouseCursor.ResizeVertical);
+            EditorGUI.DrawRect(divider, EditorGUIUtility.isProSkin ? new Color(0.13f, 0.13f, 0.13f) : new Color(0.6f, 0.6f, 0.6f));
+            EditorGUI.DrawRect(new Rect(divider.center.x - 18, divider.y + 2, 36, 2), Color.gray);
+            Event current = Event.current;
+            switch (current.GetTypeForControl(control))
+            {
+                case EventType.MouseDown:
+                    if (current.button == 0 && divider.Contains(current.mousePosition))
+                    {
+                        GUIUtility.hotControl = control;
+                        current.Use();
+                    }
+                    break;
+                case EventType.MouseDrag:
+                    if (GUIUtility.hotControl == control && availableHeight > 0)
+                    {
+                        listRatio = Mathf.Clamp(current.mousePosition.y - top, minimumList, availableHeight - minimumOutput) / availableHeight;
+                        current.Use();
+                        Repaint();
+                    }
+                    break;
+                case EventType.MouseUp:
+                    if (GUIUtility.hotControl == control)
+                    {
+                        GUIUtility.hotControl = 0;
+                        current.Use();
+                    }
+                    break;
+            }
+        }
+
+        private void DrawHeader()
+        {
             string executable = GameCliInstaller.GetExecutablePath(unityProject);
             bool installed = File.Exists(executable);
             bool busy = operation != null;
-            windowScroll = EditorGUILayout.BeginScrollView(windowScroll);
             EditorGUILayout.LabelField("GameCLI Installer", EditorStyles.boldLabel);
             EditorGUILayout.LabelField("CLI", installed ? "Installed" : "Not Installed");
             EditorGUILayout.HelpBox(status, statusType);
@@ -135,12 +209,6 @@ namespace Oathx.GameCLI.Editor
             EditorGUILayout.Space(8);
             selectedPage = GUILayout.Toolbar(selectedPage, commandPages, EditorStyles.toolbarButton);
             DrawCommandPage();
-            EditorGUILayout.Space(8);
-            EditorGUILayout.LabelField("Output", EditorStyles.miniBoldLabel);
-            scroll = EditorGUILayout.BeginScrollView(scroll, GUILayout.Height(100));
-            EditorGUILayout.TextArea(output.ToString(), GUILayout.ExpandHeight(true));
-            EditorGUILayout.EndScrollView();
-            EditorGUILayout.EndScrollView();
         }
 
         private void DrawRelativePath(string absolutePath)
@@ -179,18 +247,10 @@ namespace Oathx.GameCLI.Editor
             }
 
             GUILayout.Label(description, EditorStyles.wordWrappedLabel);
-            if (selectedPage == 0)
+            if (selectedPage == 2)
             {
-                EditorGUILayout.HelpBox("Provide your requirement document in the Codex conversation to start the workflow. This panel monitors running agents.", MessageType.Info);
-                agentMonitor.Draw();
-            }
-            else if (selectedPage == 2)
-            {
+                EditorGUILayout.Space(8);
                 jiraPanel.Draw();
-            }
-            else
-            {
-                EditorGUILayout.HelpBox("Commands for this category are not implemented yet.", MessageType.Info);
             }
         }
 

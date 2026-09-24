@@ -13,6 +13,12 @@ namespace GameCLI.Services
 
         private readonly string role;
 
+        private readonly string issueKey;
+
+        private readonly string taskTitle;
+
+        private readonly string mode;
+
         private readonly long hostStarted;
 
         private readonly long started = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
@@ -20,11 +26,14 @@ namespace GameCLI.Services
         /// <summary>
         /// Publishes a transient record associated with this process ID and start time.
         /// </summary>
-        public LiveRun(string project, string executionId, string role = "PM")
+        public LiveRun(string project, string executionId, string role = "PM", string issueKey = "", string taskTitle = "", string mode = "production")
         {
             this.project = project;
             this.executionId = executionId;
             this.role = role;
+            this.issueKey = issueKey;
+            this.taskTitle = taskTitle;
+            this.mode = mode;
             using Process host = Process.GetCurrentProcess();
             hostStarted = new DateTimeOffset(host.StartTime.ToUniversalTime()).ToUnixTimeMilliseconds();
             string directory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".gamecli", "runs");
@@ -48,6 +57,9 @@ namespace GameCLI.Services
                 executionId,
                 project,
                 role,
+                issueKey,
+                taskTitle,
+                mode,
                 threadId,
                 turnId
             });

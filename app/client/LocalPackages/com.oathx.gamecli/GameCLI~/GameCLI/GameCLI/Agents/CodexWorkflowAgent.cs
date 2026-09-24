@@ -83,7 +83,16 @@ namespace GameCLI.Agents
             string? threadId = null;
             string? turnId = null;
             TaskCompletionSource<string> activeTurn = new(TaskCreationOptions.RunContinuationsAsynchronously);
-            using LiveRun live = new(project, executionId, role);
+            using JsonDocument context = JsonDocument.Parse(input);
+            JsonElement root = context.RootElement;
+            string issueKey = root.TryGetProperty("issue_key", out JsonElement key) ? key.GetString() ?? "" : "";
+            string taskTitle = role == "Design" ? "分析策划需求" : "组织与登记专业任务";
+            if (root.TryGetProperty("task", out JsonElement task) && task.TryGetProperty("title", out JsonElement title))
+            {
+                taskTitle = title.GetString() ?? taskTitle;
+            }
+
+            using LiveRun live = new(project, executionId, role, issueKey, taskTitle, probeOnly ? "probe" : "production");
             await using CodexRpcClient rpc = new(executable, project, async (_, parameters, lifetime) =>
             {
                 using CancellationTokenSource linked = CancellationTokenSource.CreateLinkedTokenSource(cancellation, lifetime);
