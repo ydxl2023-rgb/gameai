@@ -4,7 +4,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { createSnapshot } from './snapshot.js';
 
-export const resourceUri = 'ui://gameai-track/v1.html';
+export const resourceUri = 'ui://gameai-track/v2.html';
 const mimeType = 'text/html;profile=mcp-app';
 const htmlUrl = new URL('../../public/track.html', import.meta.url);
 
@@ -12,7 +12,7 @@ export function createMcpServer(html: string)
 {
     const server = new McpServer({ name: 'gameai-track', version: '0.1.0' });
     server.registerResource('gameai-track', resourceUri, { mimeType }, async () => ({
-        contents: [{ uri: resourceUri, mimeType, text: html, _meta: { ui: { prefersBorder: true, csp: { connectDomains: [], resourceDomains: [] } } } }]
+        contents: [{ uri: resourceUri, mimeType, text: html, _meta: { 'openai/ui': { availableDisplayModes: ['inline', 'fullscreen'] }, ui: { prefersBorder: true, csp: { connectDomains: [], resourceDomains: [] } } } }]
     }));
     const annotations = { readOnlyHint: true, destructiveHint: false, openWorldHint: false };
     const reply = async () => ({
