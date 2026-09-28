@@ -14,7 +14,7 @@ export function databaseEnabled()
     return process.env.GAMEAI_STORAGE === 'postgres';
 }
 
-export function createPool()
+export function createPool(overrides = {})
 {
     if (!databaseEnabled() || !process.env.PGPASSWORD || !process.env.PGDATABASE || !process.env.PGUSER)
     {
@@ -31,7 +31,8 @@ export function createPool()
         idleTimeoutMillis: 10000,
         statement_timeout: 10000,
         application_name: 'gameai-track',
-        allowExitOnIdle: true
+        allowExitOnIdle: true,
+        ...overrides
     });
     pool.on('error', () => console.error('数据库连接中断，下次读取将重连。'));
     return pool;

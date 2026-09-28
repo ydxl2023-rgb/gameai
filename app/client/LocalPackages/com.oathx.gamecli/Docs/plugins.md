@@ -10,14 +10,12 @@ GameCLI/
   Core/PluginHost.cs        Registry, help, dispatch and enablement gate
   Plugins/
     CLIPlugin.cs            Common plugin lifecycle
-    Design/                 DesignPlugin (Orchestrator invokes this role)
+    Design/                 DesignPlugin (reserved role)
     PM/                     PMPlugin, PmAnalyzeCommand
     Unity/                  UnityPlugin, UnityPingCommand
     Art/                    ArtPlugin
     Development/            DevelopmentPlugin
     QA/                     QAPlugin
-    Jira/                   JiraPlugin
-    Orchestrator/           OrchestratorPlugin
     Management/             Plugin management and ICommand implementations
   Agents/                   Agent execution services
   Contracts/                Validated result contracts
@@ -30,21 +28,16 @@ GameCLI/
 GameCLI.exe plugins list --format json
 GameCLI.exe plugins disable pm
 GameCLI.exe plugins enable pm
-GameCLI.exe plugins disable jira
-GameCLI.exe plugins enable jira
 GameCLI.exe unity --ping --project <Unity project> --format json
 GameCLI.exe pm --analyze --project <project> --prompt "Requirement" --format json
 ```
 
 Both `--command` and `command` are accepted immediately after the plugin ID. `GameCLI <plugin> --help` lists its commands even when disabled. `GameCLI <plugin> <command> --help` displays command options when enabled. The `plugins` management entry stays available and cannot be disabled. Unknown plugins/commands and invalid arguments return exit 4. Disabled plugins return exit 3 before argument parsing, network calls or Agent startup. JSON mode preserves machine-readable failure output.
 
-The registered feature IDs are `orchestrator`, `design`, `pm`, `art`, `development`, `unity`, `qa`, and `jira`. Orchestrator registers start/status/approve/resume/revise; see [workflow commands](orchestrator-workflow.md). Design has a role enablement gate and is invoked by Orchestrator. Legacy PM analysis, Unity ping and JIRA task creation remain available. Art, Development and QA execution commands are not implemented. The PM manual creation form has been removed.
 
 ## Enablement
 
-CLI plugin preferences are stored per user at `~/.gamecli/plugins.json`. Default is enabled. Settings are read for each dispatch. Updates use a named mutex and atomic file replacement, preserving concurrent changes. Invalid settings fail closed with exit 5 instead of silently enabling plugins. These are local tool preferences and do not replace JIRA workflow state.
-
-Enable/disable controls future dispatch. It does not terminate in-flight Agent sessions; Orchestrator additionally rechecks role gates before publication and the JIRA gate before each HTTP operation. The Unity Editor's individual route switches remain a separate layer: a Unity CLI request needs both the CLI plugin and its Editor route enabled. Plugin settings do not hide Editor configuration pages or disable direct pipe clients.
+Preferences are local execution settings stored in ~/.gamecli/plugins.json, or the GAMECLI_PLUGIN_SETTINGS override. They do not store business workflow state. Unknown and disabled commands fail before execution.
 
 ## Adding a plugin
 

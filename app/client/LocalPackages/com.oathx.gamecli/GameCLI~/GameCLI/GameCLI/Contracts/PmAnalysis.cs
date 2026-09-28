@@ -9,7 +9,7 @@ namespace GameCLI.Contracts
 
     internal sealed record PmError(string Category, string Message, string? Evidence, bool Retryable);
 
-    internal sealed record PmAnalysis(int SchemaVersion, string? IssueKey, string TraceId, string ExecutionId, string Status, PmData Data, string[] Artifacts, PmError[] Errors);
+    internal sealed record PmAnalysis(int SchemaVersion, string? TaskId, string TraceId, string ExecutionId, string Status, PmData Data, string[] Artifacts, PmError[] Errors);
 
     internal static class PmContract
     {
@@ -19,7 +19,7 @@ namespace GameCLI.Contracts
             UnmappedMemberHandling = JsonUnmappedMemberHandling.Disallow
         };
 
-        /// <summary>Gets the strict output schema for a draft without JIRA transitions or created artifacts.</summary>
+        /// <summary>Gets the strict output schema for a draft without platform transitions or created artifacts.</summary>
         public static JsonElement Schema => JsonSerializer.SerializeToElement(Object(new Dictionary<string, object>
         {
             ["schema_version"] = new
@@ -30,7 +30,7 @@ namespace GameCLI.Contracts
                     1
                 }
             },
-            ["issue_key"] = new
+            ["task_id"] = new
             {
                 type = "null"
             },

@@ -13,7 +13,7 @@ namespace GameCLI.Services
 
         private readonly string role;
 
-        private readonly string issueKey;
+        private readonly string taskId;
 
         private readonly string taskTitle;
 
@@ -26,12 +26,12 @@ namespace GameCLI.Services
         /// <summary>
         /// Publishes a transient record associated with this process ID and start time.
         /// </summary>
-        public LiveRun(string project, string executionId, string role = "PM", string issueKey = "", string taskTitle = "", string mode = "production")
+        public LiveRun(string project, string executionId, string role = "PM", string taskId = "", string taskTitle = "", string mode = "production")
         {
             this.project = project;
             this.executionId = executionId;
             this.role = role;
-            this.issueKey = issueKey;
+            this.taskId = taskId;
             this.taskTitle = taskTitle;
             this.mode = mode;
             using Process host = Process.GetCurrentProcess();
@@ -47,7 +47,7 @@ namespace GameCLI.Services
         /// </summary>
         public void SetSession(string threadId, string turnId)
         {
-            // Ephemeral local process discovery only: no prompt, credentials or JIRA workflow state.
+            // Ephemeral local process discovery only: no prompt, credentials or business workflow state.
             string json = JsonSerializer.Serialize(new
             {
                 version = 1,
@@ -57,7 +57,7 @@ namespace GameCLI.Services
                 executionId,
                 project,
                 role,
-                issueKey,
+                taskId,
                 taskTitle,
                 mode,
                 threadId,
@@ -72,7 +72,7 @@ namespace GameCLI.Services
             catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
             {
                 // A viewer can briefly hold the file on Windows. Monitoring must not abort authoritative work.
-                Console.Error.WriteLine("Unable to refresh local monitoring metadata; JIRA execution remains authoritative.");
+                Console.Error.WriteLine("Unable to refresh local monitoring metadata; execution continues without local monitoring.");
             }
         }
 

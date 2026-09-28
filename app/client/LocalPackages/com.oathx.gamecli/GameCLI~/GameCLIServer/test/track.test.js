@@ -9,7 +9,7 @@ const { handleTrackRequest, resourceUri } = await import('../dist/track/http.js'
 
 async function setup(t)
 {
-    const app = createGameCliServer({ webhookToken: 'a'.repeat(32), projects: ['DEMO'], additionalHttpHandler: handleTrackRequest });
+    const app = createGameCliServer({ additionalHttpHandler: handleTrackRequest });
     app.server.listen(0, '127.0.0.1');
     await once(app.server, 'listening');
     t.after(() => app.close());

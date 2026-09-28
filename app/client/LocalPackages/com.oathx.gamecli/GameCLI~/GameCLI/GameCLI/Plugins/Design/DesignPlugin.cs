@@ -2,17 +2,21 @@ using GameCLI.Abstractions;
 
 namespace GameCLI.Plugins.Design
 {
-    /// <summary>Identifies the Design role; Orchestrator currently owns its execution commands.</summary>
+    /// <summary>Provides single-role Design execution and cloud requirement submission.</summary>
     public sealed class DesignPlugin : CLIPlugin
     {
         /// <inheritdoc />
         public override string Id => "design";
 
         /// <inheritdoc />
-        public override string Description => "Game design analysis (invoked through orchestrator)";
+        public override string Description => "Design document generation and review submission";
 
         /// <inheritdoc />
         public override IReadOnlyList<ICommand> Commands
-        { get; } = Array.AsReadOnly(new ICommand[] {});
+        { get; } = Array.AsReadOnly(new ICommand[]
+        {
+            new DesignDocumentCommand(),
+            new DesignDocumentCommand(submitOnly: true)
+        });
     }
 }

@@ -7,11 +7,8 @@
     "node": ">=22.9.0"
   },
   "scripts": {
-    "start": "node --env-file-if-exists=.env src/index.js",
+    "start": "npm run build:track && node --env-file-if-exists=.env --env-file-if-exists=.env.database dist/index.js",
     "test": "node --test test/server.test.js",
-    "test:cli": "node --test test/cli.test.js",
-    "test:probe": "node --test test/probe.test.js",
-    "test:watch": "node --test test/watch.test.js",
     "build:track": "tsc -p tsconfig.json && tsc -p tsconfig.ui.json && node scripts/build-track.mjs",
     "start:track": "node dist/track/demo.js",
     "test:track": "npm run build:track && node --test test/track.test.js && npm test --prefix ../../CodexPlugin~/gameai-track/ui",
@@ -19,12 +16,13 @@
     "db:migrate": "node --env-file=.env.database-admin scripts/database.mjs migrate",
     "db:seed": "node --env-file=.env.database-admin scripts/database.mjs seed",
     "db:status": "node scripts/database.mjs status",
-    "test:database": "node --env-file=.env.database-admin --test test/database.test.js"
+    "test:database": "node --env-file=.env.database-admin --test test/database.test.js",
+    "db:sync-skills": "node --env-file=.env.database-admin scripts/database.mjs sync-skills",
+    "test:review": "npm run build:track && node --env-file=.env.database-admin --test test/requirements.test.js test/review-http.test.js"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "1.30.1",
     "pg": "^8.23.0",
-    "ws": "8.21.3",
     "zod": "4.6.5"
   },
   "devDependencies": {

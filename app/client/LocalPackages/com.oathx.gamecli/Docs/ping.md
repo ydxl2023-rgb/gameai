@@ -1,12 +1,12 @@
 # PING
 
-The first implemented command checks the real Unity Editor named-pipe bridge. It does not test JIRA, run gameplay validation, or guarantee that the Unity main thread is responsive.
+The first implemented command checks the real Unity Editor named-pipe bridge. It does not test platform, run gameplay validation, or guarantee that the Unity main thread is responsive.
 
 ## Install from Unity
 
 Open **Tools > GameCLI > Window**, then click **Install GameCLI** (or **Reinstall GameCLI**). The window locates the source through Unity Package Manager, runs a Release build asynchronously and installs all required CLI files into `Library/GameCLI`. This requires a .NET 8 SDK or compatible newer SDK on PATH and currently supports the Windows Editor.
 
-Source Project and Installed Executable are read-only labels displaying paths relative to the Unity project root. The window displays build output and errors. **Cancel** or closing the window cancels the current operation. The command toolbar has six pages: **Orchestrator**, **PM**, **Art**, **Development**, **Unity** and **QA**. Unity displays a command table with On, Command, Method, Route, Status and Description columns; other categories currently show their scope and unimplemented status. Ping is invoked from the terminal, not a panel button. Installation is project-local and does not change the system PATH or install AI skills.
+Source Project and Installed Executable are read-only labels displaying paths relative to the Unity project root. The window displays build output and errors. **Cancel** or closing the window cancels the current operation. The toolbar contains Monitor, Design, PM, Art, Development and QA execution-monitor views. Monitor shows all roles and does not perform scheduling. Ping is invoked from the terminal, not a panel button. Installation is project-local and does not change the system PATH or install AI skills.
 
 From the Unity project root after installation:
 
@@ -17,7 +17,7 @@ From the Unity project root after installation:
 
 The first-column toggle in the Unity command table enables or disables PING immediately. It defaults to enabled. Disabled calls return `ok: false`, `error: "command_disabled"` and exit code 3. Re-enable the toggle to accept requests again; no CLI reinstall is required.
 
-Preferences are stored in EditorPrefs separately for each user and project and survive Editor restart. These are local tool settings, not JIRA workflow state. Status displays Enabled/Disabled configuration, not a live connectivity test.
+Preferences are stored in EditorPrefs separately for each user and project and survive Editor restart. These are local tool settings, not platform workflow state. Status displays Enabled/Disabled configuration, not a live connectivity test.
 
 ## Usage
 
@@ -30,7 +30,7 @@ dotnet build app/client/LocalPackages/com.oathx.gamecli/GameCLI~/GameCLI/GameCLI
 dotnet app/client/LocalPackages/com.oathx.gamecli/GameCLI~/GameCLI/GameCLI/bin/Release/net8.0/GameCLI.dll unity --ping --project app/client
 ```
 
-Append `--format json` for a single JSON result on stdout. Diagnostics go to stderr. With no `--project`, the CLI searches the current directory and its parents for a Unity project. `--help` prints usage. The first argument selects the command group. Unity options follow `unity`; `--ping`, `--project` and `--format` can appear in any order within that group. `GameCLI unity --help` shows Unity usage. Bare `ping` is no longer supported; `jira` is reserved for future implementation and currently returns an unknown-group error.
+Append `--format json` for a single JSON result on stdout. Diagnostics go to stderr. With no `--project`, the CLI searches the current directory and its parents for a Unity project. `--help` prints usage. The first argument selects the command group. Unity options follow `unity`; `--ping`, `--project` and `--format` can appear in any order within that group. `GameCLI unity --help` shows Unity usage. Bare `ping` is no longer supported; `platform` is reserved for future implementation and currently returns an unknown-group error.
 
 A successful response contains `ok: true`, `message: "pong"`, the actual project path, Unity version, Editor PID and UTC response time. Session tokens are never included in responses.
 

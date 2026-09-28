@@ -1,8 +1,10 @@
+import { handleReviewRequest } from './review-http.js';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { createSnapshot, readDocument } from './snapshot.js';
+import { handleAgentRequest } from './agent-http.js';
 
 export const resourceUri = 'ui://gameai-track/v3.html';
 const mimeType = 'text/html;profile=mcp-app';
@@ -49,11 +51,11 @@ export async function handleTrackRequest(request: IncomingMessage, response: Ser
 {
     const path = new URL(request.url ?? '/', 'http://localhost').pathname;
     const documentId = /^\/api\/track\/documents\/([0-9a-f-]{36})$/i.exec(path)?.[1];
-    if (!documentId && !['/mcp', '/track', '/api/track/demo', '/api/track/snapshot'].includes(path))
+    if (!documentId && !['/mcp', '/track', '/api/track/demo', '/api/track/snapshot', '/api/track/agents', '/api/track/agent-options', '/api/track/requirements', '/api/track/review-session', '/api/track/review-login', '/api/track/review-logout', '/api/track/review-decisions'].includes(path))
     {
         return false;
     }
-    // This probe is local-only and read-only. Do not expose a new anonymous business API.
+    // Local configuration routes share the loopback boundary; remote business access stays closed.
     const peer = request.socket.remoteAddress;
     const host = request.headers.host ?? '';
     if (!['127.0.0.1', '::1', '::ffff:127.0.0.1'].includes(peer ?? '') || !/^(localhost|127\.0\.0\.1|\[::1\])(?::\d+)?$/.test(host))
@@ -64,6 +66,16 @@ export async function handleTrackRequest(request: IncomingMessage, response: Ser
     if (request.headers.origin && !['http://' + host, 'https://' + host].includes(request.headers.origin))
     {
         json(response, 403, { error: '请求来源不允许。' });
+        return true;
+    }
+    if (path === '/api/track/requirements' || path.startsWith('/api/track/review-'))
+    {
+        await handleReviewRequest(request, response);
+        return true;
+    }
+    if (path === '/api/track/agents' || path === '/api/track/agent-options')
+    {
+        await handleAgentRequest(request, response);
         return true;
     }
     if (documentId)

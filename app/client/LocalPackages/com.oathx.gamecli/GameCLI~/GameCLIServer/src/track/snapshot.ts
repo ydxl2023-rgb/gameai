@@ -15,7 +15,7 @@ export async function createSnapshot()
             is_test: result.is_test,
             server_time: new Date().toISOString(),
             request_id: randomUUID(),
-            notice: '数据来自 PostgreSQL；当前接入为只读，审批与派工尚未开放。',
+            notice: '数据来自 PostgreSQL；本机可配置 Agent、登录审批人并审阅文档，自动派工尚未开放。',
             workbench: result.workbench
         };
     }

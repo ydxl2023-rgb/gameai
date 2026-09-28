@@ -1,8 +1,8 @@
 export type Identity = 'design' | 'admin' | 'art' | 'dev' | 'qa' | 'pm';
 export interface Task { id: string; title: string; role: string; agent: string | null; status: string; progress: number; dependencies: string[]; version: string; }
-export interface Agent { id: string; role: string; status: string; task: string | null; used: number; capacity: number; station: string; read: boolean; write: boolean; }
+export interface Agent { name?: string; enabled?: boolean; skills?: { key: string; primary: boolean; hash: string }[]; id: string; role: string; status: string; task: string | null; used: number; capacity: number; station: string; read: boolean; write: boolean; }
 export interface Version { version: string; status: string; change: string; reference: string; revision: string; content: { summary: string; rules: string[]; changes: string[] }; }
-export interface RequirementRow { id: string; title: string; version: string; revision: string; status: string; document_path: string | null; document_url?: string | null; created_at: string | null; summary: string; rules: string[]; changes: string[]; }
+export interface RequirementRow { version_id?: string; document_hash?: string | null; id: string; title: string; version: string; revision: string; status: string; document_path: string | null; document_url?: string | null; created_at: string | null; summary: string; rules: string[]; changes: string[]; }
 export interface Workbench { requirements?: RequirementRow[]; project: { key: string; name: string }; requirement: { title: string; version: string; revision: string; status: string; summary: string; rules: string[]; changes: string[] }; tasks: Task[]; agents: Agent[]; versions?: Version[]; audit?: Audit[]; }
 export interface Snapshot { schema_version: 2; mode: 'demo' | 'postgres'; is_test?: boolean; server_time: string; request_id: string; workbench: Workbench; }
 export interface Audit { id: number | string; time: string; actor: string; event: string; }

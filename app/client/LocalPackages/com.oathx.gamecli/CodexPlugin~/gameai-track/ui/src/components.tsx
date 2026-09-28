@@ -13,13 +13,14 @@ export function Section({ title, children, extra }: { title: string; children: R
 export function AgentTable({ agents, select }: { agents: Agent[]; select: (agent: Agent) => void })
 {
     const columns: ColumnsType<Agent> = [
-        { title: 'Agent', dataIndex: 'id', render: (id, a) => <Button type="link" onClick={() => select(a)}>{id}</Button> },
+        { title: 'Agent', dataIndex: 'id', render: (id, a) => <Button type="link" title={id} onClick={() => select(a)}>{a.name ?? id}</Button> },
         { title: 'Role', dataIndex: 'role' },
+        { title: 'Skills', ellipsis: true, render: (_, a) => a.skills?.map(s => s.key).join('、') || '未配置' },
         { title: 'Status', dataIndex: 'status', render: s => <StateTag value={s} /> },
         { title: 'Task', dataIndex: 'task', render: t => t ?? '—' },
         { title: 'Capacity', render: (_, a) => `${a.used} / ${a.capacity}` },
     ];
-    return <Table size="small" rowKey="id" dataSource={agents} columns={columns} pagination={false} scroll={{ x: 550 }} locale={{ emptyText: '当前没有符合条件的 Agent' }} />;
+    return <Table size="small" rowKey="id" dataSource={agents} columns={columns} pagination={false} scroll={{ x: 750 }} locale={{ emptyText: '当前没有符合条件的 Agent' }} />;
 }
 export function TaskTable({ tasks, select }: { tasks: Task[]; select: (task: Task) => void })
 {

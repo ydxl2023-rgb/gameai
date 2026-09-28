@@ -3,8 +3,6 @@ using GameCLI.Core;
 using GameCLI.Plugins.Art;
 using GameCLI.Plugins.Development;
 using GameCLI.Plugins.Design;
-using GameCLI.Plugins.Jira;
-using GameCLI.Plugins.Orchestrator;
 using GameCLI.Plugins.PM;
 using GameCLI.Plugins.QA;
 using GameCLI.Plugins.Unity;
@@ -18,14 +16,12 @@ namespace GameCLI
         {
             ICLIPlugin[] plugins =
             {
-                new OrchestratorPlugin(),
                 new DesignPlugin(),
                 new PMPlugin(),
                 new ArtPlugin(),
                 new DevelopmentPlugin(),
                 new UnityPlugin(),
-                new QAPlugin(),
-                new JiraPlugin()
+                new QAPlugin()
             };
             PluginHost host = new(plugins, new PluginSettingsStore());
             return host.RunAsync(args);

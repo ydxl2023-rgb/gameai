@@ -24,7 +24,7 @@ namespace GameCLI.Smoke
             await RunCliAsync(cli, project, 0, "unity", "--ping", "--format", "json");
             await RunCliAsync(cli, project, 4, "unity", "--ping", "--format", "invalid");
             await RunCliAsync(cli, project, 4, "ping");
-            await RunCliAsync(cli, project, 4, "jira");
+            await RunCliAsync(cli, project, 4, "unknown-plugin");
             await RunCliAsync(cli, project, 4, "unity");
             await RunCliAsync(cli, project, 4, "unity", "--ping", "--ping");
             await CheckRequestAsync(pipeName, "invalid-token", "/ping", "unauthorized", timeout.Token);

@@ -47,6 +47,8 @@ namespace GameCLI.Services
                 StandardOutputEncoding = Encoding.UTF8,
                 StandardErrorEncoding = Encoding.UTF8
             };
+            // Submission is owned by the CLI host; the model process never needs this credential.
+            start.Environment.Remove("GAMEAI_SUBMISSION_TOKEN");
             start.ArgumentList.Add("app-server");
             process = Process.Start(start) ?? throw new InvalidOperationException("Cannot start Codex.");
             // Drain stderr concurrently to prevent pipe deadlocks. Do not forward raw runtime diagnostics or secrets.

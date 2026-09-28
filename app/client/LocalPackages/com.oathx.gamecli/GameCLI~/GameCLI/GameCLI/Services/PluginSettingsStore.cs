@@ -5,7 +5,7 @@ using System.Text.Json;
 namespace GameCLI.Services
 {
     /// <summary>
-    /// Stores per-user CLI enablement preferences without storing JIRA workflow state.
+    /// Stores per-user CLI enablement preferences without storing platform workflow state.
     /// </summary>
     public sealed class PluginSettingsStore
     {

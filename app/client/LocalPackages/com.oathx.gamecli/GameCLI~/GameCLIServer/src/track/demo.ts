@@ -1,4 +1,3 @@
-import { randomBytes } from 'node:crypto';
 import { createGameCliServer } from '../server.js';
 import { handleTrackRequest } from './http.js';
 
@@ -8,8 +7,6 @@ if (!Number.isInteger(port) || port < 1 || port > 65535)
     throw new Error('GAMECLI_TRACK_PORT 必须是有效端口。');
 }
 const app = createGameCliServer({
-    webhookToken: randomBytes(32).toString('hex'),
-    projects: ['DEMO'],
     additionalHttpHandler: handleTrackRequest,
     log: (message: string) => console.log(message)
 });

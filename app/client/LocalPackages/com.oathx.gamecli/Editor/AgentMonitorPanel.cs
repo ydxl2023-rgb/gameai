@@ -125,7 +125,7 @@ namespace Oathx.GameCLI.Editor
                     DrawValue("进程编号", selected.pid.ToString());
                     if (GUILayout.Button("复制任务与执行信息"))
                     {
-                        EditorGUIUtility.systemCopyBuffer = selected.role + " | " + selected.issueKey + "\n" + selected.taskTitle + "\n" + selected.executionId + "\n" + selected.threadId + "\n" + selected.turnId;
+                        EditorGUIUtility.systemCopyBuffer = selected.role + " | " + selected.taskId + "\n" + selected.taskTitle + "\n" + selected.executionId + "\n" + selected.threadId + "\n" + selected.turnId;
                     }
                 }
                 EditorGUILayout.EndScrollView();
@@ -294,7 +294,7 @@ namespace Oathx.GameCLI.Editor
                     case 0:
                         return run.role ?? "";
                     case 1:
-                        return string.IsNullOrEmpty(run.issueKey) ? "—" : run.issueKey;
+                        return string.IsNullOrEmpty(run.taskId) ? "—" : run.taskId;
                     case 2:
                         return string.IsNullOrEmpty(run.threadId) ? "启动会话" : string.IsNullOrEmpty(run.turnId) ? "准备任务" : "工作中";
                     case 3:
@@ -347,7 +347,7 @@ namespace Oathx.GameCLI.Editor
 
             public string role;
 
-            public string issueKey;
+            public string taskId;
 
             public string taskTitle;
 

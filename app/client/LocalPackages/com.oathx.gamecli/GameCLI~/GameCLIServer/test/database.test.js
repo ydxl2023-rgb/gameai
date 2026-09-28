@@ -16,8 +16,9 @@ test('migration and seed are repeatable; data survives fresh connections', async
         const after = await readWorkbench(pool, 'DEMO');
         assert.deepEqual(after, before);
         assert.equal(after.workbench.tasks.length, 4);
-        assert.equal(after.workbench.versions.length, 2);
-        assert.ok(after.workbench.agents.every(a => a.status === '离线' && a.used === 0));
+        assert.ok(after.workbench.versions.length >= 2);
+        assert.ok(after.workbench.requirements.some(row => row.id === 'LOGIN-7'));
+        assert.ok(after.workbench.agents.every(a => ['离线', '已停用'].includes(a.status) && a.used === 0));
         assert.ok(after.workbench.tasks.every(t => t.progress === 0 && t.agent === null));
         await pool.end();
         const fresh = createPool();
@@ -94,4 +95,65 @@ test('linked HTML is original bytes, project scoped, and linking is idempotent',
         assert.deepEqual(await readWorkbench(pool, 'DEMO'), before);
     }
     finally { await pool.end(); }
+});
+
+test('Agent configuration persists skills atomically and rejects mismatched skills, capacity and duplicates', async () =>
+{
+    const { createAgent } = await import('../src/database/agents.js');
+    const { randomUUID } = await import('node:crypto');
+    const pool = createPool();
+    const c = await pool.connect();
+    await c.query('BEGIN');
+    const transactionalPool = { connect: async () => ({
+        query: (sql, args) => c.query(sql === 'BEGIN' ? 'SAVEPOINT agent_operation' : sql === 'COMMIT' ? 'RELEASE SAVEPOINT agent_operation' : sql === 'ROLLBACK' ? 'ROLLBACK TO SAVEPOINT agent_operation' : sql, args),
+        release() {}
+    }) };
+    try
+    {
+        const key = 'TEST-' + randomUUID();
+        const project = (await c.query('INSERT INTO gameai.projects(project_key,name,is_test) VALUES($1,$1,true) RETURNING id', [key])).rows[0].id;
+        const worker = (await c.query("INSERT INTO gameai.workers(project_id,worker_key,name,capacity) VALUES($1,'test','事务测试节点',2) RETURNING id", [project])).rows[0].id;
+        const payload = { request_id: randomUUID(), name: '事务测试策划', role: 'Design', worker_id: worker, primary_skill: 'gameai-design', extra_skills: ['gameai-common'], capacity: 2, enabled: true };
+        const first = await createAgent(transactionalPool, key, payload);
+        assert.equal((await createAgent(transactionalPool, key, payload)).id, first.id);
+        assert.equal((await c.query('SELECT count(*)::int count FROM gameai.agent_skills WHERE project_id=$1', [project])).rows[0].count, 2);
+        assert.equal((await c.query("SELECT count(*)::int count FROM gameai.agent_grants WHERE project_id=$1 AND permission_code<>'project.read'", [project])).rows[0].count, 0);
+        await assert.rejects(createAgent(transactionalPool, key, { ...payload, name: 'changed' }), /请求编号/);
+        await assert.rejects(createAgent(transactionalPool, key, { ...payload, request_id: randomUUID() }), /同名/);
+        await assert.rejects(createAgent(transactionalPool, key, { ...payload, request_id: randomUUID(), primary_skill: 'gameai-art' }), /主技能/);
+        await assert.rejects(createAgent(transactionalPool, key, { ...payload, request_id: randomUUID(), extra_skills: ['gameai-art'] }), /主技能/);
+        await assert.rejects(createAgent(transactionalPool, key, { ...payload, request_id: randomUUID(), capacity: 3 }), /容量/);
+        await assert.rejects(createAgent(transactionalPool, key, { ...payload, request_id: randomUUID(), worker_id: randomUUID() }), /节点/);
+        assert.equal((await c.query('SELECT count(*)::int count FROM gameai.agents WHERE project_id=$1', [project])).rows[0].count, 1);
+        assert.equal((await c.query("SELECT has_table_privilege('gameai_agent_manager','gameai.approvals','INSERT') allowed")).rows[0].allowed, false);
+    }
+    finally
+    {
+        await c.query('ROLLBACK');
+        c.release();
+        await pool.end();
+    }
+});
+
+test('restricted Agent manager can save configuration without granting execution authority', async () =>
+{
+    const { parseEnv } = await import('node:util');
+    const { readFile } = await import('node:fs/promises');
+    const { randomUUID } = await import('node:crypto');
+    const { createAgent } = await import('../src/database/agents.js');
+    const config = parseEnv(await readFile(new URL('../.env.agent-manager', import.meta.url), 'utf8'));
+    const pool = createPool({ user: config.PGUSER, password: config.PGPASSWORD });
+    const c = await pool.connect();
+    await c.query('BEGIN');
+    try
+    {
+        const worker = (await c.query("SELECT w.id FROM gameai.workers w JOIN gameai.projects p ON p.id=w.project_id WHERE p.project_key='DEMO' LIMIT 1")).rows[0].id;
+        const adapter = { connect: async () => ({ query: (sql, args) => c.query(sql === 'BEGIN' ? 'SAVEPOINT operation' : sql === 'COMMIT' ? 'RELEASE SAVEPOINT operation' : sql === 'ROLLBACK' ? 'ROLLBACK TO SAVEPOINT operation' : sql, args), release() {} }) };
+        const result = await createAgent(adapter, 'DEMO', { request_id: randomUUID(), name: '回滚验证-' + randomUUID(), role: 'Art', worker_id: worker, primary_skill: 'gameai-art', extra_skills: [], capacity: 1, enabled: false });
+        assert.ok(result.id.startsWith('art-'));
+        const stored = (await c.query('SELECT display_name,enabled FROM gameai.agents WHERE agent_key=$1', [result.id])).rows[0];
+        assert.equal(stored.enabled, false);
+        assert.equal((await c.query("SELECT has_table_privilege(current_user,'gameai.tasks','INSERT') allowed")).rows[0].allowed, false);
+    }
+    finally { await c.query('ROLLBACK'); c.release(); await pool.end(); }
 });

@@ -18,7 +18,7 @@ namespace Oathx.GameCLI.Editor
 
         private static readonly string[] commandPages =
         {
-            "Orchestrator",
+            "Monitor",
             "Design",
             "PM",
             "Art",
@@ -48,7 +48,6 @@ namespace Oathx.GameCLI.Editor
         [SerializeField]
         private float listRatio = 0.8f;
 
-        private JiraConnectionPanel jiraPanel;
 
         private AgentMonitorPanel agentMonitor;
 
@@ -65,7 +64,6 @@ namespace Oathx.GameCLI.Editor
         private void OnEnable()
         {
             minSize = new Vector2(560, 420);
-            jiraPanel = new JiraConnectionPanel(Repaint);
             agentMonitor = new AgentMonitorPanel();
             nextMonitorRefresh = 0;
             EditorApplication.update += RefreshMonitor;
@@ -78,7 +76,6 @@ namespace Oathx.GameCLI.Editor
         private void OnDisable()
         {
             operation?.Cancel();
-            jiraPanel?.Dispose();
             EditorApplication.update -= RefreshMonitor;
         }
 
@@ -227,13 +224,13 @@ namespace Oathx.GameCLI.Editor
             switch (selectedPage)
             {
                 case 0:
-                    description = "Workflow scheduling, dependencies, retries and approval gates.";
+                    description = "Local execution monitoring. Workflow scheduling belongs to GameCLIServer.";
                     break;
                 case 1:
                     description = "Requirement analysis, task breakdown and acceptance criteria.";
                     break;
                 case 2:
-                    description = "JIRA configuration, task organization, dependencies and progress tracking.";
+                    description = "Task organization, dependencies and progress tracking.";
                     break;
                 case 3:
                     description = "Asset generation, validation and delivery.";
@@ -250,7 +247,6 @@ namespace Oathx.GameCLI.Editor
             if (selectedPage == 2)
             {
                 EditorGUILayout.Space(8);
-                jiraPanel.Draw();
             }
         }
 

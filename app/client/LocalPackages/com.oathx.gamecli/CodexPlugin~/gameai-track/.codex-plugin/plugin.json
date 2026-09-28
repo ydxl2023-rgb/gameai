@@ -9,7 +9,7 @@
   "interface": {
     "displayName": "GameAI Track",
     "shortDescription": "验证 Codex 中的任务列表和刷新交互。",
-    "longDescription": "模拟任务、服务器时间、刷新与错误状态；不连接 JIRA，不启动 Agent。",
+    "longDescription": "任务列表、服务器时间、刷新与错误状态；内嵌工具只读，不启动 Agent。",
     "developerName": "Local developer",
     "category": "Productivity",
     "capabilities": [],

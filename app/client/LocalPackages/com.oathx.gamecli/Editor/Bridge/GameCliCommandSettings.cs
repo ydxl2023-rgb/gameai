@@ -70,7 +70,7 @@ namespace Oathx.GameCLI.Editor
                     throw new InvalidOperationException("Command settings have not been initialized for this route.");
                 }
 
-                // This is local editor configuration, not JIRA workflow state.
+                // This is local editor configuration, not business workflow state.
                 EditorPrefs.SetBool(preferencePrefix + route, enabled);
                 enabledRoutes[route] = enabled;
             }

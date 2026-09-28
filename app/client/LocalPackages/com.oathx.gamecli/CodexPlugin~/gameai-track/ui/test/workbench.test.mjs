@@ -104,3 +104,54 @@ test('actual bundled workbench gates approval in ' + storage, async () =>
 });
 
 }
+
+
+test('authenticated review submits the opened row, never the unrelated default requirement', async () =>
+{
+    const html = await readFile(new URL('../../../../GameCLI~/GameCLIServer/public/track.html', import.meta.url), 'utf8');
+    const state = snapshot();
+    state.mode = 'postgres';
+    const selected = { ...state.workbench.requirement, id: 'SECOND', title: '第二个需求', version: 'v2', revision: 'b'.repeat(64),
+        version_id: '22222222-2222-4222-8222-222222222222', document_hash: 'c'.repeat(64), document_path: 'uploaded/second.html', document_url: '/api/track/documents/second', created_at: null };
+    state.workbench.requirements = [selected];
+    const writes = [];
+    const dom = new JSDOM(html, { url: 'http://localhost/track', runScripts: 'dangerously', pretendToBeVisual: true, virtualConsole: new VirtualConsole(), beforeParse(window)
+    {
+        window.MessageChannel = class { constructor() { this.port1 = { onmessage: null }; this.port2 = { postMessage: () => setTimeout(() => this.port1.onmessage?.({}), 0) }; } };
+        window.matchMedia = () => ({ matches: false, addListener() {}, removeListener() {}, addEventListener() {}, removeEventListener() {} });
+        window.ResizeObserver = class { observe() {} unobserve() {} disconnect() {} };
+        window.AbortSignal.timeout ??= () => new window.AbortController().signal;
+        window.Element.prototype.scrollTo = () => {};
+        window.fetch = async (url, options) =>
+        {
+            if (url.endsWith('/review-session')) return { ok: true, json: async () => ({ authenticated: true, name: '测试审批人', csrf: 'test-csrf' }) };
+            if (url.endsWith('/review-decisions'))
+            {
+                writes.push(JSON.parse(options.body));
+                selected.status = '已批准';
+                return { ok: true, json: async () => ({ decision: 'approved' }) };
+            }
+            return { ok: true, json: async () => structuredClone(state) };
+        };
+    } });
+    const document = dom.window.document;
+    const find = (selector,text) => [...document.querySelectorAll(selector)].find(n => n.textContent.replace(/\s/g,'') === text);
+    try
+    {
+        await until(() => document.querySelector('.ant-card'));
+        find('[role=tab]','需求审批').click();
+        await until(() => find('a','second.html'));
+        find('a','second.html').click();
+        await until(() => find('button','同意') && !find('button','同意').disabled);
+        assert.equal(document.querySelector('iframe').getAttribute('sandbox'),'');
+        find('button','同意').click();
+        await until(() => find('button','确认'));
+        find('button','确认').click();
+        await until(() => writes.length === 1);
+        assert.equal(writes[0].version_id,selected.version_id);
+        assert.equal(writes[0].revision,'b'.repeat(64));
+        assert.equal(writes[0].document_hash,'c'.repeat(64));
+        assert.equal(writes[0].decision,'approved');
+    }
+    finally { dom.window.close(); }
+});
