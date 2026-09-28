@@ -119,14 +119,14 @@ export function WorkbenchApp()
         const content = review ?? selectedVersion?.content ?? r;
         if (tab === 'overview') return <Section title="执行中的 Agent" extra={<Button onClick={() => setTab('agents')}>全部 Agent</Button>}><AgentTable agents={data.agents.filter(a => a.status === '执行中')} select={setDetail} /></Section>;
         if (tab === 'requirements') return <Section title="需求审批" extra={<Input.Search aria-label="搜索需求" placeholder="需求编号 / 名称" value={requirementQuery} allowClear onChange={e => setRequirementQuery(e.target.value)} style={{ width: 200 }} />}>
-            <Table<RequirementRow> size="small" rowKey="id" pagination={{ pageSize: 10, hideOnSinglePage: true }} scroll={{ x: 860 }}
+            <Table<RequirementRow> size="small" rowKey="id" tableLayout="fixed" pagination={{ pageSize: 10, hideOnSinglePage: true }} scroll={{ x: 600 }}
                 dataSource={(data.requirements ?? [{ ...data.requirement, id: 'DEMO-REQ-1', document_path: null, created_at: null }]).filter(item => [item.id, item.title].join(' ').toLowerCase().includes(requirementQuery.toLowerCase()))}
                 columns={[
-                    { title: 'ID', dataIndex: 'id', width: 110, fixed: 'left' },
-                    { title: 'Requirement', dataIndex: 'title', width: 190 },
-                    { title: 'Version', dataIndex: 'version', width: 85 },
-                    { title: 'HTML', dataIndex: 'document_path', width: 250, render: (path, item) => path && item.document_url ? <Typography.Link href={item.document_url} onClick={event => { event.preventDefault(); setVersion(item.version); setDocumentPreview(item); }} style={{ overflowWrap: 'anywhere' }}>{path}</Typography.Link> : <Typography.Text type="secondary">未关联 HTML 文档</Typography.Text> },
-                    { title: 'Status', dataIndex: 'status', width: 110, filters: ['待审批', '已批准', '退回修改'].map(text => ({ text, value: text })), onFilter: (value, item) => item.status === value, render: status => <StateTag value={status} /> },
+                    { title: 'ID', dataIndex: 'id', width: 88, fixed: 'left', ellipsis: true },
+                    { title: 'Requirement', dataIndex: 'title', ellipsis: true },
+                    { title: 'Version', dataIndex: 'version', width: 68, ellipsis: true },
+                    { title: 'HTML', dataIndex: 'document_path', width: 190, ellipsis: true, render: (path, item) => path && item.document_url ? <Typography.Link href={item.document_url} onClick={event => { event.preventDefault(); setVersion(item.version); setDocumentPreview(item); }} title={path} style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{String(path).split(/[\\/]/).pop()}</Typography.Link> : <Typography.Text type="secondary">未关联 HTML 文档</Typography.Text> },
+                    { title: 'Status', dataIndex: 'status', width: 92, filters: ['待审批', '已批准', '退回修改'].map(text => ({ text, value: text })), onFilter: (value, item) => item.status === value, render: status => <StateTag value={status} /> },
 
                 ]} />
 
@@ -146,7 +146,7 @@ export function WorkbenchApp()
         <div className="connection"><Badge status={error ? 'error' : updated ? 'success' : 'processing'} text={error ? '连接失败 / 数据可能过期' : updated ? (persistent ? '数据库快照 · ' : '模拟快照 · ') + updated : '连接中'} /><Typography.Text type="secondary">{context.embedded ? context.mode === 'fullscreen' ? '侧栏模式' : '内嵌模式' : '浏览器预览仅验证网页与 HTTP'}</Typography.Text></div>
         {error && <Alert type="error" showIcon title={error} />}{displayError && <Alert type="warning" closable title={displayError} />}
         <Tabs className="navigation" activeKey={tab} onChange={key => { setTab(key); setDocumentPreview(undefined); }} items={tabs.map(([key, label]) => ({ key, label }))} />
-        <div className="panels"><Splitter orientation="vertical"><Splitter.Panel defaultSize="78%" min={160}><main className={tab === 'requirements' ? 'page-content page-content--requirements' : 'page-content'}>{body()}</main></Splitter.Panel><Splitter.Panel min={65} collapsible><div className="output"><div className="output-title">Output <Typography.Text type="secondary">{persistent ? "数据库持久化 · 运行日志仅当前页面" : "仅本页模拟 · 刷新浏览器清除操作"}</Typography.Text></div><pre aria-live="polite">{logs.length ? logs.join('\n') : '等待连接与操作…'}</pre></div></Splitter.Panel></Splitter>
+        <div className="panels"><Splitter orientation="vertical"><Splitter.Panel defaultSize="78%" min={160}><main className={['overview', 'requirements', 'tasks'].includes(tab) ? 'page-content page-content--list' : 'page-content'}>{body()}</main></Splitter.Panel><Splitter.Panel min={65} collapsible><div className="output"><div className="output-title">Output <Typography.Text type="secondary">{persistent ? "数据库持久化 · 运行日志仅当前页面" : "仅本页模拟 · 刷新浏览器清除操作"}</Typography.Text></div><pre aria-live="polite">{logs.length ? logs.join('\n') : '等待连接与操作…'}</pre></div></Splitter.Panel></Splitter>
             <Drawer title={documentPreview ? documentPreview.id + ' / ' + documentPreview.title + ' / ' + documentPreview.version : '需求原文'} open={!!documentPreview} onClose={() => setDocumentPreview(undefined)} placement="right" size="100%" getContainer={false} rootStyle={{ position: 'absolute' }} styles={{ body: { padding: 0, overflow: 'hidden' } }} destroyOnHidden footer={
                 <div className="document-review-footer">
                     <div><Space><Typography.Text strong>{documentPreview?.version}</Typography.Text><StateTag value={documentPreview?.status ?? '待审批'} /></Space><Typography.Text type="secondary" className="document-review-hint">{persistent ? '正式登录与审批写入待接入，当前只读。' : approvalAllowed ? '请阅读全文后确认此版本；当前为模拟审批。' : '当前身份或版本不可审批。'}</Typography.Text></div>
