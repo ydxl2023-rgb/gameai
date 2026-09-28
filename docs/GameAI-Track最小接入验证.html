@@ -1,0 +1,225 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>GameAI Track 最小接入验证</title><style>
+  :root {
+    --bg: #ffffff;
+    --fg: #1f2328;
+    --muted: #57606a;
+    --border: #d0d7de;
+    --code-bg: #f6f8fa;
+    --accent: #0969da;
+    --accent-soft: #ddf4ff;
+    --warn: #bf8700;
+    --warn-soft: #fff8c5;
+    --ok: #1a7f37;
+    --ok-soft: #dafbe1;
+    --err: #cf222e;
+    --err-soft: #ffebe9;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: #f6f8fa;
+    color: var(--fg);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+                 "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue",
+                 Arial, sans-serif;
+    font-size: 14px;
+    line-height: 1.7;
+  }
+
+  .page {
+    max-width: 900px;
+    margin: 0 auto;
+    background: var(--bg);
+    padding: 60px 70px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+  }
+
+  /* 封面 */
+  .cover {
+    text-align: center;
+    padding: 80px 0 60px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 48px;
+  }
+  .cover h1 {
+    font-size: 34px;
+    margin: 0 0 16px;
+    letter-spacing: 1px;
+  }
+  .cover .subtitle {
+    font-size: 16px;
+    color: var(--muted);
+    margin-bottom: 30px;
+  }
+  .cover .meta {
+    display: inline-block;
+    text-align: left;
+    font-size: 13px;
+    color: var(--muted);
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    padding: 12px 30px;
+  }
+  .cover .meta span { display: inline-block; min-width: 90px; color: var(--fg); }
+
+  /* 标题 */
+  h1 { font-size: 26px; margin: 48px 0 16px; padding-bottom: 8px; border-bottom: 2px solid var(--fg); }
+  h2 { font-size: 20px; margin: 36px 0 12px; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
+  h3 { font-size: 16px; margin: 24px 0 8px; color: #24292f; }
+  h4 { font-size: 14px; margin: 16px 0 6px; color: var(--muted); }
+
+  p { margin: 8px 0; }
+
+  /* 代码 */
+  code {
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    background: var(--code-bg);
+    padding: 2px 5px;
+    border-radius: 4px;
+    font-size: 12.5px;
+  }
+  pre {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 14px 16px;
+    overflow-x: auto;
+    font-size: 12px;
+    line-height: 1.6;
+    margin: 12px 0;
+  }
+  pre code {
+    background: none;
+    padding: 0;
+    font-size: 12px;
+  }
+
+  /* 表格 */
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 14px 0;
+    font-size: 13px;
+  }
+  th, td {
+    border: 1px solid var(--border);
+    padding: 8px 10px;
+    text-align: left;
+    vertical-align: top;
+  }
+  th { background: #f6f8fa; font-weight: 600; }
+  tr:nth-child(even) td { background: #fafbfc; }
+
+  /* 引用 */
+  blockquote {
+    border-left: 4px solid var(--accent);
+    margin: 12px 0;
+    padding: 6px 14px;
+    background: var(--accent-soft);
+    border-radius: 0 6px 6px 0;
+    color: #0a3069;
+    font-size: 13.5px;
+  }
+
+  /* 提示框 */
+  .callout {
+    padding: 12px 16px;
+    border-radius: 6px;
+    margin: 14px 0;
+    font-size: 13.5px;
+    border-left: 4px solid;
+  }
+  .callout.info { background: var(--accent-soft); border-color: var(--accent); }
+  .callout.warn { background: var(--warn-soft); border-color: var(--warn); }
+  .callout.ok   { background: var(--ok-soft);   border-color: var(--ok); }
+  .callout.err  { background: var(--err-soft);  border-color: var(--err); }
+
+  /* 列表 */
+  ul, ol { padding-left: 24px; margin: 8px 0; }
+  li { margin: 4px 0; }
+
+  /* 图表容器 */
+  .diagram {
+    margin: 24px 0;
+    padding: 20px;
+    background: #fafbfc;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow-x: auto;
+    text-align: center;
+  }
+  .diagram svg { max-width: 100%; height: auto; }
+  .diagram .caption {
+    font-size: 12.5px;
+    color: var(--muted);
+    margin-top: 10px;
+    font-style: italic;
+  }
+
+  /* 目录 */
+  .toc {
+    background: #fafbfc;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px 28px;
+    margin: 24px 0 40px;
+  }
+  .toc h3 { margin-top: 0; }
+  .toc ol { margin: 0; padding-left: 20px; }
+  .toc a { color: var(--accent); text-decoration: none; }
+  .toc a:hover { text-decoration: underline; }
+
+  /* 打印 */
+  @page {
+    size: A4;
+    margin: 18mm 16mm;
+  }
+  @media print {
+    html, body { background: #fff; font-size: 11.5pt; }
+    .page { box-shadow: none; padding: 0; max-width: 100%; }
+    h1 { page-break-before: auto; }
+    h2 { page-break-after: avoid; }
+    pre, table, .diagram { page-break-inside: avoid; }
+    .cover { page-break-after: always; }
+    .no-print { display: none; }
+    a { color: var(--fg); text-decoration: none; }
+  }
+
+  /* 页脚 */
+  .footer {
+    margin-top: 60px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border);
+    text-align: center;
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  .print-btn {
+    position: fixed;
+    right: 24px;
+    bottom: 24px;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 999px;
+    padding: 12px 22px;
+    font-size: 14px;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(9,105,218,0.35);
+    z-index: 100;
+  }
+  .print-btn:hover { background: #0860ca; }
+
+.page { overflow-wrap: anywhere; }
+@media screen and (max-width: 700px) { .page { padding: 24px 18px; } .cover { padding: 30px 0; } .cover h1 { font-size: 26px; } .toc { padding: 16px; } }
+.wire-gallery { display: flex; flex-direction: column; gap: 24px; }
+.wire-step { width: 100%; }
+</style></head><body><main class="page"><div class="cover"><h1>GameAI Track 最小接入验证</h1><p>开发与测试说明 · 2026-09-28 · v0.2</p><p>已实现模拟 UI 与 MCP 工具；Codex 实际内嵌及侧栏展示待新会话验证。</p></div><nav class="toc"><a href="#scope">1. 范围</a> · <a href="#run">2. 启动</a> · <a href="#plugin">3. 插件接入</a> · <a href="#checks">4. 验收记录</a></nav><section id="scope"><h2>1. 范围</h2><p>复用 GameCLIServer HTTP 路由扩展，新增 TypeScript 模块和模拟启动入口。原 start.bat、JIRA Webhook 和 WebSocket 行为保持兼容。测试入口不读取 .env，监听本机 8090，项目为 DEMO；不读取或写入 JIRA，不启动 Agent。</p><p>界面包含三条模拟任务、紧凑英文表头、中文状态、刷新按钮、服务器时间、请求编号和 Output。刷新失败保留旧数据并提示过期；宿主桥接和网络调用有超时，禁止重复点击产生并发刷新。</p></section><section id="run"><h2>2. 启动</h2><p><strong>本地 Codex 内嵌验证使用 stdio 自动启动。</strong>首次执行 npm ci 与 npm run build:track，然后运行 pwsh.exe -File scripts/register-codex-track.ps1。完成注册后不需要手动保持 HTTP 服务运行。下面的 start:track 仅用于独立 HTTP 预览测试。</p><p>从仓库根目录进入服务目录，执行：</p><pre>cd app/client/LocalPackages/com.oathx.gamecli/GameCLI~/GameCLIServer
+npm ci --ignore-scripts --no-audit --no-fund
+npm run build:track
+npm run start:track</pre><p>Windows 也可运行该目录中的 start-track.bat。端口冲突时更改 GAMECLI_TRACK_PORT，并同步本地插件的 .mcp.json 地址后重新安装。独立测试服务不替换现有 8088 服务。</p><ul><li>浏览器预览：<a href="http://127.0.0.1:8090/track">打开 GameAI Track</a>。</li><li>MCP：本机 /mcp，使用 Streamable HTTP 无状态请求响应。</li><li>gameai_track_open：返回模拟数据并关联 UI 资源。</li><li>gameai_track_snapshot：返回模拟快照，不重复创建组件。</li><li>所有验证路由限定本机访问。部署到远程或接入真实数据前需另行完成身份及权限设计。</li></ul></section><section id="plugin"><h2>3. 插件接入</h2><p>插件安装成功不等于当前对话已加载 MCP。出现只有浏览器预览、没有工具的情况时，在服务目录执行下列命令。脚本检查本地构建文件，再通过 Codex 官方 CLI 注册由宿主管理的 stdio 入口，不覆盖其他 MCP。</p><pre>pwsh.exe -File scripts/register-codex-track.ps1</pre><p>可分发源文件在包内 CodexPlugin~/gameai-track，含标准清单、.mcp.json、入口 SKILL 和 UI TypeScript 源码。本机已安装 gameai-track@personal。UI 构建产物由服务提供，不依赖插件缓存中的源码执行。</p><p>安装后还需完成用户级 MCP 直接注册。已在本机注册 stdio 入口。Codex 自动启动 MCP 子进程，不依赖临时 8090 服务和 HTTP 代理；插件内不再重复声明 HTTP MCP。若桌面当前对话未加载工具，退出并重新打开 Codex，让应用重新读取配置。之后选择 GameAI Track 插件，输入“打开 GameAI Track 接入验证面板”，调用 gameai_track_open。当前旧对话不保证动态加载新工具。必须看到组件并点击刷新，才能确认 Codex 内嵌接入成功；浏览器打开和 MCP 返回 JSON 均不能替代此验收。</p><p>本机个人源由插件生成工具维护；修改后复制源文件到个人插件目录，再使用 plugin-creator 的缓存版本更新与重新安装流程。不要手工改动市场清单。已确认本机 CLI 将个人源的 ./plugins/gameai-track 解析到用户目录下 plugins/gameai-track。</p></section><section id="checks"><h2>4. 验收记录</h2><p>2026-09-28 排查：重启后的桌面日志记录 gameai-track 初始化 HTTP 502，且 8090 已无监听。此前临时 HTTP 测试进程未能随宿主恢复。已改为 Codex 管理的 stdio 子进程；新增测试验证无 HTTP 服务时仍可发现工具、调用并读取 UI 资源。该修改只影响本地 UI 探针，不改变生产云端 WebSocket／HTTP 架构。</p><table><tr><th>项目</th><th>结果</th></tr><tr><td>服务端及 UI TypeScript 检查、单文件 UI 构建</td><td>通过</td></tr><tr><td>实际 MCP HTTP 工具发现、资源读取、刷新及未知工具拒绝；stdio 无监听端口启动、调用及资源读取</td><td>通过</td></tr><tr><td>预览、错误输入、本机来源校验和旧健康接口</td><td>通过</td></tr><tr><td>原服务回归</td><td>11 项通过</td></tr><tr><td>插件与 SKILL 校验、个人插件安装</td><td>通过</td></tr><tr><td>用户级 MCP 直接注册、Codex App Server 工具与 UI 资源发现</td><td>通过；当前桌面对话仍需重新加载配置</td></tr><tr><td>独立浏览器显示、刷新、服务停止报错及恢复</td><td>通过；不代表 Codex 内嵌验收</td></tr><tr><td>当前 Codex 对话实际调用 gameai_track_open</td><td>2026-09-28 已成功，返回三条模拟任务；仅证明工具调用成功</td></tr><tr><td>Codex 内嵌显示、桥接刷新、侧栏展开及关闭恢复</td><td>待新对话实测，不能声明通过</td></tr></table><pre>npm run test:track
+npm test</pre><p>新增三项集成测试使用临时端口或 stdio 和模拟数据。</p><p>依据：<a href="https://developers.openai.com/plugins/build/app-quickstart">官方 MCP 与 UI 快速入门</a>、<a href="https://developers.openai.com/plugins/build/chatgpt-ui">官方 UI 桥接文档</a>。</p></section></main></body></html>

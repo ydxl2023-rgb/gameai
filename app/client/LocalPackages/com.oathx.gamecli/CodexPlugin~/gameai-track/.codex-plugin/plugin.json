@@ -1,0 +1,18 @@
+{
+  "name": "gameai-track",
+  "version": "0.1.0",
+  "description": "GameAI Track 最小 UI 接入验证，仅使用模拟任务。",
+  "author": {
+    "name": "Local developer"
+  },
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "GameAI Track",
+    "shortDescription": "验证 Codex 中的任务列表和刷新交互。",
+    "longDescription": "模拟任务、服务器时间、刷新与错误状态；不连接 JIRA，不启动 Agent。",
+    "developerName": "Local developer",
+    "category": "Productivity",
+    "capabilities": [],
+    "defaultPrompt": "打开 GameAI Track 接入验证面板。"
+  }
+}

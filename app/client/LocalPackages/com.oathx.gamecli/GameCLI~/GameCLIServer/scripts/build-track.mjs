@@ -1,0 +1,11 @@
+import { fileURLToPath } from 'node:url';
+import { build } from 'esbuild';
+import { readFile, mkdir, writeFile } from 'node:fs/promises';
+const ui = new URL('../../../CodexPlugin~/gameai-track/ui/', import.meta.url);
+const result = await build({ entryPoints: [fileURLToPath(new URL('track.ts', ui))], bundle: true, write: false, format: 'iife', target: 'es2022' });
+const template = await readFile(new URL('track.html', ui), 'utf8');
+const html = template.replace('/* TRACK_BUNDLE */', result.outputFiles[0].text.replaceAll('</script', '<\\/script'));
+const output = new URL('../public/', import.meta.url);
+await mkdir(output, { recursive: true });
+await writeFile(new URL('track.html', output), html);
+console.log('Track UI built.');

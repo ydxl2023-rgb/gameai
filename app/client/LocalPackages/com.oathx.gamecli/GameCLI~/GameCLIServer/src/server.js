@@ -116,6 +116,10 @@ export function createGameCliServer(options)
         try
         {
             const url = new URL(request.url, 'http://localhost');
+            if (options.additionalHttpHandler && await options.additionalHttpHandler(request, response))
+            {
+                return;
+            }
             if (request.method === 'GET' && url.pathname === '/health')
             {
                 respond(response, 200, { ok: true, protocol_version: 1 });
