@@ -19,6 +19,6 @@ app.server.on('error', (error: Error) =>
     process.exitCode = 1;
     void app.close();
 });
-app.server.listen(port, '127.0.0.1', () => console.log(`GameAI Track 模拟验证：http://127.0.0.1:${port}/track；MCP：/mcp`));
+app.server.listen(port, '127.0.0.1', () => console.log(`GameAI Track：http://127.0.0.1:${port}/track；MCP：/mcp；数据源：${process.env.GAMEAI_STORAGE === 'postgres' ? 'PostgreSQL' : '演示'}`));
 process.once('SIGINT', () => void app.close());
 process.once('SIGTERM', () => void app.close());

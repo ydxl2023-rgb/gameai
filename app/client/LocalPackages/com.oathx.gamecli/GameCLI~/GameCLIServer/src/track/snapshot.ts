@@ -1,18 +1,35 @@
 import { randomUUID } from 'node:crypto';
-
-export function createSnapshot()
+import workbench from './workbench.json' with { type: 'json' };
+import { createPool, databaseEnabled } from '../database/connection.js';
+import { readLinkedHtml } from '../database/documents.js';
+import { readWorkbench } from '../database/store.js';
+const pool = databaseEnabled() ? createPool() : null;
+export async function createSnapshot()
 {
+    if (pool)
+    {
+        const result = await readWorkbench(pool, process.env.GAMEAI_PROJECT_KEY ?? 'DEMO');
+        return {
+            schema_version: 2,
+            mode: 'postgres',
+            is_test: result.is_test,
+            server_time: new Date().toISOString(),
+            request_id: randomUUID(),
+            notice: '数据来自 PostgreSQL；当前接入为只读，审批与派工尚未开放。',
+            workbench: result.workbench
+        };
+    }
     return {
-        schema_version: 1,
+        schema_version: 2,
         mode: 'demo',
         server_time: new Date().toISOString(),
         request_id: randomUUID(),
-        project_key: 'DEMO',
-        notice: '模拟数据：不代表 JIRA 任务或真实 Agent；本版本不创建任务、不启动执行。',
-        tasks: [
-            { agent: 'design-demo', role: 'Design', task: 'DEMO-1', status: '模拟执行中', activity: '演示需求分析', elapsed: '02:31' },
-            { agent: 'pm-demo', role: 'PM', task: 'DEMO-2', status: '模拟等待', activity: '演示等待需求批准', elapsed: '—' },
-            { agent: 'art-demo', role: 'Art', task: 'DEMO-3', status: '模拟空闲', activity: '演示可用节点', elapsed: '—' }
-        ]
+        notice: '模拟工作台：未连接数据库，不创建任务、不启动 Agent。',
+        workbench: structuredClone(workbench)
     };
+}
+
+export async function readDocument(id: string)
+{
+    return pool ? readLinkedHtml(pool, process.env.GAMEAI_PROJECT_KEY ?? 'DEMO', id) : null;
 }

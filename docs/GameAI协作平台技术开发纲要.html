@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GameAI 协作平台技术开发纲要</title>
+<style>
+  :root {
+    --bg: #ffffff;
+    --fg: #1f2328;
+    --muted: #57606a;
+    --border: #d0d7de;
+    --code-bg: #f6f8fa;
+    --accent: #0969da;
+    --accent-soft: #ddf4ff;
+    --warn: #bf8700;
+    --warn-soft: #fff8c5;
+    --ok: #1a7f37;
+    --ok-soft: #dafbe1;
+    --err: #cf222e;
+    --err-soft: #ffebe9;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: #f6f8fa;
+    color: var(--fg);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+                 "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue",
+                 Arial, sans-serif;
+    font-size: 14px;
+    line-height: 1.7;
+  }
+
+  .page {
+    max-width: 900px;
+    margin: 0 auto;
+    background: var(--bg);
+    padding: 60px 70px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+  }
+
+  /* 封面 */
+  .cover {
+    text-align: center;
+    padding: 80px 0 60px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 48px;
+  }
+  .cover h1 {
+    font-size: 34px;
+    margin: 0 0 16px;
+    letter-spacing: 1px;
+  }
+  .cover .subtitle {
+    font-size: 16px;
+    color: var(--muted);
+    margin-bottom: 30px;
+  }
+  .cover .meta {
+    display: inline-block;
+    text-align: left;
+    font-size: 13px;
+    color: var(--muted);
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    padding: 12px 30px;
+  }
+  .cover .meta span { display: inline-block; min-width: 90px; color: var(--fg); }
+
+  /* 标题 */
+  h1 { font-size: 26px; margin: 48px 0 16px; padding-bottom: 8px; border-bottom: 2px solid var(--fg); }
+  h2 { font-size: 20px; margin: 36px 0 12px; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
+  h3 { font-size: 16px; margin: 24px 0 8px; color: #24292f; }
+  h4 { font-size: 14px; margin: 16px 0 6px; color: var(--muted); }
+
+  p { margin: 8px 0; }
+
+  /* 代码 */
+  code {
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    background: var(--code-bg);
+    padding: 2px 5px;
+    border-radius: 4px;
+    font-size: 12.5px;
+  }
+  pre {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 14px 16px;
+    overflow-x: auto;
+    font-size: 12px;
+    line-height: 1.6;
+    margin: 12px 0;
+  }
+  pre code {
+    background: none;
+    padding: 0;
+    font-size: 12px;
+  }
+
+  /* 表格 */
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 14px 0;
+    font-size: 13px;
+  }
+  th, td {
+    border: 1px solid var(--border);
+    padding: 8px 10px;
+    text-align: left;
+    vertical-align: top;
+  }
+  th { background: #f6f8fa; font-weight: 600; }
+  tr:nth-child(even) td { background: #fafbfc; }
+
+  /* 引用 */
+  blockquote {
+    border-left: 4px solid var(--accent);
+    margin: 12px 0;
+    padding: 6px 14px;
+    background: var(--accent-soft);
+    border-radius: 0 6px 6px 0;
+    color: #0a3069;
+    font-size: 13.5px;
+  }
+
+  /* 提示框 */
+  .callout {
+    padding: 12px 16px;
+    border-radius: 6px;
+    margin: 14px 0;
+    font-size: 13.5px;
+    border-left: 4px solid;
+  }
+  .callout.info { background: var(--accent-soft); border-color: var(--accent); }
+  .callout.warn { background: var(--warn-soft); border-color: var(--warn); }
+  .callout.ok   { background: var(--ok-soft);   border-color: var(--ok); }
+  .callout.err  { background: var(--err-soft);  border-color: var(--err); }
+
+  /* 列表 */
+  ul, ol { padding-left: 24px; margin: 8px 0; }
+  li { margin: 4px 0; }
+
+  /* 图表容器 */
+  .diagram {
+    margin: 24px 0;
+    padding: 20px;
+    background: #fafbfc;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow-x: auto;
+    text-align: center;
+  }
+  .diagram svg { max-width: 100%; height: auto; }
+  .diagram .caption {
+    font-size: 12.5px;
+    color: var(--muted);
+    margin-top: 10px;
+    font-style: italic;
+  }
+
+  /* 目录 */
+  .toc {
+    background: #fafbfc;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px 28px;
+    margin: 24px 0 40px;
+  }
+  .toc h3 { margin-top: 0; }
+  .toc ol { margin: 0; padding-left: 20px; }
+  .toc a { color: var(--accent); text-decoration: none; }
+  .toc a:hover { text-decoration: underline; }
+
+  /* 打印 */
+  @page {
+    size: A4;
+    margin: 18mm 16mm;
+  }
+  @media print {
+    html, body { background: #fff; font-size: 11.5pt; }
+    .page { box-shadow: none; padding: 0; max-width: 100%; }
+    h1 { page-break-before: auto; }
+    h2 { page-break-after: avoid; }
+    pre, table, .diagram { page-break-inside: avoid; }
+    .cover { page-break-after: always; }
+    .no-print { display: none; }
+    a { color: var(--fg); text-decoration: none; }
+  }
+
+  /* 页脚 */
+  .footer {
+    margin-top: 60px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border);
+    text-align: center;
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  .print-btn {
+    position: fixed;
+    right: 24px;
+    bottom: 24px;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 999px;
+    padding: 12px 22px;
+    font-size: 14px;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(9,105,218,0.35);
+    z-index: 100;
+  }
+  .print-btn:hover { background: #0860ca; }
+
+.page { overflow-wrap: anywhere; }
+@media screen and (max-width: 700px) { .page { padding: 24px 18px; } .cover { padding: 30px 0; } .cover h1 { font-size: 26px; } .toc { padding: 16px; } }
+.wire-gallery { display: flex; flex-direction: column; gap: 24px; }
+.wire-step { width: 100%; }
+table{table-layout:fixed}td,th{overflow-wrap:anywhere}pre{white-space:pre-wrap;overflow-wrap:anywhere}@media print{table,pre,.diagram{page-break-inside:auto}tr{break-inside:avoid}}
+</style>
+</head>
+<body>
+<button class="print-btn no-print" onclick="window.print()">打印 / 导出文档</button>
+<main class="page">
+<header class="cover">
+<h1>GameAI 协作平台技术开发纲要</h1>
+<div class="subtitle">单项目 Track · Ant Design · PostgreSQL · 中央编排</div>
+<div class="meta">版本：v2.0<br>日期：2026-09-28<br>状态：开发指导基线；新增业务能力待实现<br>适用工程：ugame-ai-cli</div>
+</header>
+<nav class="toc" aria-label="目录"><h3>目录</h3><ol><li><a href="#s1">设计目标与约定优先级</a></li><li><a href="#s2">现状与实施范围</a></li><li><a href="#s3">系统结构与职责</a></li><li><a href="#s4">前端技术与页面设计</a></li><li><a href="#s5">服务端模块与工程组织</a></li><li><a href="#s6">PostgreSQL 数据模型</a></li><li><a href="#s7">身份、权限与信任边界</a></li><li><a href="#s8">需求到验收的完整流程</a></li><li><a href="#s9">状态机、版本和依赖</a></li><li><a href="#s10">接口、消息与并发派工</a></li><li><a href="#s11">文件、工作区与部署</a></li><li><a href="#s12">实施阶段与验收门槛</a></li><li><a href="#s13">迁移与后续查询入口</a></li><li><a href="#s14">官方依据与变更记录</a></li></ol></nav>
+<section id="s1"><h2>1. 设计目标与约定优先级</h2><p>将已审阅的单项目 Track 小样建设为真实协作工作台：在 Codex 讨论需求，在 Track 审阅并人工批准，GameCLIServer 保存业务事实和集中调度，后台 GameCLI 启动专业 Agent，最终回收交付与验收证据。</p><div class="callout info"><strong>技术基线：React + TypeScript + Ant Design；Node.js + TypeScript；PostgreSQL；C#/.NET GameCLI。</strong> 已完成 Ant Design 工作台、PostgreSQL 24 张业务表及测试数据入库，Track 读取实际数据库；正式身份、审批写接口和集中派工尚未实现。字段与维护说明见 <a href="GameAI数据库设计与入库说明.html">数据库设计与入库说明</a>。</div><ul><li>本期为单项目工作台：删除多项目导航与项目切换；服务配置固定项目上下文，数据中保留项目标识用于防止跨工作区误关联。</li><li>新架构以 PostgreSQL 为唯一业务数据来源，通过 GameCLIServer 读写。JIRA 不再是新系统运行前提，不做双向同步或双主写入。</li><li>现有 JIRA 实现属于迁移前基线，在明确切换前保持原有行为；不能因本文存在就让旧命令改写新系统。</li><li>本文优先于旧云端方案中关于 JIRA 唯一来源、多项目界面和待选前端库的条款；旧代码及历史记录不在本次文档工作中删除。</li><li>本期不接入 Unity CLI、不执行真实 Unity 验收；正式发布和最终人工验收保留独立门禁。</li></ul></section><section id="s2"><h2>2. 现状与实施范围</h2><table><thead><tr><th>事项</th><th>当前事实</th><th>下一步</th></tr></thead><tbody><tr><td>Track 接入</td><td>已有模拟 MCP 工具、内嵌组件与侧栏切换代码；构建和桥接测试已通过</td><td>Ant Design 替换控件后重新验证真实宿主渲染、展开与返回</td></tr><tr><td>工作台小样</td><td>React + Ant Design 已实现单项目七页；测试数据持久化到 PostgreSQL</td><td>保留布局与交互意图，不把模拟身份选择带入正式权限系统</td></tr><tr><td>数据库</td><td>PostgreSQL 18；gameai 数据库、24 张业务表及独立所有者／只读账号已配置</td><td>已完成迁移、种子入库及持久化验证；后续扩展业务写服务</td></tr><tr><td>服务端</td><td>现有 GameCLIServer 为 Node.js，已有 WebSocket 事件通道和 Track 验证入口</td><td>在该服务内新增 TypeScript 业务模块及数据库存储层</td></tr><tr><td>执行端</td><td>已有 C# 单机专业 Agent 流程和 JIRA 适配</td><td>复用执行能力；中央领取、租约及结果提交采用新契约</td></tr><tr><td>当前交付</td><td>技术纲要、组件工作台及数据库基础</td><td>下一步实现正式登录与审批；未启动真实 Agent</td></tr></tbody></table></section><section id="s3"><h2>3. 系统结构与职责</h2><div class="diagram"><div>Codex 对话：需求讨论、澄清、修订</div><div>↓ GameCLI / 角色技能</div><div>Track：React + Ant Design，审阅、审批、监测</div><div>↓ 薄 MCP 工具桥接 / 独立页面 HTTP 适配</div><div><strong>GameCLIServer：身份、权限、版本、任务、集中调度</strong></div><div>↙ PostgreSQL：业务事实　　↘ 文件存储：文档与产物</div><div>↓ WebSocket 调度 + HTTP 文件与结果接口</div><div>后台 GameCLI → 独立专业 Agent → 工作区 / Git → 回传证据</div><p class="caption">接口与数据流示意；数据库不向 UI 和执行节点开放直连。</p></div><table><thead><tr><th>组件</th><th>负责</th><th>不得承担</th></tr></thead><tbody><tr><td>Track</td><td>显示快照、提交人工操作、显示错误及实际状态</td><td>自行批准、凭前端缓存推进任务、持有数据库凭据</td></tr><tr><td>薄 MCP</td><td>把受限工具调用映射到服务端用例，提供组件资源</td><td>复制审批规则、直接操作数据库、任意 SQL 或任意 HTTP 代理</td></tr><tr><td>GameCLIServer</td><td>鉴权、事务、版本门禁、依赖核验、派工和恢复</td><td>把模型输出当作可信写入指令</td></tr><tr><td>PostgreSQL</td><td>需求、审批、任务、权限、租约、回执与操作记录</td><td>保存无限增长的过程日志或大型资源文件</td></tr><tr><td>GameCLI</td><td>注册节点、接单、独立会话、工作区管理、取消和结果上传</td><td>自行挑选任务抢跑、自行批准、替代中央调度</td></tr><tr><td>专业 Agent</td><td>Design 分析；PM 拆解；Art 资源；Development 代码；QA 验收</td><td>直接连接数据库、改变租约、越权启动其他 Agent</td></tr></tbody></table></section><section id="s4"><h2>4. 前端技术与页面设计</h2><p>选定 React + TypeScript + Ant Design，采用组件级导入及统一主题。保留现有构建入口，先扩展当前 esbuild 流程支持 TSX 和样式打包；不因引入 React 同时重写服务端或强制切换构建工具。具体稳定版本在接入时核对兼容性并写入锁文件。</p><p>不引入 Ant Design Pro 整套后台模板；首版不安装图表库。使用深色与紧凑主题、small 控件、英文列表标题和中文业务内容。</p><table><thead><tr><th>页面</th><th>主要组件</th><th>交付行为</th></tr></thead><tbody><tr><td>紧凑顶栏</td><td>Flex、Typography、Tag、Dropdown</td><td>一行展示项目摘要与真实用户身份；统计采用文字行，窄屏最多增加一行统计，不恢复大卡片或多项目侧栏</td></tr><tr><td>项目总览</td><td>List、Tag、Progress</td><td>待审批、执行中、阻塞、空闲节点；突出需要处理的事项</td></tr><tr><td>需求与审批</td><td>Tabs、Select、Modal、Form</td><td>完整需求、线框与交付标准可阅读；精确版本、差异摘要、批准或填写退回原因</td></tr><tr><td>任务与依赖</td><td>Table、Tag、Tooltip</td><td>主子任务、状态、角色过滤、排序、分页；任务编号进入详情；依赖阻塞有原因</td></tr><tr><td>Agent</td><td>Table、Badge、Drawer</td><td>角色、工作站、在线状态、当前任务、容量、最后心跳；不同实例使用稳定标识</td></tr><tr><td>版本</td><td>Table、Descriptions、Drawer</td><td>需求、计划、产物与验收版本关联；旧版本只读，新修订必须重新审批</td></tr><tr><td>权限</td><td>Form、Table、Checkbox、Switch</td><td>人工角色权限与 Agent 任务授权分开配置；显示禁止原因及有效范围</td></tr><tr><td>操作记录 / Output</td><td>Table、Timeline、Splitter</td><td>结构化审计与过程日志分开；主列表与 Output 之间可拖动，顶部固定</td></tr></tbody></table><h3>4.1 单列页面结构</h3><div class="diagram"><div style="border:1px solid #aaa;padding:10px;text-align:left">项目名称 · 待审批 1 · 执行中 2 · 阻塞 2 · 空闲 3　｜ 当前用户</div><div style="border:1px solid #aaa;padding:10px;text-align:left">总览　需求审批　任务依赖　Agent　版本　权限　记录</div><div style="border:1px solid #aaa;padding:45px 10px;text-align:left">当前分页的主列表 / 完整需求阅读区<br>按需打开详情抽屉；窄屏抽屉覆盖内容宽度。</div><div style="border:1px solid #aaa;padding:4px">可拖动分隔条</div><div style="border:1px solid #aaa;padding:20px;text-align:left">Output：当前选中任务的日志与结果</div><p class="caption">桌面工具布局示意，不适用游戏需求的手机底框规则。各页面通过分页切换，不并排堆放多个线框。</p></div><h3>4.2 状态与交互</h3><ul><li>页面必须区分加载、空结果、无权限、请求失败、数据过期；断线保留最后快照并显示时间，不能伪装为零任务。</li><li>批准必须由用户点击确认，处理中禁止重复提交；成功后显示服务端审批回执。失败保留文档并给出原因；响应丢失先查询原操作结果。</li><li>弹窗、下拉和抽屉限制在组件根容器内，验证窄侧栏、键盘焦点、滚动和宿主沙箱样式。</li><li>小样中的身份选择仅供演示；正式系统身份来自服务端认证会话，不能通过下拉框切换管理员。</li><li>完整需求 HTML 采用隔离、禁脚本阅读视图，禁止直接向应用根插入未可信 HTML；审批按钮属于可信应用界面。</li><li>窄屏优先隐藏次要列并放入详情，避免整页横向滚动；真实列表必要时保留自己的横向滚动。</li></ul></section><section id="s5"><h2>5. 服务端模块与工程组织</h2><p>沿用现有服务入口，新增业务模块使用 TypeScript。HTTP 路由只处理协议映射；用例层集中编排事务和权限；领域逻辑负责状态、版本和依赖；存储层使用参数化 SQL。首版建议使用 pg 驱动、版本化 SQL 迁移和现有 Zod 校验，不引入额外 ORM 或第二套后端框架作为启动前提。</p><pre>app/client/LocalPackages/com.oathx.gamecli/
+  CodexPlugin~/gameai-track/
+    ui/src/
+      app/                 入口、主题、宿主桥接
+      features/            overview / requirements / tasks / agents
+                           versions / permissions / audit
+      components/          少量共享业务组件
+      services/            API、MCP 适配和契约
+  GameCLI~/GameCLIServer/
+    src/
+      api/                 HTTP 路由、认证、错误映射
+      application/         审批、发布计划、领取、提交结果
+      domain/              状态机、权限、版本、依赖规则
+      persistence/         PostgreSQL 仓储、事务
+      scheduler/           容量、租约、重试、恢复
+      transport/           WebSocket、通知与消息分发
+      artifacts/           文件上传、校验、引用
+      track/               现有 MCP 入口及快照
+    migrations/            按序号执行的数据库迁移
+    test/                  用例、数据库及传输集成测试
+  GameCLI~/GameCLI/         现有 C# 执行端
+  game-cli/                标准角色 SKILL
+</pre><p>以上为目标增量目录，不表示已创建。暂保留当前物理位置；独立部署不要求安装 Unity，后续迁移包目录时再统一修改安装与路径解析。</p><ul><li>服务统一 UTC 时间，界面本地化显示；标识使用稳定 ID，列表另提供简短任务号。</li><li>API DTO、数据库实体和 Agent 输出分别校验，不直接透传模型 JSON。</li><li>业务错误使用稳定错误码和中文说明；日志携带请求、任务、执行编号，不输出令牌与数据库密码。</li></ul></section><section id="s6"><h2>6. PostgreSQL 数据模型</h2><p>核心关系使用关系表、外键和唯一约束；可扩展内容使用 JSONB。需求发布后版本不可覆盖，审批绑定版本记录与对应文件字节哈希。</p><table><thead><tr><th>逻辑表</th><th>主要内容</th><th>关键约束</th></tr></thead><tbody><tr><td>projects</td><td>单项目配置、默认工作区</td><td>首版只启用一个项目，不提供项目创建或切换 UI</td></tr><tr><td>users / roles / permissions / user_roles</td><td>人工身份与授权</td><td>有效权限由服务端计算；项目范围明确</td></tr><tr><td>agents / agent_grants / workers</td><td>角色实例、执行节点、读取/任务写入授权、能力与容量</td><td>Agent 与工作站分开建模；节点身份不可冒用</td></tr><tr><td>requirements / requirement_versions</td><td>需求标识、递增版本、正文、结构化交付标准、文件引用及哈希</td><td>同需求版本唯一；提交审阅后内容不可改写</td></tr><tr><td>approvals</td><td>审批对象、版本、批准/退回、人工主体、时间与原因</td><td>不接受 Agent 身份批准；重复操作返回同一回执</td></tr><tr><td>plans / plan_versions</td><td>PM 拆解草案、批准需求版本、交付项映射</td><td>每主任务计划发布串行；一次只激活一个计划版本</td></tr><tr><td>tasks / task_dependencies</td><td>主子任务、角色、交付标准、依赖版本</td><td>同项目父子关系；禁止自依赖和环；计划发布前完整验证</td></tr><tr><td>executions / task_leases</td><td>执行编号、任务、节点、代次、状态、截止时间、输入版本</td><td>同任务最多一个未解决执行；旧代次不能推进结果</td></tr><tr><td>artifacts / artifact_links</td><td>文件存储键、哈希、字节数、类型、归属版本</td><td>文件校验后才可引用；代码记录提交哈希</td></tr><tr><td>comments / audit_events</td><td>结果摘要、人工与系统操作、操作者、关联版本</td><td>结果评论按执行和操作唯一；审计通过应用追加</td></tr><tr><td>idempotency_records / outbox_events</td><td>幂等请求及响应、事务内待发送事件</td><td>幂等键按主体和操作限定；同键不同请求拒绝</td></tr></tbody></table><ul><li>审批、任务状态和执行租约不只放进一个大 JSON 文档；可索引字段应明确列出。</li><li>任务领取使用事务与行锁；唯一约束作为最后防线。依赖成环检查在同一计划发布锁内完成。</li><li>过程日志放文件并轮转；数据库保存摘要、索引和定位。心跳在线缓存可在内存，执行所有权必须持久化。</li><li>附件保存于配置的数据目录，使用服务端生成的存储键；数据库和文件存储分别备份并校验引用一致性。</li><li>原始 HTML 文件哈希基于实际字节计算；JSONB 不承担保留原始文件格式的职责。</li></ul></section><section id="s7"><h2>7. 身份、权限与信任边界</h2><p>必须区分人工用户、Agent 专业角色、执行节点和服务自身。早期免认证通知转发可保留为旧功能，但不能直接用于新的审批和远程写入接口。</p><table><thead><tr><th>主体</th><th>读取状态/文档</th><th>审批需求</th><th>业务写入</th><th>权限管理</th></tr></thead><tbody><tr><td>策划人工用户</td><td>允许</td><td>获授权后允许</td><td>提交修订、填写退回原因；不直接改执行状态</td><td>默认禁止</td></tr><tr><td>PM / Art / Development / QA 人工用户</td><td>默认允许</td><td>默认禁止</td><td>首版面板默认只读</td><td>禁止</td></tr><tr><td>项目管理员</td><td>允许</td><td>不因管理员身份自动获得审批权，可另授策划审批角色</td><td>用户与节点管理</td><td>允许</td></tr><tr><td>Design Agent</td><td>按任务范围</td><td>禁止</td><td>提交需求草稿或新修订版本</td><td>禁止</td></tr><tr><td>PM Agent</td><td>按批准需求和任务范围</td><td>禁止</td><td>提交交付项拆分计划，由服务验证发布</td><td>禁止</td></tr><tr><td>Art / Development / QA Agent</td><td>按任务及依赖产物范围</td><td>禁止</td><td>仅提交所分配执行的产物与证据</td><td>禁止</td></tr></tbody></table><ul><li>有效 Agent 写权限 = 项目授权 ∩ 角色能力 ∩ 当前任务范围 ∩ 有效执行代次；面板只读不等于执行端无法提交自己的任务成果。</li><li>未持有有效租约、被撤销授权或引用旧版本的写入被服务端拒绝。拒绝中记录原因，不靠隐藏按钮实现安全。</li><li>首版建议使用服务端用户会话与可撤销节点凭据；管理员初始化账号，人工以自己的会话批准。连接数据库的账户不得复用为用户身份。</li><li>MCP 本地进程不能替所有用户使用一个管理员凭据。普通模型工具不暴露可批准需求的入口；审批工具应限定为 UI 调用，并再次校验真实用户会话和版本。</li><li>若当前宿主无法可靠传递审批身份，应将审批标为未支持或使用经授权的浏览器登录流程，不能把模型传来的 approved_by 当作身份凭据。</li><li>权限变更记录审计；取消读取授权后，服务停止推送并要求前端清除对应视图。已经开始的执行按取消/核实流程处理，不直接释放后重派。</li></ul></section><section id="s8"><h2>8. 需求到验收的完整流程</h2><ol><li><strong>需求讨论：</strong>在 Codex 描述需求；Design 先参考成功项目同类功能，再产出草案。需决策事项集中询问，避免逐项弹窗。</li><li><strong>文档生成：</strong>沿用策划技能，包含目标、综述、线框、配置表、操作交付标准和美术表现需求；本地输出到仓库相对路径 app/desgin/。</li><li><strong>提交版本：</strong>GameCLI 上传草稿内容与文件，服务器保存不可变审阅版本。当前 HTML 文件不能因后续覆盖而改变已审批版本。</li><li><strong>人工审批：</strong>Track 显示完整指定版本，用户批准或退回。审批事务检查权限、版本及哈希并返回回执。</li><li><strong>文档发布门禁：</strong>确认服务器已持久保存批准文件、长度与哈希正确，再进入 PM 队列。上传/发布失败最多尝试三次，总次数持久化，服务重启不清零；三次失败明确阻塞，可经人工授权新建重试操作。</li><li><strong>PM 接单：</strong>服务器选择可用且有 PM 能力的 GameCLI，先写分配与租约，再发通知；PM 只处理该批准版本。</li><li><strong>计划发布：</strong>PM 按交付标准拆成可验收子任务，列明角色、输入、产物、验收条件及依赖。服务器检查覆盖、重复、循环及版本后，在事务中发布主子任务和计划。</li><li><strong>自动派工：</strong>满足批准、文档、依赖和资源条件的任务进入可领取状态；选择能力匹配、授权有效、容量足够的节点。</li><li><strong>专业交付：</strong>GameCLI 启动独立 Agent 会话，回传进度、日志和产物；服务校验执行代次及输入版本，将结果追加到任务评论。</li><li><strong>解锁与验收：</strong>美术产物验证后解锁对应程序任务，基础逻辑可并行；QA 验证精确代码和资源版本，失败产生关联修复任务。</li><li><strong>完成：</strong>必要子任务及 QA 证据通过后等待人工最终验收；合并和发布需要独立授权。</li></ol><div class="callout warn">新系统不再“上传到 JIRA 后建单”，改为“服务器保存并核验需求附件后发布内部子任务”。保留先附件、后三次失败阻塞、再 PM 拆分的业务意图。</div></section><section id="s9"><h2>9. 状态机、版本和依赖</h2><p>分别维护需求、任务和执行状态，避免用一个状态字段表示所有阶段。</p><table><thead><tr><th>对象</th><th>主流程</th><th>异常或分支</th></tr></thead><tbody><tr><td>需求版本</td><td>草稿 → 待审批 → 已批准 → 文档已核验 → 已发布</td><td>退回修改生成新版本；发布失败阻塞；旧批准版本保留</td></tr><tr><td>任务</td><td>待门禁 → 可执行 → 已分配 → 执行中 → 待核验 → 已完成</td><td>依赖阻塞、失败、取消中、已取消、待核实</td></tr><tr><td>执行</td><td>已创建 → 已确认 → 运行中 → 结果已提交 → 已接受</td><td>超时、拒绝、失败、取消中、停止待核实</td></tr><tr><td>计划版本</td><td>草案 → 校验通过 → 已发布 → 被新计划替代</td><td>校验拒绝；历史计划只读</td></tr></tbody></table><ul><li>需求版本、计划版本、任务输入版本、执行代次、代码/美术版本和验收版本分别记录，不能只显示一个 v1.0。</li><li>需求变更先做影响分析；正在执行的任务不静默切换输入。受影响的旧交付暂停下游放行，决定取消、重做或继续保留旧计划。</li><li>依赖以具体产物和交付项为单位；不强制全部程序等待全部美术，禁止仅按角色排成一条串行队列。</li><li>PM 发布前校验每项交付标准都被覆盖；子任务必须可独立验证，不能只建“全部美术”“全部开发”“全部 QA”三个大任务。</li><li>每次结果提交都有任务评论摘要，包括执行编号、输入版本、产物、验证证据、失败原因和下一步。运行日志不等于交付证据。</li></ul></section><section id="s10"><h2>10. 接口、消息与并发派工</h2><table><thead><tr><th>通道</th><th>建议契约</th><th>说明</th></tr></thead><tbody><tr><td>HTTP</td><td>/api/v1/requirements、/versions、/approvals</td><td>提交与读取需求；审批必须带版本、哈希、幂等键和真实会话</td></tr><tr><td>HTTP</td><td>/api/v1/tasks、/plans、/artifacts、/executions/{id}/result</td><td>计划、文件和结果使用校验后的命令接口，不开放任意字段修改</td></tr><tr><td>HTTP</td><td>/api/v1/track/snapshot、/events?after=…</td><td>初始快照与断线补齐；限定项目、分页和日志范围</td></tr><tr><td>WebSocket</td><td>worker.register / heartbeat / dispatch / accepted / progress / cancel</td><td>执行端常驻双向通道；事件版本、消息 ID、执行 ID、代次与关联 ID 明确</td></tr><tr><td>MCP</td><td>gameai_track_open / snapshot / detail 等薄工具</td><td>保留现有只读入口；写工具后续逐项定义可见性和权限，不提供通用 SQL 工具</td></tr></tbody></table><h3>10.1 领取与可靠发送</h3><ol><li>服务端事务锁定候选任务及节点容量记录，核对门禁、权限、有效依赖和空闲槽位。</li><li>同一事务写执行记录、租约代次、占用容量以及 outbox 待发送事件；失败则整体回滚。</li><li>事务提交后发送 WebSocket 指令；发送成功不等于接单成功。节点以执行编号去重，确认后启动会话。</li><li>丢失确认时重新发送同一指令，不生成新执行。完成结果提交使用幂等键，同键不同内容拒绝。</li><li>收到结果后事务核验租约、状态和版本，登记结果、评论及下一步事件。重复提交返回已有回执。</li></ol><h3>10.2 恢复规则</h3><ul><li>心跳用于感知在线与续租；租约过期但执行可能仍在写文件时标记待核实，不立刻转派。</li><li>节点重连上报未结束执行；服务器查询持久记录，确认旧执行已停止或副作用已核实后才能创建新代次。</li><li>取消必须有节点响应或核实证据。暂停接单不取消正在执行的任务。</li><li>数据库不可用时停止批准、派工和接受权威结果；客户端可保留未确认结果，恢复后以同一幂等键提交。</li><li>文件上传、数据库事务和 Agent 外部动作不能靠一个数据库事务覆盖；采用分阶段状态、幂等回执及补偿/核实。</li><li>首版仅单调度实例，支持多执行节点；多实例调度另行设计，不依赖“单实例”跳过数据库互斥。</li></ul><p>看板通过宿主桥接获取真实快照。事件通知不可用时可对本服务进行有界刷新；这不会轮询 JIRA。推送恢复先取快照与游标，缺口不能靠旧缓存补成成功。</p></section><section id="s11"><h2>11. 文件、工作区与部署</h2><ul><li>PostgreSQL 和 GameCLIServer 可先在同一台 Windows 机器部署。执行机只需 GameCLI、Agent 运行环境及任务工作区；不需要各自安装数据库。</li><li>实施时确认 PostgreSQL 实际版本、端口和账户；应用使用独立最小权限账户，DDL 迁移使用单独权限。数据库不向执行节点直接开放。</li><li>数据库连接、文件目录、端口、任务容量、心跳与租约参数由服务端配置管理；提交 .env.example，不提交实际密码、令牌或 .env。</li><li>需求文件采用临时上传 → 哈希/大小检查 → 持久归档 → 数据库引用；拒绝路径穿越和非授权下载，清理无引用临时文件须有保留期。</li><li>每次执行使用隔离工作区或 Git worktree；同一个可写目录不交给多个 Agent。返回代码提交哈希和资源哈希，不只返回本机绝对路径。</li><li>后台 GameCLI 与聊天、看板独立生命周期；服务退出停止新派工并保存未决发送，执行端重连后核对状态。</li><li>数据库备份与文件备份覆盖同一业务检查点，定期演练恢复；迁移失败阻止服务以不兼容结构继续写入。</li><li>本期只实现启动联调和证据提交；未真实开发或验收的任务，界面标明模拟/联调，不能写成生产完成。</li></ul></section><section id="s12"><h2>12. 实施阶段与验收门槛</h2><table><thead><tr><th>阶段</th><th>工作内容</th><th>通过条件</th></tr></thead><tbody><tr><td>1. 组件化 UI</td><td>React + Ant Design 替换小样控件，模拟数据适配器与真实适配器分离</td><td>七页交互、紧凑顶栏、列表/Output 分隔、暗色窄屏、宿主内嵌/侧栏通过；无真实业务写入</td></tr><tr><td>2. 数据与身份基础</td><td>数据库连接、SQL 迁移、用户/节点身份、只读任务与版本 API</td><td>真实存取、服务重启保留数据；未授权访问被拒绝；UI 不再靠身份下拉模拟权限</td></tr><tr><td>3. 审批与文档</td><td>需求不可变版本、完整阅读、批准/退回、文件门禁</td><td>旧版本批准拒绝、重复批准返回同回执、上传总计三次失败阻塞</td></tr><tr><td>4. PM 计划闭环</td><td>单节点常驻、PM 执行、内部主子任务、依赖校验</td><td>批准后经文件核验自动派 PM；按交付项建任务，发布事务完整且无依赖环</td></tr><tr><td>5. 专业 Agent 闭环</td><td>Art / Development / QA 派工、进度、结果、评论与依赖解锁</td><td>完整走通真实启动与回传；模拟制作明确标记，失败不会解锁依赖</td></tr><tr><td>6. 多节点可靠性</td><td>容量、互斥、租约、取消、重连、恢复及审计</td><td>不同就绪任务并行，同任务不重复启动；失联与迟到结果正确处理</td></tr><tr><td>后续</td><td>真实资产共享、代码集成、Unity CLI、完整 QA 与发布</td><td>验证同一交付版本，保留最终人工门禁</td></tr></tbody></table><p>开发顺序以阶段 1 的组件化工作台开始，随后建立数据库与权限；不能在认证、版本和租约未完成时先开放真正的“批准并启动”。本次只制定文档，不自动执行这些阶段。</p><h3>12.1 必须覆盖的验证</h3><ul><li>审批：相同版本重复点击、旧页面提交、新修订产生、无审批权限及 Agent 冒充用户。</li><li>计划：交付标准遗漏、跨项目引用、环形依赖、重复子任务及计划发布中断。</li><li>并发：同任务双领取、节点容量超额、重复消息、确认丢失、结果重复。</li><li>恢复：节点失联、服务重启、数据库中断、取消无响应、旧代次迟到、文件上传中断。</li><li>界面：约 400～480 像素侧栏、普通宽屏、键盘导航、空数据、长文档和长任务号；最终实测而非只检查代码。</li><li>证据：结果评论、代码/资源版本、QA 输入一致；无证据不标记完成。</li></ul><p>上述为待执行计划。数据库集成测试使用隔离数据库和临时文件目录；不得使用生产任务做崩溃或并发实验。</p></section><section id="s13"><h2>13. 迁移与后续查询入口</h2><ol><li>保留现有 JIRA 链路作为历史基线，新 PostgreSQL 路径在隔离测试项目中开发。</li><li>更新角色技能和 CLI 契约：PM 由 JIRA 建单改为提交内部任务计划；Orchestrator 以服务端状态为准；Design 的文档规则保留。</li><li>若需要历史任务迁移，先做只读导出与映射报告，经确认后导入，保留原单号、附件来源和审批证据；不把未知历史审批补成已批准。</li><li>切换前停止旧 watch/dispatch 新派工，核对全部运行执行；启用明确的存储后端/调度模式，防止旧 JIRA 和新数据库同时调度。</li><li>回退前停止新领取并核实副作用；不能简单恢复旧命令而丢弃数据库中的未结束执行。</li></ol><p>旧文档中的 JIRA 规则仅适用于旧实现；新开发以本文为入口，相关 SKILL 在业务迁移时同步，不能把更新指导文档误当作代码迁移完成。</p><ul><li><a href="GameAI-Track工作台交互小样.html">单项目工作台交互小样</a>：页面布局与交互参考，非生产数据。</li><li><a href="GameAI云端编排与Codex协作平台设计方案.html">历史云端编排方案</a>：保留租约、执行隔离等设计参考，冲突内容由本文替代。</li><li><a href="gamecli-server-architecture.md">现有服务协议与实施基线</a>：查阅现有入口与旧模式。</li></ul></section><section id="s14"><h2>14. 官方依据与变更记录</h2><ul><li><a href="https://ant.design/components/table/">Ant Design Table</a>：任务树、排序、筛选、固定列与虚拟列表。</li><li><a href="https://ant.design/components/splitter/">Ant Design Splitter</a>：可拖动分区。</li><li><a href="https://ant.design/docs/react/customize-theme/">Ant Design 主题</a>：深色与紧凑主题。</li><li><a href="https://github.com/ant-design/ant-design/blob/master/LICENSE">Ant Design 许可</a>：MIT，分发时保留许可声明。</li><li><a href="https://www.postgresql.org/docs/current/ddl-constraints.html">PostgreSQL 约束</a>、<a href="https://www.postgresql.org/docs/current/datatype-json.html">JSONB</a>、<a href="https://www.postgresql.org/docs/current/sql-select.html">行锁与查询</a>：关系一致性、扩展内容和并发领取。</li><li><a href="https://developers.openai.com/plugins/build/chatgpt-ui">MCP UI 文档</a>：宿主桥接和组件；实际 Codex 能力继续按当前安装环境验证。</li></ul><p>v2.0：确认 Ant Design 前端、PostgreSQL 权威存储、单项目紧凑工作台；明确人工审批与 Agent 写入分离，替代原 JIRA 核心架构。用户已安装数据库，但本文未进行连接或迁移。</p></section>
+<footer class="footer">以已核验的服务端记录和交付证据为准；本文不构成任务批准、真实执行或发布记录。</footer>
+</main>
+</body>
+</html>

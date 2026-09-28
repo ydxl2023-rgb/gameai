@@ -2,9 +2,9 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
-import { createSnapshot } from './snapshot.js';
+import { createSnapshot, readDocument } from './snapshot.js';
 
-export const resourceUri = 'ui://gameai-track/v2.html';
+export const resourceUri = 'ui://gameai-track/v3.html';
 const mimeType = 'text/html;profile=mcp-app';
 const htmlUrl = new URL('../../public/track.html', import.meta.url);
 
@@ -15,17 +15,25 @@ export function createMcpServer(html: string)
         contents: [{ uri: resourceUri, mimeType, text: html, _meta: { 'openai/ui': { availableDisplayModes: ['inline', 'fullscreen'] }, ui: { prefersBorder: true, csp: { connectDomains: [], resourceDomains: [] } } } }]
     }));
     const annotations = { readOnlyHint: true, destructiveHint: false, openWorldHint: false };
-    const reply = async () => ({
-        content: [{ type: 'text' as const, text: 'GameAI Track 接入验证：仅模拟数据，未读取或修改 JIRA。' }],
-        structuredContent: createSnapshot()
-    });
+    const reply = async () =>
+    {
+        try
+        {
+            const snapshot = await createSnapshot();
+            return { content: [{ type: 'text' as const, text: snapshot.notice }], structuredContent: snapshot };
+        }
+        catch
+        {
+            return { isError: true, content: [{ type: 'text' as const, text: '数据库读取失败，请检查数据库服务及本机连接配置。' }] };
+        }
+    };
     server.registerTool('gameai_track_open', {
-        description: '打开 GameAI Track 最小 UI 接入验证组件。仅模拟数据，不运行 Agent。',
+        description: '打开 GameAI Track 工作台，读取已配置的数据源；不执行审批或派工。',
         inputSchema: {}, annotations,
         _meta: { ui: { resourceUri }, 'openai/outputTemplate': resourceUri }
     }, reply);
     server.registerTool('gameai_track_snapshot', {
-        description: '刷新 GameAI Track 模拟快照；返回本次服务器时间和请求编号，不代表实际项目状态。',
+        description: '刷新 GameAI Track 数据库或演示快照，返回数据来源及测试数据标记。',
         inputSchema: {}, annotations
     }, reply);
     return server;
@@ -40,7 +48,8 @@ function json(response: ServerResponse, status: number, value: unknown)
 export async function handleTrackRequest(request: IncomingMessage, response: ServerResponse): Promise<boolean>
 {
     const path = new URL(request.url ?? '/', 'http://localhost').pathname;
-    if (!['/mcp', '/track', '/api/track/demo'].includes(path))
+    const documentId = /^\/api\/track\/documents\/([0-9a-f-]{36})$/i.exec(path)?.[1];
+    if (!documentId && !['/mcp', '/track', '/api/track/demo', '/api/track/snapshot'].includes(path))
     {
         return false;
     }
@@ -57,9 +66,39 @@ export async function handleTrackRequest(request: IncomingMessage, response: Ser
         json(response, 403, { error: '请求来源不允许。' });
         return true;
     }
-    if (path === '/api/track/demo')
+    if (documentId)
     {
-        json(response, request.method === 'GET' ? 200 : 405, request.method === 'GET' ? createSnapshot() : { error: '方法不允许。' });
+        if (request.method !== 'GET')
+        {
+            json(response, 405, { error: '方法不允许。' });
+            return true;
+        }
+        try
+        {
+            const bytes = await readDocument(documentId);
+            if (!bytes) json(response, 404, { error: '未找到关联的 HTML 文档。' });
+            else
+            {
+                response.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff', 'Content-Security-Policy': "sandbox; default-src 'none'; style-src 'unsafe-inline'; img-src data:; font-src data:; base-uri 'none'; form-action 'none'" });
+                response.end(bytes);
+            }
+        }
+        catch
+        {
+            json(response, 409, { error: '原始 HTML 不可用或内容已改变，请核对关联版本。' });
+        }
+        return true;
+    }
+    if (path === '/api/track/demo' || path === '/api/track/snapshot')
+    {
+        try
+        {
+            json(response, request.method === 'GET' ? 200 : 405, request.method === 'GET' ? await createSnapshot() : { error: '方法不允许。' });
+        }
+        catch
+        {
+            json(response, 503, { error: '数据库读取失败，请检查数据库服务及本机连接配置。' });
+        }
         return true;
     }
     if (path === '/track')

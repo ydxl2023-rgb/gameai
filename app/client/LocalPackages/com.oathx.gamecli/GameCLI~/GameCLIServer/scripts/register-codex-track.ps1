@@ -4,7 +4,7 @@ $entryPath = Join-Path $serverRoot 'dist/track/stdio.js'
 $widgetPath = Join-Path $serverRoot 'public/track.html'
 if (-not (Test-Path -LiteralPath $entryPath) -or -not (Test-Path -LiteralPath $widgetPath))
 {
-    throw '尚未构建测试组件。请先在 GameCLIServer 中执行 npm ci 和 npm run build:track。'
+    throw '尚未构建测试组件。请先在 GameCLIServer 中执行 npm ci、npm run setup:track 和 npm run build:track。'
 }
 $nodeCommand = Get-Command node.exe -ErrorAction Stop
 $codexCommand = Get-Command codex -ErrorAction Stop

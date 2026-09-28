@@ -1,0 +1,139 @@
+{
+  "project": {
+    "key": "DEMO",
+    "name": "GameAI · 移动游戏"
+  },
+  "requirement": {
+    "title": "七日累计登录活动",
+    "version": "v1.3",
+    "revision": "demo-login-v13-a8f4",
+    "status": "待审批",
+    "summary": "14 个活动日内累计登录 7 天，账号下角色共享进度。",
+    "rules": [
+      "首次进入活动当天计为第 1 日，活动开启时锁定时区。",
+      "持续在线跨日由服务器校验；累计登录每天解锁一档，共七档奖励。",
+      "手动领取；已解锁未领取奖励在到期后写入测试邮件记录。",
+      "领奖成功显示道具列表，点击任意位置退出；失败使用上飘提示条。",
+      "使用配置奖励与占位图标，不接入正式经济系统。"
+    ],
+    "changes": [
+      "补充断线后核对结果，禁止重复发奖。",
+      "补充测试邮件幂等与失败反馈验收。"
+    ]
+  },
+  "tasks": [
+    {
+      "id": "DEMO-1",
+      "title": "活动弹窗与奖励占位资源",
+      "role": "Art",
+      "agent": "art-01",
+      "status": "执行中",
+      "progress": 65,
+      "dependencies": [],
+      "version": "v1.2"
+    },
+    {
+      "id": "DEMO-2",
+      "title": "活动资格与累计登录规则",
+      "role": "Development",
+      "agent": "dev-01",
+      "status": "执行中",
+      "progress": 42,
+      "dependencies": [],
+      "version": "v1.2"
+    },
+    {
+      "id": "DEMO-3",
+      "title": "活动弹窗与领取反馈接入",
+      "role": "Development",
+      "agent": null,
+      "status": "依赖阻塞",
+      "progress": 0,
+      "dependencies": [
+        "DEMO-1"
+      ],
+      "version": "v1.2"
+    },
+    {
+      "id": "DEMO-4",
+      "title": "跨日与重复领奖验收",
+      "role": "QA",
+      "agent": null,
+      "status": "等待交付",
+      "progress": 0,
+      "dependencies": [
+        "DEMO-2",
+        "DEMO-3"
+      ],
+      "version": "v1.2"
+    }
+  ],
+  "agents": [
+    {
+      "id": "design-01",
+      "role": "Design",
+      "status": "空闲",
+      "task": null,
+      "used": 0,
+      "capacity": 1,
+      "station": "策划工作站",
+      "read": true,
+      "write": true
+    },
+    {
+      "id": "pm-01",
+      "role": "PM",
+      "status": "空闲",
+      "task": null,
+      "used": 0,
+      "capacity": 1,
+      "station": "调度工作站",
+      "read": true,
+      "write": true
+    },
+    {
+      "id": "art-01",
+      "role": "Art",
+      "status": "执行中",
+      "task": "DEMO-1",
+      "used": 1,
+      "capacity": 1,
+      "station": "美术工作站",
+      "read": true,
+      "write": true
+    },
+    {
+      "id": "dev-01",
+      "role": "Development",
+      "status": "执行中",
+      "task": "DEMO-2",
+      "used": 1,
+      "capacity": 2,
+      "station": "开发工作站 A",
+      "read": true,
+      "write": true
+    },
+    {
+      "id": "dev-02",
+      "role": "Development",
+      "status": "空闲",
+      "task": null,
+      "used": 0,
+      "capacity": 1,
+      "station": "开发工作站 B",
+      "read": true,
+      "write": true
+    },
+    {
+      "id": "qa-01",
+      "role": "QA",
+      "status": "离线",
+      "task": null,
+      "used": 0,
+      "capacity": 1,
+      "station": "测试工作站",
+      "read": true,
+      "write": true
+    }
+  ]
+}

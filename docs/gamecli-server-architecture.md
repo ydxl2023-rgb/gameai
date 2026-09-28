@@ -1,5 +1,7 @@
 # GameCLI 集中协调服务与事件协议
 
+> **新开发入口（2026-09-28）**：以 [GameAI 协作平台技术开发纲要 v2.0](GameAI协作平台技术开发纲要.html) 为准：React + Ant Design、PostgreSQL 唯一业务来源、单项目工作台。下文 JIRA 架构保留为现有实现的历史基线，新后端尚未迁移；不得混合两套调度或状态来源。
+
 ## 最新讨论约定（2026-09-24，待实现）
 
 - 最终部署边界：Unity 工程只安装本工具链中的 Unity CLI 操作包；GameCLI 独立部署在执行机，负责接单、Agent、工作区和工具调用；GameCLIServer 负责审批、JIRA 核验和集中调度；Codex 扩展 UI 负责审阅、审批与监测。非 Unity 任务无需启动 Unity。现有包内代码后续逐步迁移并保留必要兼容入口，当前阶段仍不接入 Unity CLI。

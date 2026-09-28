@@ -1,0 +1,221 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>GameAI 数据库设计与入库说明</title><style>
+  :root {
+    --bg: #ffffff;
+    --fg: #1f2328;
+    --muted: #57606a;
+    --border: #d0d7de;
+    --code-bg: #f6f8fa;
+    --accent: #0969da;
+    --accent-soft: #ddf4ff;
+    --warn: #bf8700;
+    --warn-soft: #fff8c5;
+    --ok: #1a7f37;
+    --ok-soft: #dafbe1;
+    --err: #cf222e;
+    --err-soft: #ffebe9;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: #f6f8fa;
+    color: var(--fg);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+                 "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue",
+                 Arial, sans-serif;
+    font-size: 14px;
+    line-height: 1.7;
+  }
+
+  .page {
+    max-width: 900px;
+    margin: 0 auto;
+    background: var(--bg);
+    padding: 60px 70px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+  }
+
+  /* 封面 */
+  .cover {
+    text-align: center;
+    padding: 80px 0 60px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 48px;
+  }
+  .cover h1 {
+    font-size: 34px;
+    margin: 0 0 16px;
+    letter-spacing: 1px;
+  }
+  .cover .subtitle {
+    font-size: 16px;
+    color: var(--muted);
+    margin-bottom: 30px;
+  }
+  .cover .meta {
+    display: inline-block;
+    text-align: left;
+    font-size: 13px;
+    color: var(--muted);
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    padding: 12px 30px;
+  }
+  .cover .meta span { display: inline-block; min-width: 90px; color: var(--fg); }
+
+  /* 标题 */
+  h1 { font-size: 26px; margin: 48px 0 16px; padding-bottom: 8px; border-bottom: 2px solid var(--fg); }
+  h2 { font-size: 20px; margin: 36px 0 12px; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
+  h3 { font-size: 16px; margin: 24px 0 8px; color: #24292f; }
+  h4 { font-size: 14px; margin: 16px 0 6px; color: var(--muted); }
+
+  p { margin: 8px 0; }
+
+  /* 代码 */
+  code {
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    background: var(--code-bg);
+    padding: 2px 5px;
+    border-radius: 4px;
+    font-size: 12.5px;
+  }
+  pre {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 14px 16px;
+    overflow-x: auto;
+    font-size: 12px;
+    line-height: 1.6;
+    margin: 12px 0;
+  }
+  pre code {
+    background: none;
+    padding: 0;
+    font-size: 12px;
+  }
+
+  /* 表格 */
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 14px 0;
+    font-size: 13px;
+  }
+  th, td {
+    border: 1px solid var(--border);
+    padding: 8px 10px;
+    text-align: left;
+    vertical-align: top;
+  }
+  th { background: #f6f8fa; font-weight: 600; }
+  tr:nth-child(even) td { background: #fafbfc; }
+
+  /* 引用 */
+  blockquote {
+    border-left: 4px solid var(--accent);
+    margin: 12px 0;
+    padding: 6px 14px;
+    background: var(--accent-soft);
+    border-radius: 0 6px 6px 0;
+    color: #0a3069;
+    font-size: 13.5px;
+  }
+
+  /* 提示框 */
+  .callout {
+    padding: 12px 16px;
+    border-radius: 6px;
+    margin: 14px 0;
+    font-size: 13.5px;
+    border-left: 4px solid;
+  }
+  .callout.info { background: var(--accent-soft); border-color: var(--accent); }
+  .callout.warn { background: var(--warn-soft); border-color: var(--warn); }
+  .callout.ok   { background: var(--ok-soft);   border-color: var(--ok); }
+  .callout.err  { background: var(--err-soft);  border-color: var(--err); }
+
+  /* 列表 */
+  ul, ol { padding-left: 24px; margin: 8px 0; }
+  li { margin: 4px 0; }
+
+  /* 图表容器 */
+  .diagram {
+    margin: 24px 0;
+    padding: 20px;
+    background: #fafbfc;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow-x: auto;
+    text-align: center;
+  }
+  .diagram svg { max-width: 100%; height: auto; }
+  .diagram .caption {
+    font-size: 12.5px;
+    color: var(--muted);
+    margin-top: 10px;
+    font-style: italic;
+  }
+
+  /* 目录 */
+  .toc {
+    background: #fafbfc;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px 28px;
+    margin: 24px 0 40px;
+  }
+  .toc h3 { margin-top: 0; }
+  .toc ol { margin: 0; padding-left: 20px; }
+  .toc a { color: var(--accent); text-decoration: none; }
+  .toc a:hover { text-decoration: underline; }
+
+  /* 打印 */
+  @page {
+    size: A4;
+    margin: 18mm 16mm;
+  }
+  @media print {
+    html, body { background: #fff; font-size: 11.5pt; }
+    .page { box-shadow: none; padding: 0; max-width: 100%; }
+    h1 { page-break-before: auto; }
+    h2 { page-break-after: avoid; }
+    pre, table, .diagram { page-break-inside: avoid; }
+    .cover { page-break-after: always; }
+    .no-print { display: none; }
+    a { color: var(--fg); text-decoration: none; }
+  }
+
+  /* 页脚 */
+  .footer {
+    margin-top: 60px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border);
+    text-align: center;
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  .print-btn {
+    position: fixed;
+    right: 24px;
+    bottom: 24px;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 999px;
+    padding: 12px 22px;
+    font-size: 14px;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(9,105,218,0.35);
+    z-index: 100;
+  }
+  .print-btn:hover { background: #0860ca; }
+
+.page { overflow-wrap: anywhere; }
+@media screen and (max-width: 700px) { .page { padding: 24px 18px; } .cover { padding: 30px 0; } .cover h1 { font-size: 26px; } .toc { padding: 16px; } }
+.wire-gallery { display: flex; flex-direction: column; gap: 24px; }
+.wire-step { width: 100%; }
+</style><style>td,code{overflow-wrap:anywhere}table{width:100%}@media(max-width:700px){.page{padding:24px}}</style></head><body><main class="page"><header class="cover"><h1>GameAI 数据库设计与入库说明</h1><p>后续开发、查询与维护依据</p><p>2026-09-28 · 第一版 · 已建表并导入测试数据</p></header><button onclick="window.print()">打印</button><nav><h2>目录</h2><ol><li><a href="#scope">范围与数据源</a></li><li><a href="#schema">表结构与字段字典</a></li><li><a href="#seed">入库内容与验证</a></li><li><a href="#ops">配置与维护</a></li><li><a href="#next">后续实现边界</a></li></ol></nav><h2 id="scope">1. 范围与数据源</h2><p>本机 PostgreSQL 18；数据库 <code>gameai</code>，业务模式 <code>gameai</code>。当前 24 张业务表，另有 public.gameai_migrations 迁移登记表。新 Track 的数据库模式直接读取数据库，不再把静态 JSON 当作权威状态。旧 JIRA 流程未迁移、未停用，不与新平台混合派工。</p><p>查询在一致性只读事务中完成。数据库不可用返回错误，不回退为演示数据。文件内容独立存储，数据库记录文件引用与核验信息；没有将现有完整需求文档假称为已上传附件。</p><h2 id="schema">2. 表结构与字段字典</h2><p>主键一般采用 uuid；时间采用带时区时间戳，展示时转换本地时区。大整数编号通过字符串传输。版本正文、扩展结果采用 jsonb；项目、任务、角色与依赖采用关系表及外键约束。</p><p>主链：项目 → 需求 → 不可变需求版本 → 人工审批 → 计划版本 → 任务 → 依赖／执行 → 产物／评论。工作节点与 Agent 分开；人工账户与 Agent 分开。</p><h3 id="table-agent_grants">2.1 agent_grants</h3><p>实例读取及任务写入授权，禁止审批</p><table><thead><tr><th>字段</th><th>数据库类型</th><th>允许空值</th><th>默认值</th></tr></thead><tbody><tr><td><code>project_id</code></td><td>uuid</td><td>否</td><td>—</td></tr><tr><td><code>agent_id</code></td><td>uuid</td><td>否</td><td>—</td></tr><tr><td><code>permission_code</code></td><td>text</td><td>否</td><td>—</td></tr></tbody></table><details><summary>主键、唯一性、检查与关联约束</summary><ul><li><code>NOT NULL agent_id</code></li><li><code>CHECK ((permission_code = ANY (ARRAY['project.read'::text, 'task.write_assigned'::text])))</code></li><li><code>FOREIGN KEY (permission_code) REFERENCES gameai.permissions(code)</code></li><li><code>NOT NULL permission_code</code></li><li><code>PRIMARY KEY (agent_id, permission_code)</code></li><li><code>FOREIGN KEY (project_id, agent_id) REFERENCES gameai.agents(project_id, id)</code></li><li><code>NOT NULL project_id</code></li></ul></details><h3 id="table-agents">2.2 agents</h3><p>专业角色实例，绑定工作节点</p><table><thead><tr><th>字段</th><th>数据库类型</th><th>允许空值</th><th>默认值</th></tr></thead><tbody><tr><td><code>id</code></td><td>uuid</td><td>否</td><td>gen_random_uuid()</td></tr><tr><td><code>project_id</code></td><td>uuid</td><td>否</td><td>—</td></tr><tr><td><code>agent_key</code></td><td>text</td><td>否</td><td>—</td></tr><tr><td><code>role_code</code></td><td>text</td><td>否</td><td>—</td></tr><tr><td><code>worker_id</code></td><td>uuid</td><td>否</td><td>—</td></tr><tr><td><code>enabled</code></td><td>boolean</td><td>否</td><td>false</td></tr></tbody></table><details><summary>主键、唯一性、检查与关联约束</summary><ul><li><code>NOT NULL agent_key</code></li><li><code>NOT NULL enabled</code></li><li><code>NOT NULL id</code></li><li><code>PRIMARY KEY (id)</code></li><li><code>UNIQUE (project_id, agent_key)</code></li><li><code>FOREIGN KEY (project_id) REFERENCES gameai.projects(id)</code></li><li><code>UNIQUE (project_id, id)</code></li><li><code>NOT NULL project_id</code></li><li><code>FOREIGN KEY (project_id, worker_id) REFERENCES gameai.workers(project_id, id)</code></li><li><code>CHECK ((role_code &lt;&gt; 'Admin'::text))</code></li><li><code>FOREIGN KEY (role_code) REFERENCES gameai.roles(code)</code></li><li><code>NOT NULL role_code</code></li><li><code>NOT NULL worker_id</code></li></ul></details><h3 id="table-approvals">2.3 approvals</h3><p>人工审批结果，绑定具体不可变版本</p><table><thead><tr><th>字段</th><th>数据库类型</th><th>允许空值</th><th>默认值</th></tr></thead><tbody><tr><td><code>id</code></td><td>uuid</td><td>否</td><td>gen_random_uuid()</td></tr><tr><td><code>project_id</code></td><td>uuid</td><td>否</td><td>—</td></tr><tr><td><code>version_id</code></td><td>uuid</td><td>否</td><td>—</td></tr><tr><td><code>user_id</code></td><td>uuid</td><td>否</td><td>—</td></tr><tr><td><code>decision</code></td><td>text</td><td>否</td><td>—</td></tr><tr><td><code>reason</code></td><td>text</td><td>否</td><td>''::text</td></tr><tr><td><code>created_at</code></td><td>timestamp with time zone</td><td>否</td><td>now()</td></tr></tbody></table><details><summary>主键、唯一性、检查与关联约束</summary><ul><li><code>NOT NULL created_at</code></li><li><code>CHECK ((decision = ANY (ARRAY['approved'::text, 'rejected'::text])))</code></li><li><code>NOT NULL decision</code></li><li><code>NOT NULL id</code></li><li><code>PRIMARY KEY (id)</code></li><li><code>NOT NULL project_id</code></li><li><code>FOREIGN KEY (project_id, version_id) REFERENCES gameai.requirement_versions(project_id, id)</code></li><li><code>NOT NULL reason</code></li><li><code>FOREIGN KEY (user_id) REFERENCES gameai.users(id)</code></li><li><code>NOT NULL user_id</code></li><li><code>UNIQUE (version_id)</code></li><li><code>NOT NULL version_id</code></li></ul></details><h3 id="table-artifact_links">2.4 artifact_links</h3><p>文件与需求版本或任务的关联</p><table><thead><tr><th>字段</th><th>数据库类型</th><th>允许空值</th><th>默认值</th></tr></thead><tbody><tr><td><code>project_id</code></td><td>uuid</td><td>否</td><td>—</td></tr><tr><td><code>artifact_id</code></td><td>uuid</td><td>否</td><td>—</td></tr><tr><td><code>requirement_version_id</code></td><td>uuid</td><td>是</td><td>—</td></tr><tr><td><code>task_id</code></td><td>uuid</td><td>是</td><td>—</td></tr></tbody></table><details><summary>主键、唯一性、检查与关联约束</summary><ul><li><code>NOT NULL artifact_id</code></li><li><code>UNIQUE NULLS NOT DISTINCT (artifact_id, requirement_version_id, task_id)</code></li><li><code>CHECK ((num_nonnulls(requirement_version_id, task_id) = 1))</code></li><li><code>FOREIGN KEY (project_id, artifact_id) REFERENCES gameai.artifacts(project_id, id)</code></li><li><code>NOT NULL project_id</code></li><li><code>FOREIGN KEY (project_id, requirement_version_id) REFERENCES gameai.requirement_versions(project_id, id)</code></li><li><code>FOREIGN KEY (project_id, task_id) REFERENCES gameai.tasks(project_id, id)</code></li></ul></details><h3 id="table-artifacts">2.5 artifacts</h3><p>文件元数据；路径、大小、哈希与核验时间</p><table><thead><tr><th>字段</th><th>数据库类型</th><th>允许空值</th><th>默认值</th></tr></thead><tbody><tr><td><code>id</code></td><td>uuid</td><td>否</td><td>gen_random_uuid()</td></tr><tr><td><code>project_id</code></td><td>uuid</td><td>否</td><td>—</td></tr><tr><td><code>storage_key</code></td><td>text</td><td>否</td><td>—</td></tr><tr><td><code>sha256</code></td><td>text</td><td>否</td><td>—</td></tr><tr><td><code>byte_size</code></td><td>bigint</td><td>否</td><td>—</td></tr><tr><td><code>media_type</code></td><td>text</td><td>否</td><td>—</td></tr><tr><td><code>verified_at</code></td><td>timestamp with time zone</td><td>是</td><td>—</td></tr></tbody></table><details><summary>主键、唯一性、检查与关联约束</summary><ul><li><code>CHECK ((byte_size &gt;= 0))</code></li><li><code>NOT NULL byte_size</code></li><li><code>NOT NULL id</code></li><li><code>NOT NULL media_type</code></li><li><code>PRIMARY KEY (id)</code></li><li><code>FOREIGN KEY (project_id) REFERENCES gameai.projects(id)</code></li><li><code>UNIQUE (project_id, id)</code></li><li><code>NOT NULL project_id</code></li><li><code>UNIQUE (project_id, storage_key)</code></li><li><code>CHECK ((sha256 ~ '^[0-9a-f]{64}$'::text))</code></li><li><code>NOT NULL sha256</code></li><li><code>NOT NULL storage_key</code></li></ul></details><h3 id="table-audit_events">2.6 audit_events</h3><p>只追加审计事件</p><table><thead><tr><th>字段</th><th>数据库类型</th><th>允许空值</th><th>默认值</th></tr></thead><tbody><tr><td><code>id</code></td><td>bigint</td><td>否</td><td>—</td></tr><tr><td><code>project_id</code></td><td>uuid</td><td>否</td><td>—</td></tr><tr><td><code>actor</code></td><td>text</td><td>否</td><td>—</td></tr><tr><td><code>event</code></td><td>text</td><td>否</td><td>—</td></tr><tr><td><code>payload</code></td><td>jsonb</td><td>否</td><td>'{}'::jsonb</td></tr><tr><td><code>created_at</code></td><td>timestamp with time zone</td><td>否</td><td>now()</td></tr></tbody></table><details><summary>主键、唯一性、检查与关联约束</summary><ul><li><code>NOT NULL actor</code></li><li><code>NOT NULL created_at</code></li><li><code>NOT NULL event</code></li><li><code>NOT NULL id</code></li><li><code>NOT NULL payload</code></li><li><code>PRIMARY KEY (id)</code></li><li><code>FOREIGN KEY (project_id) REFERENCES gameai.projects(id)</code></li><li><code>NOT NULL project_id</code></li></ul></details><h3 id="table-comments">2.7 comments</h3><p>人工或执行结果评论</p><table><thead><tr><th>字段</th><th>数据库类型</th><th>允许空值</th><th>默认值</th></tr></thead><tbody><tr><td><code>id</code></td><td>uuid</td><td>否</td><td>gen_random_uuid()</td></tr><tr><td><code>project_id</code></td><td>uuid</td><td>否</td><td>—</td></tr><tr><td><code>task_id</code></td><td>uuid</td><td>否</td><td>—</td></tr><tr><td><code>execution_id</code></td><td>uuid</td><td>是</td><td>—</td></tr><tr><td><code>user_id</code></td><td>uuid</td><td>是</td><td>—</td></tr><tr><td><code>body</code></td><td>text</td><td>否</td><td>—</td></tr><tr><td><code>created_at</code></td><td>timestamp with time zone</td><td>否</td><td>now()</td></tr></tbody></table><details><summary>主键、唯一性、检查与关联约束</summary><ul><li><code>NOT NULL body</code></li><li><code>CHECK ((num_nonnulls(execution_id, user_id) = 1))</code></li><li><code>NOT NULL created_at</code></li><li><code>NOT NULL id</code></li><li><code>PRIMARY KEY (id)</code></li><li><code>NOT NULL project_id</code></li><li><code>FOREIGN KEY (project_id, task_id, execution_id) REFERENCES gameai.executions(project_id, task_id, id)</code></li><li><code>FOREIGN KEY (project_id, task_id) REFERENCES gameai.tasks(project_id, id)</code></li><li><code>NOT NULL task_id</code></li><li><code>FOREIGN KEY (user_id) REFERENCES gameai.users(id)</code></li></ul></details><h3 id="table-executions">2.8 executions</h3><p>任务执行记录；同任务仅允许一个未决执行</p><table><thead><tr><th>字段</th><th>数据库类型</th><th>允许空值</th><th>默认值</th></tr></thead><tbody><tr><td><code>id</code></td><td>uuid</td><td>否</td><td>gen_random_uuid()</td></tr><tr><td><code>project_id</code></td><td>uuid</td><td>否</td><td>—</td></tr><tr><td><code>task_id</code></td><td>uuid</td><td>否</td><td>—</td></tr><tr><td><code>agent_id</code></td><td>uuid</td><td>否</td><td>—</td></tr><tr><td><code>state</code></td><td>text</td><td>否</td><td>—</td></tr><tr><td><code>result</code></td><td>jsonb</td><td>是</td><td>—</td></tr><tr><td><code>started_at</code></td><td>timestamp with time zone</td><td>否</td><td>now()</td></tr><tr><td><code>ended_at</code></td><td>timestamp with time zone</td><td>是</td><td>—</td></tr></tbody></table><details><summary>主键、唯一性、检查与关联约束</summary><ul><li><code>NOT NULL agent_id</code></li><li><code>NOT NULL id</code></li><li><code>PRIMARY KEY (id)</code></li><li><code>FOREIGN KEY (project_id, agent_id) REFERENCES gameai.agents(project_id, id)</code></li><li><code>UNIQUE (project_id, id)</code></li><li><code>NOT NULL project_id</code></li><li><code>FOREIGN KEY (project_id, task_id) REFERENCES gameai.tasks(project_id, id)</code></li><li><code>UNIQUE (project_id, task_id, id)</code></li><li><code>NOT NULL started_at</code></li><li><code>CHECK ((state = ANY (ARRAY['assigned'::text, 'running'::text, 'succeeded'::text, 'failed'::text, 'cancelled'::text, 'unknown'::text])))</code></li><li><code>NOT NULL state</code></li><li><code>NOT NULL task_id</code></li></ul></details><h3 id="table-idempotency_records">2.9 idempotency_records</h3><p>幂等请求键与响应</p><table><thead><tr><th>字段</th><th>数据库类型</th><th>允许空值</th><th>默认值</th></tr></thead><tbody><tr><td><code>scope</code></td><td>text</td><td>否</td><td>—</td></tr><tr><td><code>key</code></td><td>text</td><td>否</td><td>—</td></tr><tr><td><code>request_hash</code></td><td>text</td><td>否</td><td>—</td></tr><tr><td><code>response</code></td><td>jsonb</td><td>否</td><td>—</td></tr><tr><td><code>created_at</code></td><td>timestamp with time zone</td><td>否</td><td>now()</td></tr></tbody></table><details><summary>主键、唯一性、检查与关联约束</summary><ul><li><code>NOT NULL created_at</code></li><li><code>NOT NULL key</code></li><li><code>PRIMARY KEY (scope, key)</code></li><li><code>NOT NULL request_hash</code></li><li><code>NOT NULL response</code></li><li><code>NOT NULL scope</code></li></ul></details><h3 id="table-outbox_events">2.10 outbox_events</h3><p>事务性待发送事件</p><table><thead><tr><th>字段</th><th>数据库类型</th><th>允许空值</th><th>默认值</th></tr></thead><tbody><tr><td><code>id</code></td><td>uuid</td><td>否</td><td>gen_random_uuid()</td></tr><tr><td><code>project_id</code></td><td>uuid</td><td>否</td><td>—</td></tr><tr><td><code>event_type</code></td><td>text</td><td>否</td><td>—</td></tr><tr><td><code>payload</code></td><td>jsonb</td><td>否</td><td>—</td></tr><tr><td><code>created_at</code></td><td>timestamp with time zone</td><td>否</td><td>now()</td></tr><tr><td><code>delivered_at</code></td><td>timestamp with time zone</td><td>是</td><td>—</td></tr><tr><td><code>attempts</code></td><td>integer</td><td>否</td><td>0</td></tr></tbody></table><details><summary>主键、唯一性、检查与关联约束</summary><ul><li><code>CHECK ((attempts &gt;= 0))</code></li><li><code>NOT NULL attempts</code></li><li><code>NOT NULL created_at</code></li><li><code>NOT NULL event_type</code></li><li><code>NOT NULL id</code></li><li><code>NOT NULL payload</code></li><li><code>PRIMARY KEY (id)</code></li><li><code>FOREIGN KEY (project_id) REFERENCES gameai.projects(id)</code></li><li><code>NOT NULL project_id</code></li></ul></details><h3 id="table-permissions">2.11 permissions</h3><p>权限字典</p><table><thead><tr><th>字段</th><th>数据库类型</th><th>允许空值</th><th>默认值</th></tr></thead><tbody><tr><td><code>code</code></td><td>text</td><td>否</td><td>—</td></tr></tbody></table><details><summary>主键、唯一性、检查与关联约束</summary><ul><li><code>NOT NULL code</code></li><li><code>PRIMARY KEY (code)</code></li></ul></details><h3 id="table-plan_versions">2.12 plan_versions</h3><p>计划版本与引用的需求版本</p><table><thead><tr><th>字段</th><th>数据库类型</th><th>允许空值</th><th>默认值</th></tr></thead><tbody><tr><td><code>id</code></td><td>uuid</td><td>否</td><td>gen_random_uuid()</td></tr><tr><td><code>project_id</code></td><td>uuid</td><td>否</td><td>—</td></tr><tr><td><code>plan_id</code></td><td>uuid</td><td>否</td><td>—</td></tr><tr><td><code>requirement_version_id</code></td><td>uuid</td><td>否</td><td>—</td></tr><tr><td><code>version</code></td><td>integer</td><td>否</td><td>—</td></tr><tr><td><code>state</code></td><td>text</td><td>否</td><td>'draft'::text</td></tr></tbody></table><details><summary>主键、唯一性、检查与关联约束</summary><ul><li><code>NOT NULL id</code></li><li><code>PRIMARY KEY (id)</code></li><li><code>NOT NULL plan_id</code></li><li><code>UNIQUE (plan_id, version)</code></li><li><code>UNIQUE (project_id, id)</code></li><li><code>NOT NULL project_id</code></li><li><code>FOREIGN KEY (project_id, plan_id) REFERENCES gameai.plans(project_id, id)</code></li><li><code>FOREIGN KEY (project_id, requirement_version_id) REFERENCES gameai.requirement_versions(project_id, id)</code></li><li><code>NOT NULL requirement_version_id</code></li><li><code>CHECK ((state = ANY (ARRAY['draft'::text, 'published'::text, 'superseded'::text])))</code></li><li><code>NOT NULL state</code></li><li><code>CHECK ((version &gt; 0))</code></li><li><code>NOT NULL version</code></li></ul></details><h3 id="table-plans">2.13 plans</h3><p>需求对应的拆分计划</p><table><thead><tr><th>字段</th><th>数据库类型</th><th>允许空值</th><th>默认值</th></tr></thead><tbody><tr><td><code>id</code></td><td>uuid</td><td>否</td><td>gen_random_uuid()</td></tr><tr><td><code>project_id</code></td><td>uuid</td><td>否</td><td>—</td></tr><tr><td><code>requirement_id</code></td><td>uuid</td><td>否</td><td>—</td></tr></tbody></table><details><summary>主键、唯一性、检查与关联约束</summary><ul><li><code>NOT NULL id</code></li><li><code>PRIMARY KEY (id)</code></li><li><code>UNIQUE (project_id, id)</code></li><li><code>NOT NULL project_id</code></li><li><code>FOREIGN KEY (project_id, requirement_id) REFERENCES gameai.requirements(project_id, id)</code></li><li><code>NOT NULL requirement_id</code></li></ul></details><h3 id="table-projects">2.14 projects</h3><p>项目；测试标记与唯一项目编号</p><table><thead><tr><th>字段</th><th>数据库类型</th><th>允许空值</th><th>默认值</th></tr></thead><tbody><tr><td><code>id</code></td><td>uuid</td><td>否</td><td>gen_random_uuid()</td></tr><tr><td><code>project_key</code></td><td>text</td><td>否</td><td>—</td></tr><tr><td><code>name</code></td><td>text</td><td>否</td><td>—</td></tr><tr><td><code>is_test</code></td><td>boolean</td><td>否</td><td>false</td></tr><tr><td><code>created_at</code></td><td>timestamp with time zone</td><td>否</td><td>now()</td></tr></tbody></table><details><summary>主键、唯一性、检查与关联约束</summary><ul><li><code>NOT NULL created_at</code></li><li><code>NOT NULL id</code></li><li><code>NOT NULL is_test</code></li><li><code>NOT NULL name</code></li><li><code>PRIMARY KEY (id)</code></li><li><code>UNIQUE (project_key)</code></li><li><code>NOT NULL project_key</code></li></ul></details><h3 id="table-requirement_versions">2.15 requirement_versions</h3><p>不可变需求版本、结构化正文及内容哈希</p><table><thead><tr><th>字段</th><th>数据库类型</th><th>允许空值</th><th>默认值</th></tr></thead><tbody><tr><td><code>id</code></td><td>uuid</td><td>否</td><td>gen_random_uuid()</td></tr><tr><td><code>project_id</code></td><td>uuid</td><td>否</td><td>—</td></tr><tr><td><code>requirement_id</code></td><td>uuid</td><td>否</td><td>—</td></tr><tr><td><code>version</code></td><td>text</td><td>否</td><td>—</td></tr><tr><td><code>ordinal</code></td><td>integer</td><td>否</td><td>—</td></tr><tr><td><code>content</code></td><td>jsonb</td><td>否</td><td>—</td></tr><tr><td><code>content_hash</code></td><td>text</td><td>否</td><td>—</td></tr><tr><td><code>created_at</code></td><td>timestamp with time zone</td><td>否</td><td>now()</td></tr></tbody></table><details><summary>主键、唯一性、检查与关联约束</summary><ul><li><code>CHECK ((jsonb_typeof(content) = 'object'::text))</code></li><li><code>CHECK ((content_hash ~ '^[0-9a-f]{64}$'::text))</code></li><li><code>NOT NULL content_hash</code></li><li><code>NOT NULL content</code></li><li><code>NOT NULL created_at</code></li><li><code>NOT NULL id</code></li><li><code>CHECK ((ordinal &gt; 0))</code></li><li><code>NOT NULL ordinal</code></li><li><code>PRIMARY KEY (id)</code></li><li><code>UNIQUE (project_id, id)</code></li><li><code>NOT NULL project_id</code></li><li><code>FOREIGN KEY (project_id, requirement_id) REFERENCES gameai.requirements(project_id, id)</code></li><li><code>NOT NULL requirement_id</code></li><li><code>UNIQUE (requirement_id, ordinal)</code></li><li><code>UNIQUE (requirement_id, version)</code></li><li><code>NOT NULL version</code></li></ul></details><h3 id="table-requirements">2.16 requirements</h3><p>需求主记录</p><table><thead><tr><th>字段</th><th>数据库类型</th><th>允许空值</th><th>默认值</th></tr></thead><tbody><tr><td><code>id</code></td><td>uuid</td><td>否</td><td>gen_random_uuid()</td></tr><tr><td><code>project_id</code></td><td>uuid</td><td>否</td><td>—</td></tr><tr><td><code>requirement_key</code></td><td>text</td><td>否</td><td>—</td></tr><tr><td><code>title</code></td><td>text</td><td>否</td><td>—</td></tr><tr><td><code>created_at</code></td><td>timestamp with time zone</td><td>否</td><td>now()</td></tr></tbody></table><details><summary>主键、唯一性、检查与关联约束</summary><ul><li><code>NOT NULL created_at</code></li><li><code>NOT NULL id</code></li><li><code>PRIMARY KEY (id)</code></li><li><code>FOREIGN KEY (project_id) REFERENCES gameai.projects(id)</code></li><li><code>UNIQUE (project_id, id)</code></li><li><code>NOT NULL project_id</code></li><li><code>UNIQUE (project_id, requirement_key)</code></li><li><code>NOT NULL requirement_key</code></li><li><code>NOT NULL title</code></li></ul></details><h3 id="table-role_permissions">2.17 role_permissions</h3><p>角色允许的权限</p><table><thead><tr><th>字段</th><th>数据库类型</th><th>允许空值</th><th>默认值</th></tr></thead><tbody><tr><td><code>role_code</code></td><td>text</td><td>否</td><td>—</td></tr><tr><td><code>permission_code</code></td><td>text</td><td>否</td><td>—</td></tr></tbody></table><details><summary>主键、唯一性、检查与关联约束</summary><ul><li><code>FOREIGN KEY (permission_code) REFERENCES gameai.permissions(code)</code></li><li><code>NOT NULL permission_code</code></li><li><code>PRIMARY KEY (role_code, permission_code)</code></li><li><code>FOREIGN KEY (role_code) REFERENCES gameai.roles(code)</code></li><li><code>NOT NULL role_code</code></li></ul></details><h3 id="table-roles">2.18 roles</h3><p>角色字典</p><table><thead><tr><th>字段</th><th>数据库类型</th><th>允许空值</th><th>默认值</th></tr></thead><tbody><tr><td><code>code</code></td><td>text</td><td>否</td><td>—</td></tr></tbody></table><details><summary>主键、唯一性、检查与关联约束</summary><ul><li><code>NOT NULL code</code></li><li><code>PRIMARY KEY (code)</code></li></ul></details><h3 id="table-task_dependencies">2.19 task_dependencies</h3><p>任务依赖边；拒绝自依赖、循环和跨项目引用</p><table><thead><tr><th>字段</th><th>数据库类型</th><th>允许空值</th><th>默认值</th></tr></thead><tbody><tr><td><code>project_id</code></td><td>uuid</td><td>否</td><td>—</td></tr><tr><td><code>task_id</code></td><td>uuid</td><td>否</td><td>—</td></tr><tr><td><code>depends_on_id</code></td><td>uuid</td><td>否</td><td>—</td></tr></tbody></table><details><summary>主键、唯一性、检查与关联约束</summary><ul><li><code>CHECK ((task_id &lt;&gt; depends_on_id))</code></li><li><code>NOT NULL depends_on_id</code></li><li><code>PRIMARY KEY (task_id, depends_on_id)</code></li><li><code>FOREIGN KEY (project_id, depends_on_id) REFERENCES gameai.tasks(project_id, id)</code></li><li><code>NOT NULL project_id</code></li><li><code>FOREIGN KEY (project_id, task_id) REFERENCES gameai.tasks(project_id, id)</code></li><li><code>NOT NULL task_id</code></li></ul></details><h3 id="table-task_leases">2.20 task_leases</h3><p>执行租约、到期时间与隔离代数</p><table><thead><tr><th>字段</th><th>数据库类型</th><th>允许空值</th><th>默认值</th></tr></thead><tbody><tr><td><code>project_id</code></td><td>uuid</td><td>否</td><td>—</td></tr><tr><td><code>task_id</code></td><td>uuid</td><td>否</td><td>—</td></tr><tr><td><code>execution_id</code></td><td>uuid</td><td>否</td><td>—</td></tr><tr><td><code>epoch</code></td><td>bigint</td><td>否</td><td>—</td></tr><tr><td><code>expires_at</code></td><td>timestamp with time zone</td><td>否</td><td>—</td></tr></tbody></table><details><summary>主键、唯一性、检查与关联约束</summary><ul><li><code>CHECK ((epoch &gt; 0))</code></li><li><code>NOT NULL epoch</code></li><li><code>UNIQUE (execution_id)</code></li><li><code>NOT NULL execution_id</code></li><li><code>NOT NULL expires_at</code></li><li><code>PRIMARY KEY (task_id)</code></li><li><code>NOT NULL project_id</code></li><li><code>FOREIGN KEY (project_id, task_id, execution_id) REFERENCES gameai.executions(project_id, task_id, id)</code></li><li><code>NOT NULL task_id</code></li></ul></details><h3 id="table-tasks">2.21 tasks</h3><p>可交付任务、角色、交付标准与状态</p><table><thead><tr><th>字段</th><th>数据库类型</th><th>允许空值</th><th>默认值</th></tr></thead><tbody><tr><td><code>id</code></td><td>uuid</td><td>否</td><td>gen_random_uuid()</td></tr><tr><td><code>project_id</code></td><td>uuid</td><td>否</td><td>—</td></tr><tr><td><code>task_key</code></td><td>text</td><td>否</td><td>—</td></tr><tr><td><code>plan_version_id</code></td><td>uuid</td><td>否</td><td>—</td></tr><tr><td><code>title</code></td><td>text</td><td>否</td><td>—</td></tr><tr><td><code>role_code</code></td><td>text</td><td>否</td><td>—</td></tr><tr><td><code>delivery_criteria</code></td><td>jsonb</td><td>否</td><td>'[]'::jsonb</td></tr><tr><td><code>status</code></td><td>text</td><td>否</td><td>'pending'::text</td></tr><tr><td><code>progress</code></td><td>integer</td><td>否</td><td>0</td></tr><tr><td><code>created_at</code></td><td>timestamp with time zone</td><td>否</td><td>now()</td></tr></tbody></table><details><summary>主键、唯一性、检查与关联约束</summary><ul><li><code>NOT NULL created_at</code></li><li><code>CHECK ((jsonb_typeof(delivery_criteria) = 'array'::text))</code></li><li><code>NOT NULL delivery_criteria</code></li><li><code>NOT NULL id</code></li><li><code>PRIMARY KEY (id)</code></li><li><code>NOT NULL plan_version_id</code></li><li><code>CHECK (((progress &gt;= 0) AND (progress &lt;= 100)))</code></li><li><code>NOT NULL progress</code></li><li><code>FOREIGN KEY (project_id) REFERENCES gameai.projects(id)</code></li><li><code>UNIQUE (project_id, id)</code></li><li><code>NOT NULL project_id</code></li><li><code>FOREIGN KEY (project_id, plan_version_id) REFERENCES gameai.plan_versions(project_id, id)</code></li><li><code>UNIQUE (project_id, task_key)</code></li><li><code>CHECK ((role_code &lt;&gt; 'Admin'::text))</code></li><li><code>FOREIGN KEY (role_code) REFERENCES gameai.roles(code)</code></li><li><code>NOT NULL role_code</code></li><li><code>CHECK ((status = ANY (ARRAY['pending'::text, 'blocked'::text, 'running'::text, 'review'::text, 'completed'::text, 'failed'::text, 'cancelled'::text])))</code></li><li><code>NOT NULL status</code></li><li><code>NOT NULL task_key</code></li><li><code>NOT NULL title</code></li></ul></details><h3 id="table-user_roles">2.22 user_roles</h3><p>人工身份在项目中的角色</p><table><thead><tr><th>字段</th><th>数据库类型</th><th>允许空值</th><th>默认值</th></tr></thead><tbody><tr><td><code>project_id</code></td><td>uuid</td><td>否</td><td>—</td></tr><tr><td><code>user_id</code></td><td>uuid</td><td>否</td><td>—</td></tr><tr><td><code>role_code</code></td><td>text</td><td>否</td><td>—</td></tr></tbody></table><details><summary>主键、唯一性、检查与关联约束</summary><ul><li><code>PRIMARY KEY (project_id, user_id, role_code)</code></li><li><code>FOREIGN KEY (project_id) REFERENCES gameai.projects(id)</code></li><li><code>NOT NULL project_id</code></li><li><code>FOREIGN KEY (role_code) REFERENCES gameai.roles(code)</code></li><li><code>NOT NULL role_code</code></li><li><code>FOREIGN KEY (user_id) REFERENCES gameai.users(id)</code></li><li><code>NOT NULL user_id</code></li></ul></details><h3 id="table-users">2.23 users</h3><p>人工身份；默认禁用，尚未开放登录</p><table><thead><tr><th>字段</th><th>数据库类型</th><th>允许空值</th><th>默认值</th></tr></thead><tbody><tr><td><code>id</code></td><td>uuid</td><td>否</td><td>gen_random_uuid()</td></tr><tr><td><code>subject</code></td><td>text</td><td>否</td><td>—</td></tr><tr><td><code>display_name</code></td><td>text</td><td>否</td><td>—</td></tr><tr><td><code>enabled</code></td><td>boolean</td><td>否</td><td>false</td></tr><tr><td><code>created_at</code></td><td>timestamp with time zone</td><td>否</td><td>now()</td></tr></tbody></table><details><summary>主键、唯一性、检查与关联约束</summary><ul><li><code>NOT NULL created_at</code></li><li><code>NOT NULL display_name</code></li><li><code>NOT NULL enabled</code></li><li><code>NOT NULL id</code></li><li><code>PRIMARY KEY (id)</code></li><li><code>UNIQUE (subject)</code></li><li><code>NOT NULL subject</code></li></ul></details><h3 id="table-workers">2.24 workers</h3><p>工作节点；心跳、容量与启用状态</p><table><thead><tr><th>字段</th><th>数据库类型</th><th>允许空值</th><th>默认值</th></tr></thead><tbody><tr><td><code>id</code></td><td>uuid</td><td>否</td><td>gen_random_uuid()</td></tr><tr><td><code>project_id</code></td><td>uuid</td><td>否</td><td>—</td></tr><tr><td><code>worker_key</code></td><td>text</td><td>否</td><td>—</td></tr><tr><td><code>name</code></td><td>text</td><td>否</td><td>—</td></tr><tr><td><code>capacity</code></td><td>integer</td><td>否</td><td>—</td></tr><tr><td><code>last_heartbeat_at</code></td><td>timestamp with time zone</td><td>是</td><td>—</td></tr><tr><td><code>enabled</code></td><td>boolean</td><td>否</td><td>false</td></tr></tbody></table><details><summary>主键、唯一性、检查与关联约束</summary><ul><li><code>CHECK ((capacity &gt; 0))</code></li><li><code>NOT NULL capacity</code></li><li><code>NOT NULL enabled</code></li><li><code>NOT NULL id</code></li><li><code>NOT NULL name</code></li><li><code>PRIMARY KEY (id)</code></li><li><code>FOREIGN KEY (project_id) REFERENCES gameai.projects(id)</code></li><li><code>UNIQUE (project_id, id)</code></li><li><code>NOT NULL project_id</code></li><li><code>UNIQUE (project_id, worker_key)</code></li><li><code>NOT NULL worker_key</code></li></ul></details><h2 id="seed">3. 入库内容与验证</h2><ul><li>1 个测试项目 DEMO，明确设置 is_test=true。</li><li>1 项七日登录需求、2 个节选版本；没有伪造历史审批。</li><li>1 个草案计划、1 个计划版本、4 项任务、3 条依赖。</li><li>6 个 Agent、6 个工作节点；节点默认禁用、离线，任务进度归零，无运行执行与租约。</li><li>6 条读取授权，未授予任务写权限；1 条导入审计记录。</li><li>角色与权限字典已入库；没有创建可登录用户，没有导入 JIRA 单据。</li></ul><p>已验证：重复迁移与重复导入不覆盖；新连接重新读取内容一致；版本修改、循环依赖、非法进度、Agent 审批授权、无权人工审批、同任务重复运行被拒绝。Track 数据库账号仅具备读取权限。约束测试在事务中回滚，不残留模拟执行。</p><h2 id="ops">4. 配置与维护</h2><p>命令工作目录：<code>app/client/LocalPackages/com.oathx.gamecli/GameCLI~/GameCLIServer</code>。</p><table><tr><th>入口</th><th>用途</th></tr><tr><td>.env.database</td><td>Track 专用只读账号及项目配置，已配置并被 Git 忽略。</td></tr><tr><td>.env.database-admin</td><td>迁移所有者账号，只供本机维护命令使用；已忽略。</td></tr><tr><td>npm run db:migrate</td><td>按文件序号事务执行迁移；验证已执行文件校验和，禁止改写旧迁移。</td></tr><tr><td>npm run db:seed</td><td>显式导入测试项目；项目存在则跳过，绝不自动覆盖。</td></tr><tr><td>npm run db:status</td><td>查询数据库记录数量。</td></tr><tr><td>npm run test:database</td><td>数据库约束与持久化验证；本机需先完成迁移和测试种子。</td></tr><tr><td>npm run build:track / npm run start:track</td><td>构建／启动工作台；默认端口 8090，可用 GAMECLI_TRACK_PORT 覆盖。</td></tr></table><p>只读接口 <code>GET /api/track/snapshot</code> 与 MCP 两个读取工具共享同一查询仓储；旧 /api/track/demo 为兼容别名，也读取当前配置数据源。配置按服务目录解析，stdio 不依赖启动工作目录。显式设置 GAMEAI_STORAGE=demo 可运行离线演示；正式配置为 postgres。</p><p>密码不写入源码、日志与文档。迁移与服务使用独立数据库账号，服务不使用 postgres 超级用户。换机器需自行创建数据库与两个账号，再填写本地配置；由所有者向只读账号授予模式 USAGE 和表 SELECT。备份采用 pg_dump 自定义格式，恢复先在独立测试库验证；数据库和文件存储一起备份。</p><h2 id="next">5. 后续实现边界</h2><ul><li>已完成实际表结构、事务迁移、测试数据导入及 Track/MCP 数据库读取。</li><li>正式登录与服务端会话尚未接入，页面审批及权限修改按钮在数据库模式禁用；客户端身份选择不能作为授权依据。</li><li>审批发布、完整附件核验、PM 拆分、依赖就绪派工、心跳租约、结果回写及事件发件箱消费尚待业务服务实现；存在表结构不等于这些流程已经运行。</li><li>计划发布必须核验批准版本及附件、任务交付标准和依赖；派工需在事务中验证权限、节点容量、依赖、租约隔离代数并写入发件箱。当前没有开放此写接口。</li><li>测试项目不自动转正式项目，不执行任何真实 Agent 或开发任务。</li></ul></main></body></html>

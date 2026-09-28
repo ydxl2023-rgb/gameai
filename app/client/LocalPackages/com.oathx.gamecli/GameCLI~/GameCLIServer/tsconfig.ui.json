@@ -9,9 +9,12 @@
     "lib": [
       "ES2022",
       "DOM"
-    ]
+    ],
+    "jsx": "react-jsx",
+    "skipLibCheck": true
   },
   "include": [
-    "../../CodexPlugin~/gameai-track/ui/*.ts"
+    "../../CodexPlugin~/gameai-track/ui/src/**/*.ts",
+    "../../CodexPlugin~/gameai-track/ui/src/**/*.tsx"
   ]
 }

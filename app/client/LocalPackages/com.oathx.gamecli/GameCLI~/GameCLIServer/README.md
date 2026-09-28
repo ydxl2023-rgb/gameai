@@ -24,3 +24,16 @@ npm start
 详细日志：HTTP 请求编号、来源地址、响应码与耗时；JIRA 单据编号、项目、事件类型、变更前后状态、通知编号与序号；客户端连接编号、订阅注册、恢复原因、补发数量、发送结果、断开码与在线时长。每 60 秒输出一次累计请求、通知处理及在线连接统计。发送完成只表示写入连接，不代表客户端已经处理。默认不逐条记录心跳；需要时在 `.env` 加入 `GAMECLI_LOG_HEARTBEATS=true` 并重启。来源地址为直接连接地址，经过代理时显示代理地址。日志输出到当前控制台。
 
 ART 通知调度测试：先运行 `dotnet build ../GameCLI/Tests/GameCLI.DeliverySmoke --configuration Release`，再运行 `npm run test:probe`，覆盖真实 Node → WebSocket → C# 编排器传输、无关通知过滤、重复通知与代理运行期间心跳；JIRA 和代理采用测试替身。真实 Codex 会话通过 `orchestrator --art-probe` 单独验证。
+
+## Track PostgreSQL 数据存储
+
+新 Track 使用独立 `gameai` 数据库和 `gameai` 模式；旧 JIRA 服务保持原有行为。连接配置为服务目录下被 Git 忽略的 `.env.database`；迁移所有者配置为 `.env.database-admin`。服务账号只有 SELECT 权限。
+
+- `npm run db:migrate`：事务迁移与校验和检查。
+- `npm run db:seed`：显式导入测试数据，已存在则跳过。
+- `npm run db:status`：检查实际数据库记录。
+- `npm run test:database`：验证持久化与数据库约束，测试写操作回滚。
+
+表结构、字段与后续边界见仓库 `docs/GameAI数据库设计与入库说明.html`。数据库模式不可用时直接报错；`GAMEAI_STORAGE=demo` 为显式离线演示模式。新服务尚未开放正式审批、派工与权限写接口。
+
+策划需求阅读必须关联原始 `.html` 文件，Track HTML 列直接打开原文，不用结构化节选代替。维护入口：`node --env-file=.env.database-admin scripts/database.mjs link-html <需求编号> <版本> <仓库相对HTML路径>`。仅允许 `app/desgin` 内 HTML；关联绑定需求版本与文件哈希，已批准版本拒绝更换原文，读取时核验原始字节。文档以隔离的静态 HTML 打开，不执行文档脚本。

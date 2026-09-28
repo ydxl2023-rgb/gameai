@@ -8,7 +8,7 @@ Keep distributable standard skills under `com.oathx.gamecli/game-cli`.
 The coordination service is Node.js under `GameCLI~/GameCLIServer`; this is the
 explicit server-side exception to the C# CLI implementation rule.
 Follow `docs/gamecli-server-architecture.md` for the event protocol and rollout boundaries.
-JIRA is the sole source of truth for workflow state. Use `pwsh.exe` for Windows commands.
+For new platform development, read `docs/GameAI协作平台技术开发纲要.html`: React/TypeScript + Ant Design, a single-project Track UI, and PostgreSQL as the target authoritative business store. The existing JIRA-backed implementation remains the legacy authority until an explicit migration/cutover; do not mix backend states or schedulers. This document update does not perform that migration. Use `pwsh.exe` for Windows commands.
 Preserve user changes and exclude Unity/IDE caches and build output from commits.
 
 When the user provides a game requirement document in the conversation and asks

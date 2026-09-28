@@ -1,12 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { once } from 'node:events';
-import { readFile } from 'node:fs/promises';
-import { runInNewContext } from 'node:vm';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import { createGameCliServer } from '../src/server.js';
-import { handleTrackRequest, resourceUri } from '../dist/track/http.js';
+process.env.GAMEAI_STORAGE = 'demo';
+const { handleTrackRequest, resourceUri } = await import('../dist/track/http.js');
 
 async function setup(t)
 {
@@ -36,76 +35,11 @@ test('MCP discovery, resource and repeated read-only calls use the actual HTTP t
     const first = await client.callTool({ name: 'gameai_track_open', arguments: {} });
     const next = await client.callTool({ name: 'gameai_track_snapshot', arguments: {} });
     assert.equal(first.structuredContent.mode, 'demo');
-    assert.equal(first.structuredContent.tasks.length, 3);
+    assert.equal(first.structuredContent.workbench.tasks.length, 4);
     assert.notEqual(first.structuredContent.request_id, next.structuredContent.request_id);
-    assert.ok(first.structuredContent.tasks.every(task => task.task.startsWith('DEMO-')));
+    assert.ok(first.structuredContent.workbench.tasks.every(task => task.id.startsWith('DEMO-')));
     const unknown = await client.callTool({ name: 'approve_requirement', arguments: {} });
     assert.equal(unknown.isError, true);
-});
-
-test('display controls follow host acceptance, refusal and external mode changes', async () =>
-{
-    const html = await readFile(new URL('../public/track.html', import.meta.url), 'utf8');
-    const elements = new Map();
-    function element(id)
-    {
-        if (!elements.has(id))
-        {
-            elements.set(id, { textContent: '', disabled: false, hidden: false, listeners: {}, addEventListener(type, callback) { this.listeners[type] = callback; }, replaceChildren() {}, append() {} });
-        }
-        return elements.get(id);
-    }
-    const listeners = {};
-    const requests = [];
-    const parent = { postMessage(message) { requests.push(message); } };
-    const window = { parent, addEventListener(type, callback) { listeners[type] = callback; } };
-    runInNewContext(html.match(/<script>([\s\S]*)<\/script>/)[1], {
-        window, document: { querySelector: element, createElement: () => element(Symbol()) }, setTimeout, clearTimeout, Date, console
-    });
-    const settle = () => new Promise(resolve => setImmediate(resolve));
-    function reply(request, result, error)
-    {
-        listeners.message({ source: parent, data: { jsonrpc: '2.0', id: request.id, result, error } });
-    }
-    try
-    {
-        const init = requests.shift();
-        assert.equal(init.method, 'ui/initialize');
-        assert.deepEqual(Array.from(init.params.appCapabilities.availableDisplayModes), ['inline', 'fullscreen']);
-        reply(init, { hostContext: { displayMode: 'inline', availableDisplayModes: ['inline', 'fullscreen'] } });
-        await settle();
-        reply(requests.find(request => request.method === 'tools/call'), { structuredContent: { schema_version: 1, mode: 'demo', server_time: new Date().toISOString(), request_id: 'test', tasks: [] } });
-        await settle();
-        element('#open-sidebar').listeners.click();
-        assert.equal(requests.at(-1).params.mode, 'fullscreen');
-        assert.equal(element('#open-sidebar').disabled, true);
-        reply(requests.at(-1), { mode: 'fullscreen' });
-        await settle();
-        assert.equal(element('#return-inline').hidden, false);
-        assert.equal(element('#mode').textContent, '侧栏模式');
-        element('#return-inline').listeners.click();
-        reply(requests.at(-1), { mode: 'fullscreen' });
-        await settle();
-        assert.match(element('#display-error').textContent, /未切换/);
-        assert.equal(element('#connection').textContent, '最近请求成功');
-        element('#return-inline').listeners.click();
-        reply(requests.at(-1), undefined, { message: '模式请求被拒绝' });
-        await settle();
-        assert.equal(element('#display-error').textContent, '模式请求被拒绝');
-        element('#return-inline').listeners.click();
-        reply(requests.at(-1), { mode: 'inline' });
-        await settle();
-        assert.equal(element('#mode').textContent, '对话内嵌模式');
-        listeners.message({ source: parent, data: { jsonrpc: '2.0', method: 'ui/notifications/host-context-changed', params: { displayMode: 'fullscreen' } } });
-        assert.equal(element('#return-inline').hidden, false);
-        listeners.message({ source: parent, data: { jsonrpc: '2.0', method: 'ui/notifications/host-context-changed', params: { displayMode: 'inline', availableDisplayModes: ['inline'] } } });
-        assert.equal(element('#open-sidebar').disabled, true);
-    }
-    finally
-    {
-        listeners.pagehide();
-        await settle();
-    }
 });
 
 test('preview, malformed requests, local origin boundary and existing health route', async t =>
@@ -127,7 +61,7 @@ test('Codex-managed stdio works without an HTTP listener and exits with the clie
 {
     const { StdioClientTransport } = await import('@modelcontextprotocol/sdk/client/stdio.js');
     const { fileURLToPath } = await import('node:url');
-    const transport = new StdioClientTransport({ command: process.execPath, args: [fileURLToPath(new URL('../dist/track/stdio.js', import.meta.url))], stderr: 'pipe' });
+    const transport = new StdioClientTransport({ command: process.execPath, args: [fileURLToPath(new URL('../dist/track/stdio.js', import.meta.url))], stderr: 'pipe', env: { GAMEAI_STORAGE: 'demo' } });
     const client = new Client({ name: 'track-stdio-test', version: '1.0.0' });
     try
     {
@@ -136,7 +70,7 @@ test('Codex-managed stdio works without an HTTP listener and exits with the clie
         assert.equal(listing.tools.length, 2);
         const response = await client.callTool({ name: 'gameai_track_open', arguments: {} });
         assert.equal(response.structuredContent.mode, 'demo');
-        assert.equal(response.structuredContent.tasks.length, 3);
+        assert.equal(response.structuredContent.workbench.tasks.length, 4);
         const resource = await client.readResource({ uri: resourceUri });
         assert.equal(resource.contents[0].mimeType, 'text/html;profile=mcp-app');
     }
