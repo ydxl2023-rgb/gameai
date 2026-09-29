@@ -204,3 +204,98 @@ test('manual PM action uses approved row, sends CSRF and locks while running', a
     }
     finally {dom.window.close();}
 });
+
+test('task tree keeps ancestors for filtered descendants', async () =>
+{
+    const {buildTaskTree}=await moduleBundle('task-tree');
+    const root={id:'T-0000001',parent_id:null};
+    const child={id:'A-0000002',parent_id:root.id};
+    const leaf={id:'P-0000003',parent_id:child.id};
+    const tree=buildTaskTree([leaf],[root,child,leaf,{id:'T-0000004'}]);
+    assert.equal(tree.length,1);
+    assert.equal(tree[0].id,root.id);
+    assert.equal(tree[0].children[0].children[0].id,leaf.id);
+});
+
+test('task tree expands children and checkbox persists only dispatch permission', async () =>
+{
+    const html=await readFile(new URL('../../../../GameCLI~/GameCLIServer/public/track.html',import.meta.url),'utf8');
+    const state=snapshot();
+    state.mode='postgres';
+    const base={title:'测试任务',agent:null,status:'待调度',progress:0,dependencies:[],version:'v1',dispatch_allowed:false,dispatch_revision:0};
+    const root={...base,id:'T-0000001',role:'PM',parent_id:null};
+    const child={...base,id:'P-0000002',role:'Development',parent_id:root.id,task_uuid:'22222222-2222-4222-8222-222222222222'};
+    state.workbench.tasks=[root,child];
+    const writes=[];
+    const dom=new JSDOM(html,{url:'http://localhost/track',runScripts:'dangerously',pretendToBeVisual:true,virtualConsole:new VirtualConsole(),beforeParse(window)
+    {
+        window.MessageChannel=class {constructor(){this.port1={onmessage:null};this.port2={postMessage:()=>setTimeout(()=>this.port1.onmessage?.({}),0)};}};
+        window.matchMedia=()=>({matches:false,addListener(){},removeListener(){},addEventListener(){},removeEventListener(){}});
+        window.ResizeObserver=class{observe(){} unobserve(){} disconnect(){}};
+        window.AbortSignal.timeout ??= ()=>new window.AbortController().signal;
+        window.Element.prototype.scrollTo=()=>{};
+        window.fetch=async(url,options)=>
+        {
+            if(url.endsWith('/review-session')) return {ok:true,json:async()=>({authenticated:true,name:'测试审批人',csrf:'tree-csrf'})};
+            if(options?.method==='POST')
+            {
+                assert.ok(url.endsWith('/review-task-selection'));
+                const input=JSON.parse(options.body);
+                writes.push(input);
+                assert.equal(options.headers['X-GameAI-Review-CSRF'],'tree-csrf');
+                child.dispatch_allowed=input.allowed;
+                child.dispatch_revision++;
+                return {ok:true,json:async()=>({dispatch_allowed:child.dispatch_allowed,dispatch_revision:child.dispatch_revision})};
+            }
+            return {ok:true,json:async()=>structuredClone(state)};
+        };
+    }});
+    const doc=dom.window.document;
+    try
+    {
+        await until(()=>doc.querySelector('.ant-card'));
+        [...doc.querySelectorAll('[role=tab]')].find(n=>n.textContent==='任务与依赖').click();
+        await until(()=>doc.querySelector('.ant-table-row-expand-icon'));
+        assert.equal(doc.querySelectorAll('input[type=checkbox]').length,0,'Parent must not have a dispatch checkbox');
+        doc.querySelector('.ant-table-row-expand-icon').click();
+        await until(()=>doc.querySelectorAll('.ant-table-row-expand-icon-collapsed').length===1);
+        assert.match(doc.body.textContent,/程序（1）/);
+        assert.equal(doc.querySelectorAll('input[type=checkbox]').length,0,'Role folders are view-only');
+        doc.querySelector('.ant-table-row-expand-icon-collapsed').click();
+        const checkbox=()=>doc.querySelector('input[aria-label="允许派发 P-0000002"]');
+        await until(()=>checkbox() && !checkbox().disabled);
+        assert.equal(writes.length,0);
+        checkbox().click();
+        await until(()=>checkbox()?.checked && !checkbox().disabled);
+        assert.equal(writes[0].task_id,child.task_uuid);
+        assert.equal(writes[0].revision,0);
+        assert.equal(writes[0].allowed,true);
+        checkbox().click();
+        await until(()=>writes.length===2 && !checkbox().checked);
+        assert.equal(writes[1].revision,1);
+        assert.equal(writes[1].allowed,false);
+    }
+    finally {dom.window.close();}
+});
+
+test('role folders preserve IDs, dependencies, counts and filtered ancestor context', async () =>
+{
+    const {groupTaskTree,expandableTaskKeys}=await moduleBundle('task-tree');
+    const root={id:'T-0000001',role:'PM',parent_id:null};
+    const art={id:'A-0000002',role:'Art',parent_id:root.id,status:'已完成',dependencies:[]};
+    const dev={id:'P-0000003',role:'Development',parent_id:root.id,status:'依赖阻塞',dependencies:[art.id]};
+    const all=[root,dev,art];
+    const tree=groupTaskTree(all,all);
+    assert.deepEqual(Array.from(tree[0].children,g=>g.role),['Art','Development']);
+    assert.deepEqual({...tree[0].children[0].group},{total:1,completed:1,blocked:0});
+    assert.equal(tree[0].children[1].group.blocked,1);
+    assert.equal(tree[0].children[1].children[0].id,dev.id);
+    assert.deepEqual(tree[0].children[1].children[0].dependencies,[art.id]);
+    const filtered=groupTaskTree([dev],all);
+    assert.equal(filtered[0].id,root.id);
+    assert.equal(filtered[0].children.length,1);
+    assert.equal(filtered[0].children[0].children[0].id,dev.id);
+    assert.deepEqual(Array.from(expandableTaskKeys(filtered)),[root.id,`role-group:${root.id}:Development`]);
+    assert.equal(all.length,3);
+    assert.equal(root.children,undefined);
+});

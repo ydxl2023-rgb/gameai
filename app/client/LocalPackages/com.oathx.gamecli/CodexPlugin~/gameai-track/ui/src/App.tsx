@@ -17,6 +17,7 @@ export function WorkbenchApp()
     const [loginOpen, setLoginOpen] = useState(false);
     const [savingReview, setSavingReview] = useState(false);
     const [startingPm, setStartingPm] = useState<string>();
+    const [savingTask,setSavingTask] = useState<string>();
     const [loginForm] = Form.useForm<{ username: string; password: string }>();
     const [persistent, setPersistent] = useState(false);
     const [testData, setTestData] = useState(false);
@@ -109,6 +110,24 @@ export function WorkbenchApp()
     {
         const currentRow = data?.requirements?.find(r => r.version_id === row.version_id) ?? row;
         return <PmSplitButton row={currentRow} allowed={persistent && !context.embedded && reviewSession.authenticated} busy={startingPm === row.id} start={() => void splitRequirement(currentRow)} />;
+    }
+    async function setTaskDispatch(task:Task,allowed:boolean)
+    {
+        if (savingTask) return;
+        setSavingTask(task.id);
+        try
+        {
+            const result = await reviewRequest('review-task-selection',{task_id:task.task_uuid,allowed,revision:task.dispatch_revision ?? 0});
+            setData(old => old ? {...old,tasks:old.tasks.map(t => t.id === task.id ? {...t,...result} : t)} : old);
+            log(`${task.id}：${allowed ? '已保存允许派发，等待依赖及编排器检查' : '已撤回派发许可'}，未启动 Agent。`);
+            await refresh();
+        }
+        catch (e)
+        {
+            void message.error(e instanceof Error ? e.message : '保存失败');
+            await refresh();
+        }
+        finally { setSavingTask(undefined); }
     }
     async function reviewRequest(path: string, body: unknown)
     {
@@ -222,7 +241,7 @@ export function WorkbenchApp()
                 ]} />
 
         </Section>;
-        if (tab === 'tasks') return <Section title="任务与依赖" extra={<Input.Search aria-label="搜索任务" placeholder="任务 / Agent" value={query} allowClear onChange={e => setQuery(e.target.value)} style={{ width: 180 }} />}><Typography.Paragraph type="secondary">PM 按已批准版本的交付标准拆分；子任务关联主任务和实际前置依赖，建单后等待派工。</Typography.Paragraph><TaskTable allTasks={data.tasks} tasks={data.tasks.filter(t => [t.id, t.title, t.agent ?? ''].join(' ').toLowerCase().includes(query.toLowerCase()))} select={setDetail} /></Section>;
+        if (tab === 'tasks') return <Section title="任务与依赖" extra={<Input.Search aria-label="搜索任务" placeholder="任务 / Agent" value={query} allowClear onChange={e => setQuery(e.target.value)} style={{ width: 180 }} />}><Typography.Paragraph type="secondary">按主任务 → 角色分类 → 具体任务展开。勾选仅保存“允许派发”，不会立即启动；依赖完成且版本有效后才能由编排器派发。</Typography.Paragraph><TaskTable canSelectDispatch={persistent && !context.embedded && reviewSession.authenticated} savingTask={savingTask} setDispatch={(task,allowed) => void setTaskDispatch(task,allowed)} allTasks={data.tasks} tasks={data.tasks.filter(t => [t.id, t.title, t.agent ?? ''].join(' ').toLowerCase().includes(query.toLowerCase()))} select={setDetail} /></Section>;
         if (tab === 'versions') return <Section title="需求版本"><Table size="small" rowKey="version" pagination={false} scroll={{ x: 600 }} dataSource={data.versions?.map(({ version, status, change, reference }) => ({ version, status, change, reference })) ?? [{ version: r.version, status: r.status, change: '异常恢复与测试用例', reference: '尚未派工' }, { version: 'v1.2', status: '已批准', change: '基础规则与 UI 交付标准', reference: '4 项任务 · 2 项执行中' }]} columns={[{ title: 'Version', dataIndex: 'version' }, { title: 'State', dataIndex: 'status', render: s => <StateTag value={s} /> }, { title: 'Change', dataIndex: 'change' }, { title: 'References', dataIndex: 'reference' }, { title: 'Action', render: (_, v) => <Button type="link" onClick={() => openVersion(v.version)}>审阅</Button> }]} /><Typography.Paragraph className="note">需求版本 → PM 计划版本 → 执行编号 → 产物版本 → QA 验收版本。历史版本只读，恢复内容需新建修订并重新审批。</Typography.Paragraph></Section>;
         if (tab === 'permissions') return <>
             <Section title="人工身份权限"><Alert type="info" title="身份切换仅用于演示；正式身份来自服务端会话，管理员不会自动获得审批权限。" /><Table size="small" pagination={false} rowKey="role" dataSource={[{ role: '策划 · 人工', read: '允许', approve: '允许', manage: '禁止' }, { role: 'PM / Art / Development / QA', read: '允许', approve: '禁止', manage: '禁止' }, { role: '项目管理员', read: '允许', approve: '禁止', manage: '允许' }]} columns={[{ title: 'Role', dataIndex: 'role' }, { title: 'Read', dataIndex: 'read' }, { title: 'Approve', dataIndex: 'approve' }, { title: 'Manage', dataIndex: 'manage' }]} /></Section>

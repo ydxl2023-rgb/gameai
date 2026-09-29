@@ -18,3 +18,9 @@ See [server architecture](../../../../../docs/gamecli-server-architecture.md) an
 - `GameCLIServer/src/database/pm-plans.js`：已批准版本门禁、幂等记录、依赖校验、主子任务原子发布。
 - `GameCLIServer/src/track/pm-dispatch.js`：本机 CLI 进程及结果提交；`migrations/006_manual_pm.sql` 保存作业、任务正文和来源。
 - `CodexPlugin~/gameai-track/ui/src/PmSplitButton.tsx`：人工手动启动、执行状态及重试入口。当前不自动派工。
+
+### 任务树与派发许可
+
+- `ui/src/task-tree.ts` 与 `components.tsx`：主任务展开、专业子任务独立选择，筛选保留层级。
+- `GameCLIServer/src/database/task-dispatch-selection.js`：人工会话下的版本校验、选择保存与审计；选择不会创建执行。
+- `migrations/008_task_dispatch_selection.sql`：人工派发许可、选择版本、操作人和时间。未来派工必须核验此许可及既有依赖门禁。

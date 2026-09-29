@@ -15,6 +15,7 @@ try
     const role = pg.escapeIdentifier(config.PGUSER);
     await pool.query('GRANT SELECT,INSERT,UPDATE ON gameai.pm_jobs TO '+role);
     await pool.query('GRANT INSERT ON gameai.plans,gameai.plan_versions,gameai.tasks,gameai.task_dependencies TO '+role);
+    await pool.query('GRANT UPDATE(dispatch_allowed,dispatch_revision,dispatch_selected_by,dispatch_selected_at) ON gameai.tasks TO '+role);
     console.log('PM 任务发布所需数据库权限已配置。');
 }
 finally

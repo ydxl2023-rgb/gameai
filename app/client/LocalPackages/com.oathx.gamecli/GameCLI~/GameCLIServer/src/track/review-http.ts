@@ -6,6 +6,7 @@ import { createPool, databaseEnabled } from '../database/connection.js';
 import { submitRequirement, reviewRequirement, ReviewError } from '../database/requirements.js';
 import { agentRunRequest } from '../database/agent-runs.js';
 import { startPmJob } from '../database/pm-plans.js';
+import { setTaskDispatchSelection } from '../database/task-dispatch-selection.js';
 import { checkPmRuntime, dispatchPmJob } from './pm-dispatch.js';
 
 let writer: ReturnType<typeof createPool> | undefined;
@@ -170,6 +171,11 @@ export async function handleReviewRequest(request: IncomingMessage, response: Se
                 void dispatchPmJob(writer,project,started).catch(() => console.error('PM 结果状态写入失败，需要核实数据库中的执行记录。'));
             }
             reply(response,started.created ? 202 : 200,{job_id:started.job.id,state:started.job.state,repeated:!started.created});
+            return;
+        }
+        if (path === '/api/track/review-task-selection')
+        {
+            reply(response,200,await setTaskDispatchSelection(writer,project,session!.user,input));
             return;
         }
         reply(response,404,{error:'接口不存在。'});
