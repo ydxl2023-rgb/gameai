@@ -8,6 +8,11 @@ export async function resumeApprovalWorkflows(pool)
     const pending=(await pool.query("SELECT w.*,p.project_key FROM gameai.approval_workflows w JOIN gameai.projects p ON p.id=w.project_id WHERE w.state='queued' ORDER BY w.updated_at")).rows;
     for (const workflow of pending)
     {
+        if(workflow.agent_policy!==null)
+        {
+            const pm=workflow.agent_policy.find(a=>a.role_code==='PM');
+            if(!pm || !(await pool.query('SELECT 1 FROM gameai.agents WHERE id=$1 AND project_id=$2 AND enabled AND auto_execute',[pm.id,workflow.project_id])).rowCount) continue;
+        }
         const claimed=await pool.query("UPDATE gameai.approval_workflows SET state='pm',updated_at=now() WHERE version_id=$1 AND state='queued' RETURNING version_id",[workflow.version_id]);
         if (!claimed.rowCount) continue;
         try

@@ -20,6 +20,7 @@ export function WorkbenchApp()
     const [addingAgent, setAddingAgent] = useState(false);
     const [reviewSession, setReviewSession] = useState<{ authenticated: boolean; name?: string; csrf?: string }>({ authenticated: false });
     const [loginOpen, setLoginOpen] = useState(false);
+    const [savingAutomation,setSavingAutomation] = useState<string>();
     const [automaticApproval,setAutomaticApproval] = useState(false);
     const [savingReview, setSavingReview] = useState(false);
     const [startingPm, setStartingPm] = useState<string>();
@@ -102,6 +103,20 @@ export function WorkbenchApp()
         const timer = window.setInterval(() => void refresh(), 3000);
         return () => window.clearInterval(timer);
     }, [persistent]);
+
+    async function setAutomatic(agent:Agent,enabled:boolean)
+    {
+        if(savingAutomation) return;
+        setSavingAutomation(agent.id);
+        try
+        {
+            await reviewRequest('review-agent-automation',{agent:agent.id,enabled,revision:agent.automation_revision ?? 0});
+            await refresh();
+            void message.success(enabled?'已开启自动执行，作用于后续批准的需求':'已关闭自动执行，已运行任务继续完成');
+        }
+        catch(e){void message.error(e instanceof Error?e.message:'设置失败');await refresh();}
+        finally {setSavingAutomation(undefined);}
+    }
 
     async function splitRequirement(row: RequirementRow)
     {
@@ -295,7 +310,7 @@ export function WorkbenchApp()
         if (tab === 'versions') return <Section title="需求版本"><ResizableTable storageKey="gameai.track.versions-widths.v1" size="small" rowKey="version" pagination={false} scroll={{ x: 600 }} dataSource={data.versions?.map(({ version, status, change, reference }) => ({ version, status, change, reference })) ?? [{ version: r.version, status: r.status, change: '异常恢复与测试用例', reference: '尚未派工' }, { version: 'v1.2', status: '已批准', change: '基础规则与 UI 交付标准', reference: '4 项任务 · 2 项执行中' }]} columns={[{ title: 'Version', dataIndex: 'version' }, { title: 'State', dataIndex: 'status', render: s => <StateTag value={s} /> }, { title: 'Change', dataIndex: 'change' }, { title: 'References', dataIndex: 'reference' }, { title: 'Action', render: (_, v) => <Button type="link" onClick={() => openVersion(v.version)}>审阅</Button> }]} /><Typography.Paragraph className="note">需求版本 → PM 计划版本 → 执行编号 → 产物版本 → QA 验收版本。历史版本只读，恢复内容需新建修订并重新审批。</Typography.Paragraph></Section>;
         if (tab === 'permissions') return <>
             <Section title="人工身份权限"><Alert type="info" title="身份切换仅用于演示；正式身份来自服务端会话，管理员不会自动获得审批权限。" /><ResizableTable storageKey="gameai.track.human-permissions-widths.v1" size="small" pagination={false} rowKey="role" dataSource={[{ role: '策划 · 人工', read: '允许', approve: '允许', manage: '禁止' }, { role: 'PM / Art / Development / QA', read: '允许', approve: '禁止', manage: '禁止' }, { role: '项目管理员', read: '允许', approve: '禁止', manage: '允许' }]} columns={[{ title: 'Role', dataIndex: 'role' }, { title: 'Read', dataIndex: 'read' }, { title: 'Approve', dataIndex: 'approve' }, { title: 'Manage', dataIndex: 'manage' }]} /></Section>
-            <Section title="Agent 授权"><Typography.Paragraph type="secondary">{persistent ? '数据库授权只读；没有开放匿名权限修改接口。' : identity === 'admin' ? '可模拟调整读取与任务写入权限。' : '只读预览；请切换到模拟管理员体验配置。'} Agent 不得自行批准，写入仅限有效任务授权。</Typography.Paragraph><ResizableTable storageKey="gameai.track.agent-permissions-widths.v1" size="small" rowKey="id" pagination={false} scroll={{ x: 650 }} dataSource={data.agents} columns={[{ title: 'Agent', dataIndex: 'id' }, { title: 'Role', dataIndex: 'role' }, { title: 'Read', render: (_, a) => <Checkbox aria-label={a.id + ' 读取'} disabled={persistent || identity !== 'admin'} checked={a.read} onChange={e => grant(a, 'read', e.target.checked)} /> }, { title: 'Write assigned task', render: (_, a) => <Checkbox aria-label={a.id + ' 写入'} disabled={persistent || identity !== 'admin'} checked={a.write} onChange={e => grant(a, 'write', e.target.checked)} /> }, { title: 'Approve', render: () => '禁止 · 需人工' }]} /></Section>
+            <Section title="Agent 授权"><Typography.Paragraph type="secondary">{persistent ? '读写授权只读；登录人工审批账户后可设置自动执行。PM 自动拆分并建单，其余角色依赖满足后执行；新授权适用于之后批准的需求。' : identity === 'admin' ? '可模拟调整读取与任务写入权限。' : '只读预览；请切换到模拟管理员体验配置。'} Agent 不得自行批准，写入仅限有效任务授权。</Typography.Paragraph><ResizableTable storageKey="gameai.track.agent-permissions-widths.v1" size="small" rowKey="id" pagination={false} scroll={{ x: 650 }} dataSource={data.agents} columns={[{ title: 'Agent', dataIndex: 'id' }, { title: 'Role', dataIndex: 'role' }, { title: 'Read', render: (_, a) => <Checkbox aria-label={a.id + ' 读取'} disabled={persistent || identity !== 'admin'} checked={a.read} onChange={e => grant(a, 'read', e.target.checked)} /> }, { title: 'Auto', key:'auto_execute', width:85, render: (_,a) => <Checkbox aria-label={a.id+' 自动执行'} checked={a.auto_execute===true} disabled={!persistent || context.embedded || !reviewSession.authenticated || !!savingAutomation || !a.fixed || !['PM','Art','Development','QA'].includes(a.role)} onChange={e=>void setAutomatic(a,e.target.checked)} /> }, { title: 'Write assigned task', render: (_, a) => <Checkbox aria-label={a.id + ' 写入'} disabled={persistent || identity !== 'admin'} checked={a.write} onChange={e => grant(a, 'write', e.target.checked)} /> }, { title: 'Approve', render: () => '禁止 · 需人工' }]} /></Section>
         </>;
         return <Section title="操作记录"><ResizableTable storageKey="gameai.track.audit-widths.v1" size="small" rowKey="id" dataSource={audit} pagination={{ pageSize: 10, hideOnSinglePage: true }} scroll={{ x: 550 }} locale={{ emptyText: '尚无操作记录；模拟审批和权限调整将记录在这里。' }} columns={[{ title: 'Time', dataIndex: 'time' }, { title: 'Actor', dataIndex: 'actor' }, { title: 'Event', dataIndex: 'event' }]} /></Section>;
     }
@@ -328,6 +343,7 @@ export function WorkbenchApp()
         </Drawer>
         <Modal title={(dialog === 'approve' ? '同意此版本' : '拒绝此版本') + (persistent ? '' : ' · 模拟')} confirmLoading={savingReview} open={!!dialog} onCancel={() => { if (!savingReview) setDialog(undefined); }} onOk={() => void confirm()} okText="确认" cancelText="返回审阅" okButtonProps={{ disabled: !approvalAllowed }} getContainer={false}>
             <p>{documentPreview?.title} / {documentPreview?.version}</p><Typography.Text code>{documentPreview?.revision}</Typography.Text><p>{persistent ? "将保存当前人工账户的审批决定、版本及文档校验值。仅勾选下方选项时，批准后自动启动后续执行。" : "操作只影响本页模拟状态，不写数据库、不创建任务、不启动 Agent。"}</p>
+            {persistent && dialog==='approve' && <Typography.Paragraph type="secondary">默认按 Agent 授权中的自动设置执行：{data?.agents.filter(a=>a.fixed && a.auto_execute).map(a=>a.role).join('、') || '全部手动'}。勾选下方选项可单独授权本版本全流程。</Typography.Paragraph>}
             {persistent && dialog==='approve' && <Checkbox checked={automaticApproval} disabled={savingReview} onChange={e=>setAutomaticApproval(e.target.checked)}>批准后自动启动 PM 拆分，并允许本版本全部子任务按依赖执行（包含 QA 与缺陷返修）</Checkbox>}
             {dialog === 'revise' && <Form form={form} layout="vertical"><Form.Item label="拒绝原因" name="reason" rules={[{ required: true, whitespace: true, message: '请填写拒绝原因' }]}><Input.TextArea maxLength={500} showCount /></Form.Item></Form>}
         </Modal>

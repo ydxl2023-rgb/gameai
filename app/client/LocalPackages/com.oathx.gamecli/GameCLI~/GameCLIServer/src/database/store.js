@@ -22,10 +22,6 @@ export async function readWorkbench(pool, projectKey)
                 ORDER BY ar.storage_key LIMIT 1) document_path FROM requirement_versions v
             JOIN requirements r ON r.id=v.requirement_id LEFT JOIN approvals a ON a.version_id=v.id
             WHERE v.project_id=$1 ORDER BY r.created_at DESC, v.ordinal DESC`, params)).rows;
-        if (!versions.length)
-        {
-            throw new Error('项目尚无需求版本。');
-        }
         const tasks = (await client.query(`SELECT t.*, v.version,(SELECT jsonb_build_object('source_task',s.task_key,'qa_task',q.task_key,'state',d.state,'rounds',d.rounds,'details',d.details) FROM qa_defects d JOIN tasks s ON s.id=d.source_task_id JOIN tasks q ON q.id=d.qa_task_id WHERE d.repair_task_id=t.id) repair,(SELECT agent_key FROM agents WHERE id=t.bound_agent_id) bound_agent,(SELECT body FROM comments WHERE task_id=t.id ORDER BY created_at DESC LIMIT 1) last_result, ag.agent_key,CASE WHEN e.state IN ('assigned','running') AND EXISTS(SELECT 1 FROM task_dispatch_jobs j WHERE j.execution_id=e.id AND j.expires_at<=now()) THEN 'unknown' ELSE e.state END execution_state,(SELECT parent.task_key FROM tasks parent WHERE parent.id=t.parent_id) parent_key,
             COALESCE((SELECT jsonb_agg(dt.task_key ORDER BY dt.task_key) FROM task_dependencies d
                 JOIN tasks dt ON dt.id=d.depends_on_id WHERE d.task_id=t.id),'[]') dependencies
@@ -57,11 +53,11 @@ export async function readWorkbench(pool, projectKey)
                 flows,
                 activity,
                 project: { key: project.project_key, name: project.name },
-                requirement: { title: latest.title, version: latest.version, revision: latest.content_hash, status: state(latest.decision), ...latest.content },
+                requirement: latest ? { title: latest.title, version: latest.version, revision: latest.content_hash, status: state(latest.decision), ...latest.content } : { title: '', version: '', revision: '', status: '暂无需求', summary: '', rules: [], changes: [] },
                 requirements: versions.filter((v, i, rows) => rows.findIndex(other => other.requirement_id === v.requirement_id) === i).map(v => ({ pm_job: v.pm_job, approval_workflow:v.approval_workflow, version_id: v.id, document_hash: v.document_path?.hash ?? null, id: v.requirement_key, title: v.title, version: v.version, revision: v.content_hash, status: state(v.decision), document_path: v.document_path?.path ?? null, document_url: v.document_path ? `${process.env.GAMEAI_TRACK_ORIGIN ?? `http://127.0.0.1:${process.env.GAMECLI_TRACK_PORT ?? 8090}`}/api/track/documents/${v.document_path.id}` : null, created_at: v.created_at.toISOString(), ...v.content })),
                 versions: versions.map(v => ({ version: v.version, status: state(v.decision), change: v.content.changes.join('；'), reference: '数据库存档', revision: v.content_hash, content: v.content })),
                 tasks: tasks.map(t => ({ id: t.task_key, task_uuid: t.id, repair:t.repair, bound_agent:t.bound_agent, last_result:t.last_result, dispatch_allowed: t.dispatch_allowed, dispatch_revision: t.dispatch_revision, parent_id: t.parent_key, description: t.description, source_refs: t.source_refs, criteria: t.delivery_criteria, title: t.title, role: t.role_code, agent: t.agent_key ?? null, status: t.execution_state === 'unknown' ? '待核实' : states[t.status], progress: t.progress, dependencies: t.dependencies, version: t.version })),
-                agents: agents.map(a => ({ id: a.agent_key, name: a.display_name, fixed: a.fixed, enabled: a.enabled, skills: a.skills, role: a.role_code, status: a.uncertain ? '待核实' : a.used + a.cloud_used ? '执行中' : !a.enabled ? '已停用' : a.fixed ? '待启动' : !a.worker_enabled || !a.last_heartbeat_at || Date.now() - new Date(a.last_heartbeat_at).getTime() > 60000 ? '离线' : '空闲', task: a.task ?? a.cloud_task ?? null, used: a.used + a.cloud_used, capacity: a.capacity, station: a.station, read: a.read, write: a.write })),
+                agents: agents.map(a => ({ id: a.agent_key, auto_execute:a.auto_execute, automation_revision:a.automation_revision, name: a.display_name, fixed: a.fixed, enabled: a.enabled, skills: a.skills, role: a.role_code, status: a.uncertain ? '待核实' : a.used + a.cloud_used ? '执行中' : !a.enabled ? '已停用' : a.fixed ? '待启动' : !a.worker_enabled || !a.last_heartbeat_at || Date.now() - new Date(a.last_heartbeat_at).getTime() > 60000 ? '离线' : '空闲', task: a.task ?? a.cloud_task ?? null, used: a.used + a.cloud_used, capacity: a.capacity, station: a.station, read: a.read, write: a.write })),
                 audit: audit.map(a => ({ id: a.id, time: a.created_at.toISOString(), actor: a.actor, event: a.event }))
             }
         };

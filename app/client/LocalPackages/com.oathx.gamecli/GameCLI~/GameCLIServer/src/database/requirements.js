@@ -1,3 +1,4 @@
+import {readAutomationPolicy} from './agent-automation.js';
 import { createHash } from 'node:crypto';
 import { z } from 'zod';
 
@@ -139,8 +140,9 @@ export async function reviewRequirement(pool, projectKey, userId, raw)
         const prior = (await client.query('SELECT * FROM gameai.approvals WHERE version_id=$1', [target.id])).rows[0];
         if (prior)
         {
-            const automatic=(await client.query('SELECT 1 FROM gameai.approval_workflows WHERE version_id=$1',[target.id])).rowCount>0;
-            if (automatic!==input.auto_start) throw new ReviewError('此版本已审批，不能改变原自动执行授权。');
+            const workflow=(await client.query('SELECT agent_policy FROM gameai.approval_workflows WHERE version_id=$1',[target.id])).rows[0];
+            const explicitAutomatic=!!workflow && workflow.agent_policy===null;
+            if (explicitAutomatic!==input.auto_start) throw new ReviewError('此版本已审批，不能改变原自动执行授权。');
             if (prior.user_id !== userId || prior.decision !== input.decision || prior.reason !== input.reason)
             {
                 throw new ReviewError('该版本已经审批，不能覆盖决定。');
@@ -149,7 +151,8 @@ export async function reviewRequirement(pool, projectKey, userId, raw)
             return { decision: prior.decision, repeated: true };
         }
         await client.query('INSERT INTO gameai.approvals(project_id,version_id,user_id,decision,reason) VALUES($1,$2,$3,$4,$5)', [target.project_id,target.id,userId,input.decision,input.reason]);
-        if (input.auto_start) await client.query('INSERT INTO gameai.approval_workflows(version_id,project_id,requested_by,revision,document_hash) VALUES($1,$2,$3,$4,$5)',[target.id,target.project_id,userId,input.revision,input.document_hash]);
+        const policy=input.decision==='approved' ? await readAutomationPolicy(client,target.project_id) : [];
+        if (input.auto_start || policy.length) await client.query('INSERT INTO gameai.approval_workflows(version_id,project_id,requested_by,revision,document_hash,agent_policy,state) VALUES($1,$2,$3,$4,$5,$6,$7)',[target.id,target.project_id,userId,input.revision,input.document_hash,input.auto_start?null:JSON.stringify(policy),input.auto_start || policy.some(a=>a.role_code==='PM')?'queued':'manual_pm']);
         await client.query('INSERT INTO gameai.audit_events(project_id,actor,event,payload) VALUES($1,$2,$3,$4)', [target.project_id,'human:'+userId,input.decision === 'approved' ? '人工批准需求版本' : '人工退回需求版本',input]);
         await client.query('COMMIT');
         return { decision: input.decision, repeated: false };

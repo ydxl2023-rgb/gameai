@@ -15,7 +15,7 @@ export async function continueTaskFlow(pool,planVersionId,execute)
             return;
         }
         let next;
-        try {next=await dispatchTasks(pool,flow.project_key,flow.requested_by,{tasks:tasks.slice(0,100)},true);}
+        try {next=await dispatchTasks(pool,flow.project_key,flow.requested_by,{tasks:tasks.slice(0,100)},true,true);}
         catch(error)
         {
             await pool.query("UPDATE gameai.plan_dispatch_flows SET state='paused',reason=$2,updated_at=now() WHERE plan_version_id=$1",[planVersionId,error.message]);

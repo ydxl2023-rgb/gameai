@@ -96,6 +96,15 @@ test('manual PM gate, idempotency, fixed-run proof, atomic publication and retry
         assert.equal((await c.query('SELECT state FROM gameai.approval_workflows WHERE version_id=$1',[version.version_id])).rows[0].state,'dispatched');
         assert.equal((await c.query('SELECT state FROM gameai.plan_dispatch_flows WHERE project_id=$1',[p])).rows[0].state,'active');
         await c.query('ROLLBACK TO SAVEPOINT automatic_approval');
+        await c.query("INSERT INTO gameai.approval_workflows(version_id,project_id,requested_by,revision,document_hash,state,agent_policy) VALUES($1,$2,$3,$4,$5,'manual_pm',$6)",[version.version_id,p,user,version.revision,version.document_hash,JSON.stringify([{id:a,role_code:'Development'}])]);
+        await publishPmPlan(servicePool,projectKey,started.job,result);
+        const selected=(await c.query('SELECT role_code,dispatch_allowed FROM gameai.tasks WHERE plan_version_id=(SELECT plan_version_id FROM gameai.pm_jobs WHERE id=$1) AND parent_id IS NOT NULL',[started.job.id])).rows;
+        assert.equal(selected.find(t=>t.role_code==='Development').dispatch_allowed,true);
+        assert.equal(selected.find(t=>t.role_code==='Art').dispatch_allowed,false);
+        assert.equal(selected.find(t=>t.role_code==='QA').dispatch_allowed,false);
+        assert.equal((await c.query('SELECT agent_policy FROM gameai.plan_dispatch_flows WHERE project_id=$1',[p])).rows[0].agent_policy[0].role_code,'Development');
+        await c.query('ROLLBACK TO SAVEPOINT automatic_approval');
+
         failSecondTask = true;
         await assert.rejects(publishPmPlan(servicePool,projectKey,started.job,result),/Injected/);
         failSecondTask = false;
@@ -145,6 +154,14 @@ test('manual PM gate, idempotency, fixed-run proof, atomic publication and retry
         await setTaskDispatchSelection(servicePool,projectKey,user,{task_id:artTask.id,revision:0,allowed:true});
         const dispatchInput={tasks:[{task_id:artTask.id,revision:1}]};
         await assert.rejects(dispatchTasks(servicePool,projectKey,outsider,dispatchInput),/人工账户/);
+        await c.query('SAVEPOINT auto_dispatch_policy');
+        await c.query("INSERT INTO gameai.plan_dispatch_flows(plan_version_id,project_id,requested_by,state,agent_policy) VALUES($1,$2,$3,'active',$4)",[artTask.plan_version_id,p,user,JSON.stringify([{id:artAgent,role_code:'Art'}])]);
+        assert.match((await dispatchTasks(servicePool,projectKey,user,dispatchInput,false,true)).rows[0].reason,/未授权自动/);
+        assert.equal((await dispatchTasks(servicePool,projectKey,user,dispatchInput,false,false)).rows[0].ready,true);
+        await c.query('UPDATE gameai.agents SET auto_execute=true WHERE id=$1',[artAgent]);
+        assert.equal((await dispatchTasks(servicePool,projectKey,user,dispatchInput,false,true)).rows[0].ready,true);
+        await c.query('ROLLBACK TO SAVEPOINT auto_dispatch_policy');
+
         const preview=await dispatchTasks(servicePool,projectKey,user,dispatchInput);
         assert.equal(preview.rows[0].ready,true);
         assert.equal(preview.jobs.length,0);

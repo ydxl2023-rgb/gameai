@@ -207,12 +207,12 @@ export async function publishPmPlan(pool, projectKey, job, result)
             }
         }
         const qaTasks=await ensureQaTasks(client,pv.id);
-        const automatic=(await client.query("SELECT * FROM gameai.approval_workflows WHERE version_id=$1 AND state='pm'",[version.id])).rows[0];
+        const automatic=(await client.query("SELECT * FROM gameai.approval_workflows WHERE version_id=$1 AND state IN ('pm','manual_pm')",[version.id])).rows[0];
         if (automatic)
         {
             // Only the immutable human approval authorizes selecting this exact plan's children.
-            await client.query(`UPDATE gameai.tasks SET dispatch_allowed=true,dispatch_revision=dispatch_revision+1,dispatch_selected_by=$2,dispatch_selected_at=now() WHERE plan_version_id=$1 AND parent_id IS NOT NULL`,[pv.id,automatic.requested_by]);
-            await client.query("INSERT INTO gameai.plan_dispatch_flows(plan_version_id,project_id,requested_by,state) VALUES($1,$2,$3,'active')",[pv.id,version.project_id,automatic.requested_by]);
+            await client.query(`UPDATE gameai.tasks SET dispatch_allowed=true,dispatch_revision=dispatch_revision+1,dispatch_selected_by=$2,dispatch_selected_at=now() WHERE plan_version_id=$1 AND parent_id IS NOT NULL AND ($3::jsonb IS NULL OR role_code IN (SELECT value->>'role_code' FROM jsonb_array_elements($3::jsonb)))`,[pv.id,automatic.requested_by,automatic.agent_policy===null?null:JSON.stringify(automatic.agent_policy)]);
+            await client.query("INSERT INTO gameai.plan_dispatch_flows(plan_version_id,project_id,requested_by,state,agent_policy) VALUES($1,$2,$3,'active',$4)",[pv.id,version.project_id,automatic.requested_by,automatic.agent_policy===null?null:JSON.stringify(automatic.agent_policy)]);
             await client.query("UPDATE gameai.approval_workflows SET state='dispatched',updated_at=now() WHERE version_id=$1",[version.id]);
         }
         const taskCount=plan.tasks.length+qaTasks.length;

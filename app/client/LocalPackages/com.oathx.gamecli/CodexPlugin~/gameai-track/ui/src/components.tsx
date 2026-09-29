@@ -5,8 +5,8 @@ import type { Agent, Task } from './model';
 import { groupTaskTree, expandableTaskKeys, type TaskNode } from './task-tree';
 import { ResizableTable } from './ResizableTable';
 
-const taskColumnDefaults = [160,240,128,100,108,118,90];
-const taskColumnMinimums = [160,120,100,72,90,105,80];
+const taskColumnDefaults = [160,240,100,108,118,128,90];
+const taskColumnMinimums = [8,120,72,90,105,100,80];
 const taskWidthStorage = 'gameai.track.task-column-widths.v1';
 export function StateTag({ value }: { value: string })
 {
@@ -25,7 +25,7 @@ export function AgentTable({ agents, select, addSkills }: { agents: Agent[]; sel
     const defaults=[165,115,235,80,115,85];
     const minimums=[120,90,160,70,100,75];
     const columns: ColumnsType<Agent> = [
-        { title: 'Agent', dataIndex: 'id', render: (id, a) => <><Button type="link" title={id} onClick={() => select(a)}>{a.name ?? id}</Button>{a.fixed && <Tag color="blue">固定</Tag>}</> },
+        { title: 'Agent', dataIndex: 'id', render: (id, a) => <><Button type="link" title={id} onClick={() => select(a)}>{a.name ?? id}</Button></> },
         { title: 'Role', dataIndex: 'role' },
         { title: 'Skills', render: (_, a) => <div className="agent-skills">{a.skills?.map(skill=><div key={skill.key} title={skill.key} className="agent-skill"><span>{skill.key}</span>{skill.primary && <Tag>主</Tag>}</div>)}{!a.skills?.length && <span>未配置</span>}{addSkills && <Button type="link" size="small" disabled={agentWorkStatus(a)==='工作'} onClick={()=>addSkills(a)}>＋ 添加技能</Button>}</div> },
         { title: 'Status', render: (_,a) => <Tooltip title={a.status==='待核实' ? '执行状态待核实，仍占用容量' : a.enabled===false ? '已停用，不参与派发' : a.status==='离线' ? '节点离线' : undefined}><span><StateTag value={agentWorkStatus(a)} /></span></Tooltip> },
@@ -88,13 +88,13 @@ export function TaskTable({ tasks, allTasks = tasks, select, canSelectDispatch =
             <Button type="link" style={{ whiteSpace: 'nowrap',padding:0,marginLeft:4 }} title={t.title} onClick={() => select(t)}>{id}</Button>
         </span> },
         { title: 'Deliverable', dataIndex: 'title', width: 240, render:(title,t)=>t.group ? `共 ${t.group.total} 项 · 完成 ${t.group.completed} · 阻塞 ${t.group.blocked}${filtered ? '（筛选结果）' : ''}` : <>{t.repair && <Tag color="orange">返修</Tag>}{title}</> },
-        { title: 'Role', dataIndex: 'role', filteredValue:filters.role, filters: ['Design','Art', 'Development', 'QA','PM'].map(value => ({ text: value, value })) },
         { title: 'Agent', dataIndex: 'agent', render: a => a ?? '—' },
         { title: 'Status', dataIndex: 'status', filteredValue:filters.status, filters: ['待调度','执行中', '依赖阻塞', '等待交付','已完成'].map(value => ({ text: value, value })), render: (s,t) => t.group ? null : <StateTag value={s} /> },
         { title: 'Dependency', dataIndex: 'dependencies', width: 118, align: 'left', render: (ids,t) => t.group ? null : <TaskLinks ids={ids} tasks={allTasks} select={select} /> },
+        { title: 'Role', dataIndex: 'role', filteredValue:filters.role, filters: ['Design','Art', 'Development', 'QA','PM'].map(value => ({ text: value, value })) },
         { title: 'Version', dataIndex: 'version', sorter: (a, b) => a.version.localeCompare(b.version) },
     ];
-    return <ResizableTable<TaskNode> storageKey={taskWidthStorage} minimumWidths={taskColumnMinimums} size="small" rowKey="id" columns={columns.map((column,index)=>({...column,width:taskColumnDefaults[index],ellipsis:index===1 || index===3}))} dataSource={tree}
+    return <ResizableTable<TaskNode> storageKey={taskWidthStorage} minimumWidths={taskColumnMinimums} size="small" rowKey="id" columns={columns.map((column,index)=>({...column,width:taskColumnDefaults[index],ellipsis:index===0 || index===1 || index===2}))} dataSource={tree}
         expandable={{expandedRowKeys:expanded,onExpandedRowsChange:keys=>setExpanded([...keys]),indentSize:10}}
         onChange={(_,values)=>setFilters({role:values.role?.map(String) ?? [],status:values.status?.map(String) ?? []})}
         pagination={{ pageSize: 10, hideOnSinglePage: true }} />;

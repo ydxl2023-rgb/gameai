@@ -68,7 +68,7 @@ export async function handleTrackRequest(request: IncomingMessage, response: Ser
 {
     const path = new URL(request.url ?? '/', 'http://localhost').pathname;
     const documentId = /^\/api\/track\/documents\/([0-9a-f-]{36})$/i.exec(path)?.[1];
-    if (!documentId && !['/mcp', '/track', '/api/track/demo', '/api/track/snapshot', '/api/track/agent-history', '/api/track/agents', '/api/track/agent-skills', '/api/track/agent-options', '/api/track/agent-runs', '/api/track/requirements', '/api/track/review-session', '/api/track/review-login', '/api/track/review-logout', '/api/track/review-decisions', '/api/track/review-pm-split', '/api/track/review-task-selection', '/api/track/review-task-preview', '/api/track/review-task-dispatch'].includes(path))
+    if (!documentId && !['/mcp', '/track', '/api/track/demo', '/api/track/snapshot', '/api/track/agent-history', '/api/track/agents', '/api/track/agent-skills', '/api/track/agent-options', '/api/track/agent-runs', '/api/track/requirements', '/api/track/review-session', '/api/track/review-login', '/api/track/review-logout', '/api/track/review-decisions', '/api/track/review-pm-split', '/api/track/review-agent-automation', '/api/track/review-task-selection', '/api/track/review-task-preview', '/api/track/review-task-dispatch'].includes(path))
     {
         return false;
     }

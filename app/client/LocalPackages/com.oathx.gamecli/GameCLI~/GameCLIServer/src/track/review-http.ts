@@ -1,3 +1,4 @@
+import {setAgentAutomation} from '../database/agent-automation.js';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { parseEnv } from 'node:util';
@@ -174,7 +175,7 @@ export async function handleReviewRequest(request: IncomingMessage, response: Se
             // Return immediately; publication is owned by the server and guarded by a durable job.
             if (started.created)
             {
-                void dispatchPmJob(writer,project,started).catch(() => console.error('PM 结果状态写入失败，需要核实数据库中的执行记录。'));
+                void dispatchPmJob(writer,project,started).then(()=>resumeTaskFlows(writer)).catch(() => console.error('PM 结果状态写入失败，需要核实数据库中的执行记录。'));
             }
             reply(response,started.created ? 202 : 200,{job_id:started.job.id,state:started.job.state,repeated:!started.created});
             return;
@@ -189,6 +190,13 @@ export async function handleReviewRequest(request: IncomingMessage, response: Se
                 void runTaskChain(writer,job).catch(() => console.error('任务结果写入失败，保留执行占用等待核实。'));
             }
             reply(response,commit ? 202 : 200,{rows:result.rows,started:result.jobs.length});
+            return;
+        }
+        if (path === '/api/track/review-agent-automation')
+        {
+            reply(response,200,await setAgentAutomation(writer,project,session!.user,input));
+            void resumeApprovalWorkflows(writer).catch(()=>console.error('自动 PM 检查失败。'));
+            void resumeTaskFlows(writer).catch(()=>console.error('自动任务检查失败。'));
             return;
         }
         if (path === '/api/track/review-task-selection')

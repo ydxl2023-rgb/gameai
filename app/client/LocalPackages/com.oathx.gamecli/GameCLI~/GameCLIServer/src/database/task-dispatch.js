@@ -9,7 +9,7 @@ import {validateQaReport,applyQaReport,finishRepair} from './qa-repairs.js';
 import { verifyTaskFiles } from './task-files.js';
 
 const request = z.object({tasks:z.array(z.object({task_id:z.uuid(),revision:z.number().int().nonnegative()}).strict()).min(1).max(100),auto_continue:z.boolean().optional(),retry:z.boolean().optional()}).strict();
-export async function dispatchTasks(pool,projectKey,userId,raw,commit=false)
+export async function dispatchTasks(pool,projectKey,userId,raw,commit=false,automaticDispatch=false)
 {
     const parsed=request.safeParse(raw);
     if (!parsed.success || new Set(parsed.data.tasks.map(t=>t.task_id)).size!==parsed.data.tasks.length) throw new ReviewError('派发任务参数无效。');
@@ -53,6 +53,11 @@ export async function dispatchTasks(pool,projectKey,userId,raw,commit=false)
             const context=await loadTaskContext(c,t);
             const dependencies=context.dependencies;
             if (!reason) reason=await contextBlockReason(context,t);
+            if (!reason && automaticDispatch)
+            {
+                const flow=(await c.query('SELECT agent_policy FROM gameai.plan_dispatch_flows WHERE plan_version_id=$1',[t.plan_version_id])).rows[0];
+                if(flow?.agent_policy && (!a?.auto_execute || !flow.agent_policy.some(entry=>entry.id===a.id && entry.role_code===t.role_code))) reason='对应 Agent 未授权自动执行，等待人工派发';
+            }
             if (!reason && t.bound_agent_id && t.bound_agent_id!==a?.id) reason='原执行 Agent 不可用，禁止改派其他 Agent';
             if (!reason && (!a?.enabled || !a.worker_enabled || a.worker_key.toLowerCase()!==hostname().toLowerCase())) reason='没有绑定本机的可用固定 Agent';
             if (!reason)
@@ -79,11 +84,11 @@ export async function dispatchTasks(pool,projectKey,userId,raw,commit=false)
             await c.query(`INSERT INTO gameai.task_dispatch_jobs(execution_id,project_id,requested_by,requirement_key,input_hash,context) VALUES($1,$2,$3,$4,$5,$6)`,[executionId,project.id,userId,t.requirement_key,inputHash,JSON.stringify(context)]);
             if (context.repair) await c.query("UPDATE gameai.qa_defects SET rounds=rounds+1,updated_at=now() WHERE id=$1",[context.repair.id]);
             await c.query(`UPDATE gameai.tasks SET status='running',progress=0 WHERE id=$1`,[t.id]);
-            await c.query(`INSERT INTO gameai.audit_events(project_id,actor,event,payload) VALUES($1,$2,'人工派发专业任务',$3)`,[project.id,'human:'+userId,{task:t.task_key,execution_id:executionId}]);
+            await c.query(`INSERT INTO gameai.audit_events(project_id,actor,event,payload) VALUES($1,$2,$4,$3)`,[project.id,'human:'+userId,{task:t.task_key,execution_id:executionId},automaticDispatch?'编排器自动派发专业任务':'人工派发专业任务']);
             if (parsed.data.auto_continue)
             {
                 await c.query(`INSERT INTO gameai.plan_dispatch_flows(plan_version_id,project_id,requested_by,state) VALUES($1,$2,$3,'active')
-                    ON CONFLICT(plan_version_id) DO UPDATE SET state='active',requested_by=EXCLUDED.requested_by,reason='',updated_at=now()`,[t.plan_version_id,project.id,userId]);
+                    ON CONFLICT(plan_version_id) DO UPDATE SET state='active',requested_by=EXCLUDED.requested_by,agent_policy=NULL,reason='',updated_at=now()`,[t.plan_version_id,project.id,userId]);
             }
             jobs.push({executionId,projectId:project.id,taskId:t.id,planVersionId:t.plan_version_id,key:t.requirement_key,role:t.role_code,prompt});
         }
