@@ -106,7 +106,7 @@ test('actual bundled workbench gates approval in ' + storage, async () =>
 }
 
 
-test('authenticated review submits the opened row, never the unrelated default requirement', async () =>
+for (const automatic of [false,true]) test('authenticated review selects only the opened version; automatic='+automatic, async () =>
 {
     const html = await readFile(new URL('../../../../GameCLI~/GameCLIServer/public/track.html', import.meta.url), 'utf8');
     const state = snapshot();
@@ -146,8 +146,13 @@ test('authenticated review submits the opened row, never the unrelated default r
         assert.equal(document.querySelector('iframe').getAttribute('sandbox'),'');
         find('button','同意').click();
         await until(() => find('button','确认'));
+        const autoLabel=[...document.querySelectorAll('label')].find(n=>n.textContent.includes('批准后自动启动 PM'));
+        assert.ok(autoLabel);
+        assert.equal(autoLabel.querySelector('input').checked,false);
+        if (automatic) autoLabel.querySelector('input').click();
         find('button','确认').click();
         await until(() => writes.length === 1);
+        assert.equal(writes[0].auto_start===true,automatic);
         assert.equal(writes[0].version_id,selected.version_id);
         assert.equal(writes[0].revision,'b'.repeat(64));
         assert.equal(writes[0].document_hash,'c'.repeat(64));
@@ -239,6 +244,15 @@ test('task tree expands children and checkbox persists only dispatch permission'
             if(url.endsWith('/review-session')) return {ok:true,json:async()=>({authenticated:true,name:'测试审批人',csrf:'tree-csrf'})};
             if(options?.method==='POST')
             {
+                if (url.endsWith('/review-task-preview') || url.endsWith('/review-task-dispatch'))
+                {
+                    const body=JSON.parse(options.body);
+                    assert.equal(options.headers['X-GameAI-Review-CSRF'],'tree-csrf');
+                    assert.equal(body.tasks[0].task_id,child.task_uuid);
+                    window.taskDispatchChecks=(window.taskDispatchChecks ?? 0)+1;
+                    if (url.endsWith('-dispatch')) window.taskDispatchStarts=(window.taskDispatchStarts ?? 0)+1;
+                    return {ok:true,json:async()=>({started:1,rows:[{task_id:child.task_uuid,id:child.id,title:child.title,role:child.role,agent:'dev-01',ready:true,reason:'可立即派发'}]})};
+                }
                 assert.ok(url.endsWith('/review-task-selection'));
                 const input=JSON.parse(options.body);
                 writes.push(input);
@@ -256,11 +270,11 @@ test('task tree expands children and checkbox persists only dispatch permission'
         await until(()=>doc.querySelector('.ant-card'));
         [...doc.querySelectorAll('[role=tab]')].find(n=>n.textContent==='任务与依赖').click();
         await until(()=>doc.querySelector('.ant-table-row-expand-icon'));
-        assert.equal(doc.querySelectorAll('input[type=checkbox]').length,0,'Parent must not have a dispatch checkbox');
+        assert.equal(doc.querySelectorAll('.ant-table input[type=checkbox]').length,0,'Parent must not have a dispatch checkbox');
         doc.querySelector('.ant-table-row-expand-icon').click();
         await until(()=>doc.querySelectorAll('.ant-table-row-expand-icon-collapsed').length===1);
         assert.match(doc.body.textContent,/程序（1）/);
-        assert.equal(doc.querySelectorAll('input[type=checkbox]').length,0,'Role folders are view-only');
+        assert.equal(doc.querySelectorAll('.ant-table input[type=checkbox]').length,0,'Role folders are view-only');
         doc.querySelector('.ant-table-row-expand-icon-collapsed').click();
         const checkbox=()=>doc.querySelector('input[aria-label="允许派发 P-0000002"]');
         await until(()=>checkbox() && !checkbox().disabled);
@@ -274,6 +288,16 @@ test('task tree expands children and checkbox persists only dispatch permission'
         await until(()=>writes.length===2 && !checkbox().checked);
         assert.equal(writes[1].revision,1);
         assert.equal(writes[1].allowed,false);
+        checkbox().click();
+        await until(()=>writes.length===3 && checkbox().checked && !checkbox().disabled);
+        const button=text=>[...doc.querySelectorAll('button')].find(b=>b.textContent.includes(text));
+        button('派发已勾选任务').click();
+        await until(()=>button('确认派发可执行任务'));
+        assert.equal(dom.window.taskDispatchStarts,undefined,'Preview must not start an Agent');
+        button('确认派发可执行任务').click();
+        button('确认派发可执行任务').click();
+        await until(()=>dom.window.taskDispatchStarts===1);
+        assert.equal(dom.window.taskDispatchChecks,2);
     }
     finally {dom.window.close();}
 });
@@ -298,4 +322,41 @@ test('role folders preserve IDs, dependencies, counts and filtered ancestor cont
     assert.deepEqual(Array.from(expandableTaskKeys(filtered)),[root.id,`role-group:${root.id}:Development`]);
     assert.equal(all.length,3);
     assert.equal(root.children,undefined);
+});
+
+
+test('workflow output restores durable events, refreshes idle work and does not duplicate snapshots', async () =>
+{
+    const html=await readFile(new URL('../../../../GameCLI~/GameCLIServer/public/track.html',import.meta.url),'utf8');
+    const state={...snapshot(),mode:'postgres'};
+    state.workbench.tasks=[];
+    state.workbench.agents=[];
+    state.workbench.activity=[{id:'1',time:new Date().toISOString(),actor:'human',requirement:'HELLO-WORLD',task:null,level:'info',message:'人工批准需求版本'}];
+    let poll, reads=0;
+    const dom=new JSDOM(html,{url:'http://localhost/track',runScripts:'dangerously',pretendToBeVisual:true,virtualConsole:new VirtualConsole(),beforeParse(window)
+    {
+        window.MessageChannel=class {constructor(){this.port1={onmessage:null};this.port2={postMessage:()=>setTimeout(()=>this.port1.onmessage?.({}),0)};}};
+        window.matchMedia=()=>({matches:false,addListener(){},removeListener(){},addEventListener(){},removeEventListener(){}});
+        window.ResizeObserver=class {observe(){} unobserve(){} disconnect(){}};
+        window.AbortSignal.timeout ??= ()=>new window.AbortController().signal;
+        window.setInterval=(fn)=>{poll=fn;return 1;};
+        window.clearInterval=()=>{};
+        window.fetch=async url=>{if(url.endsWith('review-session')) return {ok:true,json:async()=>({authenticated:false})}; reads++;return {ok:true,json:async()=>structuredClone(state)};};
+    }});
+    try
+    {
+        const output=()=>dom.window.document.querySelector('[aria-label="工作流执行日志"]');
+        await until(()=>output()?.textContent.includes('人工批准需求版本') && poll);
+        assert.doesNotMatch(output().textContent,/数据库快照已更新/);
+        state.workbench.activity.push({id:'2',time:new Date().toISOString(),actor:'dev-01',requirement:'HELLO-WORLD',task:'P-0000195',level:'error',message:'任务执行失败；编译失败'});
+        poll();
+        await until(()=>output()?.textContent.includes('编译失败'));
+        poll();
+        await until(()=>reads>=3);
+        await delay();
+        assert.equal(output().textContent.split('编译失败').length-1,1);
+        assert.match(output().textContent,/P-0000195/);
+        assert.match(output().textContent,/dev-01/);
+    }
+    finally {dom.window.close();}
 });

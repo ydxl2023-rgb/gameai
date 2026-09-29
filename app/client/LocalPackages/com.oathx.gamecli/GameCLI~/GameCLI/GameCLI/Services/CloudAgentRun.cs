@@ -23,6 +23,9 @@ namespace GameCLI.Services
         public string Instructions
         { get; }
 
+        public bool WorkspaceWrite
+        { get; }
+
         public CancellationToken Token => lifetime.Token;
 
         private CloudAgentRun(HttpClient http, string workerKey, string executionId, JsonElement claim, CancellationToken cancellation)
@@ -33,6 +36,7 @@ namespace GameCLI.Services
             AgentKey = claim.GetProperty("agent_key").GetString()!;
             ThreadId = claim.GetProperty("thread_id").GetString();
             Instructions = claim.GetProperty("instructions").GetString()!;
+            WorkspaceWrite = claim.TryGetProperty("workspace_write", out JsonElement write) && write.GetBoolean();
             lifetime = CancellationTokenSource.CreateLinkedTokenSource(cancellation);
         }
 

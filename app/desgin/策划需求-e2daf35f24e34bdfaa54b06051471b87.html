@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hello World 最小闭环测试需求 · v1.0</title>
+<style>
+:root{--fg:#1f2328;--muted:#57606a;--border:#d0d7de;--accent:#0969da}*{box-sizing:border-box}html,body{margin:0;padding:0;background:#f6f8fa;color:var(--fg);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;font-size:14px;line-height:1.75}.page{max-width:960px;margin:0 auto;background:#fff;padding:54px 62px;box-shadow:0 2px 12px #0000000f;overflow-wrap:anywhere}.cover{text-align:center;padding:60px 0 48px;border-bottom:1px solid var(--border);margin-bottom:36px}.cover h1{font-size:30px;margin:0 0 18px;border:0}.subtitle{font-size:17px;color:var(--muted)}.meta{display:inline-block;text-align:left;color:var(--muted);border-top:1px solid var(--border);border-bottom:1px solid var(--border);padding:14px 24px;margin-top:24px}h2{font-size:24px;margin:38px 0 16px;padding-bottom:8px;border-bottom:2px solid var(--fg)}h3{font-size:18px;margin:26px 0 12px;padding-bottom:6px;border-bottom:1px solid var(--border)}h4{font-size:15px;margin:20px 0 8px}p{margin:8px 0}ul,ol{padding-left:24px}li{margin:5px 0}.toc{background:#fafbfc;border:1px solid var(--border);border-radius:8px;padding:18px 26px}.toc h2{font-size:18px;border:0;margin:0 0 10px}.toc a{color:var(--accent);text-decoration:none}.callout{padding:12px 16px;border-left:4px solid var(--accent);background:#ddf4ff;border-radius:4px;margin:18px 0}.warn{background:#fff8c5;border-color:#bf8700}table{border-collapse:collapse;width:100%;margin:14px 0;font-size:13px}th,td{border:1px solid var(--border);padding:9px 10px;text-align:left;vertical-align:top}th{background:#f6f8fa}tr:nth-child(even) td{background:#fafbfc}code,pre{font-family:Consolas,monospace;background:#f6f8fa;font-size:12px}code{padding:2px 4px;border-radius:3px}pre{padding:14px;border:1px solid var(--border);border-radius:6px;white-space:pre-wrap;overflow-wrap:anywhere}.wire-gallery{display:flex;flex-direction:column;gap:20px}.diagram{margin:14px 0;padding:16px;border:1px solid var(--border);background:#fafbfc;border-radius:8px}.diagram svg{display:block;width:100%;height:auto}.caption{font-size:13px;color:var(--muted);margin-top:12px}.test{margin:18px 0;padding:14px 18px;border:1px solid var(--border);border-radius:6px}.test h4{margin-top:0}.footer{margin-top:40px;padding-top:18px;border-top:1px solid var(--border);color:var(--muted);font-size:12px;text-align:center}.print-note{color:var(--muted);font-size:12px;text-align:right}a{overflow-wrap:anywhere}@media(max-width:700px){.page{padding:24px 18px}.cover{padding:28px 0}.cover h1{font-size:25px}.toc{padding:16px}th,td{padding:7px}}@page{size:A4;margin:18mm 16mm}@media print{html,body{background:#fff;font-size:11pt}.page{padding:0;max-width:100%;box-shadow:none}.cover{break-after:page}.no-print{display:none}h2,h3,h4{break-after:avoid}.diagram,.test,tr{break-inside:avoid}thead{display:table-header-group}a{color:inherit;text-decoration:none}pre{white-space:pre-wrap}}
+</style>
+</head>
+<body>
+<main class="page">
+<p class="print-note no-print">可使用浏览器打印功能打印或导出 PDF；本文不含可执行脚本。</p>
+<header class="cover">
+<h1>Windows C# 控制台<br>Hello World 最小闭环测试需求</h1>
+<p class="subtitle">工具测试 · 独立 .NET 8 控制台工程 · 需求审阅版</p>
+<div class="meta">需求编号：HELLO-WORLD<br>完整需求版本：v1.0<br>日期：2026-09-29<br>文档状态：<strong>待人工审批</strong><br>执行状态：开发、发布、QA 均尚未执行<br>文档用途：人工审阅及批准后的任务拆分依据</div>
+</header>
+<nav class="toc" aria-label="目录">
+<h2>目录</h2>
+<ol>
+<li><a href="#goals">设计目标</a></li>
+<li><a href="#overview">功能综述</a><ul><li><a href="#behavior">2.1 固定行为与范围</a></li><li><a href="#plan">2.2 交付计划与审批边界</a></li></ul></li>
+<li><a href="#interaction">界面与交互</a><ul><li><a href="#wireframe">3.1 终端输出线框布局</a></li><li><a href="#configuration">3.2 配置表适用性</a></li><li><a href="#development">3.3 开发交付标准</a></li><li><a href="#verification">3.4 启动与验收交付标准</a></li><li><a href="#recovery">3.5 异常处理与返修</a></li></ul></li>
+<li><a href="#art">美术与表现需求</a></li>
+</ol>
+<p><a href="#tests">附录 A：详细验收用例</a><br><a href="#references">附录 B：参考依据与交付记录</a></p>
+</nav>
+<section id="goals">
+<h2>1 设计目标</h2>
+<p>用一个固定输出、自动退出的 Windows C# 控制台程序，验证需求审批、开发发布、实际产物测试和人工最终验收的最小完整闭环。程序的可见结果为标准输出一行 <code>Hello World!</code>。</p>
+<p>本需求属于工具测试。平台按用户明确选择采用 Windows 控制台，交互不涉及移动触屏。只创建独立示例工程及必要交付证据，不引入额外集成项目。</p>
+<div class="callout warn">本版本状态为“待人工审批”。本文全部开发要求、发布要求和验收用例均尚未执行。线框中的输出是预期示意，不是运行证据。当前只交付需求，不生成程序、不创建任务、不声明测试通过。</div>
+</section>
+<section id="overview">
+<h2>2 功能综述</h2>
+<h3 id="behavior">2.1 固定行为与范围</h3>
+<ul>
+<li>独立工程位于仓库根目录相对路径 <code>app/samples/HelloWorld/</code>，目标框架为 <code>net8.0</code>。</li>
+<li>使用本机已安装的 .NET SDK <code>9.0.314</code>；不安装 SDK、额外第三方 NuGet 包或系统服务。</li>
+<li>运行入口为发布目录中的 <code>Artifacts/hello-world/publish/HelloWorld.exe</code>。</li>
+<li>标准输出恰好一行 <code>Hello World!</code>，大小写、单词间一个空格和感叹号固定，无逗号、前后空格或额外空行；允许 Windows 换行。</li>
+<li>标准错误为空，进程退出码为 <code>0</code>，从进程启动到退出不超过 5 秒。</li>
+<li>程序自行结束，不等待键盘输入，不联网、不读取配置、不创建状态数据。</li>
+<li>QA 连续独立启动发布产物两次；每次都必须完整满足相同标准。</li>
+<li>不放入 Unity Assets，不调用 Unity，不更改 GameCLI 或 GameCLIServer 业务代码，不使用其他工程，不增加测试框架。</li>
+<li>不增加登录、奖励、配置功能或美术任务。</li>
+</ul>
+<h3 id="plan">2.2 交付计划与审批边界</h3>
+<table>
+<thead><tr><th>计划项</th><th>职责与产物</th><th>前置依赖</th><th>当前状态</th></tr></thead>
+<tbody>
+<tr><td>Development：独立工程与编译发布</td><td>一个任务完成源码、局部忽略规则、运行说明、编译发布、日志和实际发布文件交付。</td><td>人工批准本需求 v1.0，且云端正式发布并授权计划。</td><td>尚未创建、尚未执行</td></tr>
+<tr><td>QA：发布产物实际运行验收</td><td>一个任务校验开发交付，实际运行发布产物两次，记录证据并交付中文 HTML 测试报告。</td><td>上述 Development 任务完成且交付可用。</td><td>尚未创建、尚未执行</td></tr>
+</tbody>
+</table>
+<ul>
+<li>不安排 Art 任务，不将同一交付拆为多张无意义小单。</li>
+<li>人工批准 v1.0 后，期望由 GameCLIServer 自动安排固定 PM，在同一需求主任务下发布上述两项专业子任务，自动允许并按依赖派发。</li>
+<li>QA 通过后展示产物与报告，等待人工最终验收；QA 通过不等于人工最终验收完成。</li>
+<li>审批前禁止开发。自动编排必须使用云端已有授权通道；通道不可用时如实阻塞，不改造业务代码或用本地调度替代。</li>
+<li>正式任务编号由平台分配。本文只描述计划，不编造任务编号，也不表示已创建、批准或派发任务。</li>
+</ul>
+</section>
+<section id="interaction">
+<h2>3 界面与交互</h2>
+<h3 id="wireframe">3.1 终端输出线框布局</h3>
+<p>唯一运行界面为 Windows 终端。入口是执行已发布的程序，结束后控制权返回原终端。本程序没有页面、按钮、弹窗或应用内返回操作。</p>
+<div class="wire-gallery">
+<figure class="diagram">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 430" role="img" aria-labelledby="terminal-title terminal-description">
+<title id="terminal-title">Windows 终端执行发布产物的低保真线框</title>
+<desc id="terminal-description">从仓库根目录执行发布目录中的 HelloWorld.exe，标准输出 Hello World!，然后程序结束并返回终端提示符。这是预期布局，不是实测截图。</desc>
+<rect x="10" y="10" width="980" height="410" rx="12" fill="#ffffff" stroke="#57606a" stroke-width="2"/>
+<path d="M22 10H978Q990 10 990 22V66H10V22Q10 10 22 10" fill="#e7ebef"/>
+<text x="34" y="47" font-size="25" fill="#1f2328">Windows 终端 · 预期输出示意</text>
+<text x="34" y="112" font-size="23" fill="#57606a">区域 01：启动命令（终端内容，不属于程序标准输出）</text>
+<text x="34" y="155" font-size="21" font-family="Consolas,monospace" fill="#1f2328">PS &gt; .\Artifacts\hello-world\publish\HelloWorld.exe</text>
+<rect x="30" y="184" width="940" height="104" rx="4" fill="#f6f8fa" stroke="#d0d7de"/>
+<text x="47" y="220" font-size="22" fill="#57606a">区域 02：程序标准输出</text>
+<text x="47" y="261" font-size="29" font-family="Consolas,monospace" fill="#1f2328">Hello World!</text>
+<text x="34" y="330" font-size="22" fill="#57606a">区域 03：程序退出，返回原终端</text>
+<text x="34" y="376" font-size="25" font-family="Consolas,monospace" fill="#1f2328">PS &gt;</text>
+</svg>
+<figcaption class="caption">图 1：真实终端形态的低保真布局。执行区域 01 的命令后，区域 02 仅产生一行固定输出，结束后回到区域 03。命令行与终端提示符不属于程序输出；图中没有实测时长、退出码或通过结论。</figcaption>
+</figure>
+</div>
+<table>
+<thead><tr><th>区域编号</th><th>显示内容</th><th>更新条件</th></tr></thead>
+<tbody>
+<tr><td>01</td><td>执行 <code>HelloWorld.exe</code> 的命令。</td><td>测试人员从仓库根目录启动已发布产物时。</td></tr>
+<tr><td>02</td><td>一行 <code>Hello World!</code>。</td><td>进程向标准输出写入时。</td></tr>
+<tr><td>03</td><td>宿主终端原有提示符。</td><td>进程退出、终端恢复接收命令时。</td></tr>
+</tbody>
+</table>
+<table>
+<thead><tr><th>状态</th><th>可观察结果与处理</th></tr></thead>
+<tbody>
+<tr><td>可启动</td><td>发布文件完整且所需运行时可用，由 QA 启动程序。</td></tr>
+<tr><td>处理中</td><td>记录进程输出并计时；程序不展示进度、不请求输入。同一次测试等待当前进程结束，不用重复启动替代等待。</td></tr>
+<tr><td>正常完成</td><td>仅一行固定输出、标准错误为空、退出码 0、5 秒内退出；终端恢复控制。</td></tr>
+<tr><td>无法启动</td><td>缺少发布文件或运行时等问题据实记录为交付或环境阻塞，不伪造应用内失败界面。</td></tr>
+<tr><td>结果不符合</td><td>记录实际输出、错误流、退出码或超时事实；按原因进入返修或环境恢复。</td></tr>
+</tbody>
+</table>
+<h3 id="configuration">3.2 配置表适用性</h3>
+<p>Excel 配置表不适用。本程序没有策划可配置数据，不读取配置文件，不保存玩家数据或其他运行状态。项目文件与 .NET 自动生成的 <code>.runtimeconfig.json</code> 属于编译及运行时文件，不构成应用配置功能。</p>
+<h3 id="development">3.3 开发交付标准</h3>
+<p><strong>执行状态：尚未执行。</strong>下列内容为审批后的 Development 任务范围。</p>
+<table>
+<thead><tr><th>交付项</th><th>相对路径</th><th>标准</th></tr></thead>
+<tbody>
+<tr><td>项目文件</td><td><code>app/samples/HelloWorld/HelloWorld.csproj</code></td><td>独立 C# 控制台工程，目标 <code>net8.0</code>，生成名为 HelloWorld 的可执行程序，保留 Windows 应用宿主；无额外第三方包。</td></tr>
+<tr><td>入口源码</td><td><code>app/samples/HelloWorld/Program.cs</code></td><td>显式块式命名空间、Program 类和 Main 入口，不使用顶级语句。遵守 C# 命名、显式访问级别、四空格缩进、Allman 大括号及适用的英文源码注释要求。</td></tr>
+<tr><td>局部忽略规则</td><td><code>app/samples/HelloWorld/.gitignore</code></td><td>局部解除仓库对本示例 <code>HelloWorld.csproj</code> 的全局忽略，使其可被版本管理；不改动仓库全局忽略策略。核验 bin/obj 和发布目录不进入 Git。</td></tr>
+<tr><td>简洁运行说明</td><td><code>app/samples/HelloWorld/README.md</code></td><td>说明 Windows、SDK 9.0.314、目标 net8.0、运行时前提、发布命令和直接运行发布产物的命令。命令均从仓库根目录执行。</td></tr>
+<tr><td>编译发布日志</td><td><code>app/samples/HelloWorld/reports/build.log</code></td><td>保留实际命令、SDK 版本、编译发布输出、错误及退出码；失败时保留原始失败信息。</td></tr>
+<tr><td>发布文件列表</td><td>纳入编译交付记录</td><td>列出实际生成文件的相对路径，能够与交付文件逐一核对，不以预计文件列表冒充实际结果。</td></tr>
+<tr><td>实际发布文件</td><td><code>Artifacts/hello-world/publish/</code></td><td>至少交付真实的 <code>HelloWorld.exe</code>、<code>HelloWorld.dll</code>、<code>HelloWorld.deps.json</code>、<code>HelloWorld.runtimeconfig.json</code>，以及运行所需的其他实际发布文件，供宿主校验。</td></tr>
+</tbody>
+</table>
+<p>发布命令：</p>
+<pre>dotnet publish app/samples/HelloWorld/HelloWorld.csproj -c Release --no-self-contained -o Artifacts/hello-world/publish</pre>
+<ul>
+<li>本次使用依赖框架的发布方式。SDK 9.0.314 已安装不代表运行所需的 .NET 8 运行时必然齐备；以实际环境核验和启动结果为准。</li>
+<li>不通过安装新 SDK、引入第三方依赖或服务来扩大测试范围。</li>
+<li>发布目录是交付位置，不能用 bin/obj 中的文件替代。</li>
+<li><code>Artifacts/hello-world/publish/</code> 和工程的 bin/obj 均为可重建产物，不提交 Git；实际文件仍须交付宿主，不能只给路径、命令或截图。</li>
+<li>开发交付完成不代表 QA 通过。</li>
+</ul>
+<h3 id="verification">3.4 启动与验收交付标准</h3>
+<p><strong>执行状态：尚未执行。</strong>以下为 QA 唯一的核心运行操作，测试对象必须是 Development 交付的发布产物。</p>
+<ol>
+<li><strong>前置条件：</strong>需求与计划已获相应授权，Development 交付完成；确认实际发布文件完整、可访问，使用 Windows 环境且具备所需运行时。</li>
+<li><strong>操作步骤与处理中反馈：</strong>从仓库根目录直接启动下列可执行文件，分别捕获标准输出与标准错误，记录启动时间并计时。不向进程提供键盘输入，不以 <code>dotnet run</code> 替代。</li>
+</ol>
+<pre>.\Artifacts\hello-world\publish\HelloWorld.exe</pre>
+<ol start="3">
+<li><strong>成功结果与反馈：</strong>标准输出只有一行 <code>Hello World!</code>，标准错误为空，退出码为 0，5 秒内自行退出，终端恢复控制。结束后进行第二次独立启动，使用同一套标准分别判断。</li>
+<li><strong>失败原因与反馈：</strong>出现多余文字、错误标点、错误流内容、非零退出码、等待输入或超时时，将实际结果记录在报告中；不增加程序失败弹窗或额外交互。</li>
+<li><strong>异常恢复：</strong>5 秒时仍未退出则判为超时，并由 QA 清理本次测试进程，记录清理动作。无法启动、运行时缺失或测试采集被中断时，记录环境阻塞或未完成，恢复后重新进行完整的两次验证。</li>
+<li><strong>测试覆盖：</strong>附录 A 覆盖源码与发布交付、两次实际启动、无外部行为、失败分类及返修证据要求。</li>
+</ol>
+<p>QA 中文 HTML 报告交付路径为 <code>app/samples/HelloWorld/reports/qa.html</code>。报告须含封面、可点击目录和打印样式，逐项展示：</p>
+<ul>
+<li>所测需求版本及实际使用的 SDK、运行时和 Windows 环境信息。</li>
+<li>发布产物实际文件列表与 SHA-256 文件哈希，至少覆盖四个必需文件，并覆盖其他实际运行依赖文件。</li>
+<li>两次独立启动各自的实际命令、工作目录相对位置、开始与结束时间、持续时间、原始标准输出、原始标准错误及退出码。</li>
+<li>输出校验保留换行信息，明确标准错误为空的证据；不能把终端命令回显或提示符当作程序输出。</li>
+<li>逐项用例的实际通过、失败、阻塞或未执行状态及其依据；异常时保留真实错误信息。</li>
+<li>源码范围核对结果、无联网／配置读取／状态写入行为的核验方法与证据；不能只凭输出正确推断这些要求已满足。</li>
+<li>测试结论及“等待人工最终验收”的后续状态；不得把尚未运行写为通过。</li>
+</ul>
+<h3 id="recovery">3.5 异常处理与返修</h3>
+<table>
+<thead><tr><th>情形</th><th>判定与下一步</th><th>恢复要求</th></tr></thead>
+<tbody>
+<tr><td>编译或发布失败</td><td>开发保留日志并定位原因；未交付有效发布产物前，不进入成功验收。</td><td>环境问题据实阻塞；确认代码问题后由原 Developer 修复并重新发布。</td></tr>
+<tr><td>缺少运行时等环境问题</td><td>记录真实错误、命令和环境信息，标记环境阻塞，不伪造业务缺陷或通过结论。</td><td>环境恢复后由原 QA 验证同一计划中的有效交付；不擅自安装或改造系统。</td></tr>
+<tr><td>确定的代码缺陷</td><td>回到原 Developer 返修，复用原任务与依赖关系。</td><td>重新提交发布文件、日志及列表；原 QA 更新哈希并重新执行完整两次启动及受影响用例。</td></tr>
+<tr><td>测试中断或采集失败</td><td>记录本次测试未完成，不把缺失证据当作标准错误为空或退出成功。</td><td>恢复采集后重新完整执行；保留原记录以供追溯。</td></tr>
+</tbody>
+</table>
+<p>本程序无网络请求和状态写入，不需要业务重试、补偿、同步或关闭动画。进程自行退出即完成本地运行；异常恢复由开发及 QA 流程处理。</p>
+</section>
+<section id="art">
+<h2>4 美术与表现需求</h2>
+<table>
+<thead><tr><th>类别</th><th>本期范围</th><th>交付状态</th></tr></thead>
+<tbody>
+<tr><td>界面及图像</td><td>使用系统终端现有显示能力；不制作应用界面、插画、背景或其他图像。</td><td>本期不需要</td></tr>
+<tr><td>图标</td><td>不制作自定义应用或按钮图标。</td><td>本期不需要</td></tr>
+<tr><td>特效</td><td>无成功、失败或运行特效。</td><td>本期不需要</td></tr>
+<tr><td>动画</td><td>无打开、关闭、加载或提示动画。</td><td>本期不需要</td></tr>
+<tr><td>音效</td><td>无按钮音效、提示音或背景音乐。</td><td>本期不需要</td></tr>
+</tbody>
+</table>
+<p>文档中的终端线框只服务于需求阅读，不属于正式美术资源，不产生 Art 任务。</p>
+</section>
+<section id="tests">
+<h2>附录 A：详细验收用例</h2>
+<p>以下全部为计划用例，状态均为<strong>尚未执行</strong>。仅在实际执行并保存证据后，才能填写通过、失败或阻塞结果。</p>
+<div class="test">
+<h4>A-01 源码与发布交付完整性</h4>
+<p><strong>前置条件：</strong>Development 已按批准计划提交工程和交付记录。</p>
+<p><strong>操作步骤与处理中：</strong>核对固定源码路径、项目目标框架、显式命名空间及 Program/Main 入口；检查局部 .gitignore、README、编译日志和实际发布文件列表。</p>
+<p><strong>成功结果：</strong>规定文件完整；项目可被 Git 跟踪；无额外第三方包；发布命令及结果有真实日志；必需的四个发布文件可供宿主读取；bin/obj 和发布目录未纳入 Git。</p>
+<p><strong>失败反馈：</strong>记录具体缺失文件、错误路径、编码规范违规或交付差异，不用虚构文件补齐记录。</p>
+<p><strong>异常恢复：</strong>交付不可访问时标记阻塞；原 Developer 补齐后，QA 重新核对并记录实际哈希。</p>
+<p><strong>测试判定：</strong>全部交付标准满足方可通过；状态：尚未执行。</p>
+</div>
+<div class="test">
+<h4>A-02 第一次独立启动</h4>
+<p><strong>前置条件：</strong>发布文件完整，Windows 所需运行时可用，已准备分别捕获两个输出流及退出信息。</p>
+<p><strong>操作步骤与处理中：</strong>直接运行 <code>Artifacts/hello-world/publish/HelloWorld.exe</code>，不输入任何内容，记录完整输出和进程耗时。</p>
+<p><strong>成功结果：</strong>标准输出恰好一行 <code>Hello World!</code>，允许 Windows 换行，无额外空行；标准错误为空；退出码 0；5 秒内自行退出。</p>
+<p><strong>失败反馈：</strong>保存真实差异、错误流、非零退出码或超时事实。</p>
+<p><strong>异常恢复：</strong>无法启动时记录原因；超时则清理测试进程并记录；采集中断则判未完成，恢复后重测。</p>
+<p><strong>测试判定：</strong>四项运行指标全部符合且有证据方可通过；状态：尚未执行。</p>
+</div>
+<div class="test">
+<h4>A-03 第二次独立启动与结果一致性</h4>
+<p><strong>前置条件：</strong>第一次启动已经结束，交付产物未变化，未通过用户输入结束程序。</p>
+<p><strong>操作步骤与处理中：</strong>创建新的进程，再次直接运行同一发布文件，独立捕获输出、错误、退出码和耗时。</p>
+<p><strong>成功结果：</strong>第二次完整满足 A-02 的全部指标；两次记录相互独立，均不等待输入。</p>
+<p><strong>失败反馈：</strong>记录两次差异，任一次不符合均不能判整体通过。</p>
+<p><strong>异常恢复：</strong>若产物改变，重新记录哈希并从第一次启动开始验证，不能混用不同产物的两次结果。</p>
+<p><strong>测试判定：</strong>同一交付连续两次独立启动均符合才通过；状态：尚未执行。</p>
+</div>
+<div class="test">
+<h4>A-04 无外部行为与工程范围核对</h4>
+<p><strong>前置条件：</strong>有完整源码、项目文件及实际发布交付，可与运行证据对应。</p>
+<p><strong>操作步骤与处理中：</strong>审查完整示例源码及依赖，核对两次运行证据和相关目录变化；检查无应用联网、配置读取、等待输入或状态写入逻辑，并核对未修改范围外业务代码。</p>
+<p><strong>成功结果：</strong>程序只完成固定输出并退出；没有上述额外行为；未新增 Unity 或其他集成工程、第三方包和系统服务。</p>
+<p><strong>失败反馈：</strong>给出确切代码位置、依赖或实际行为证据，不能仅以输出正确判定本项通过。</p>
+<p><strong>异常恢复：</strong>证据不足时保持未完成；确认代码问题后由原 Developer 返修，原 QA 复测。</p>
+<p><strong>测试判定：</strong>范围和行为均符合且证据可追溯方可通过；状态：尚未执行。</p>
+</div>
+<div class="test">
+<h4>A-05 报告证据与异常分类</h4>
+<p><strong>前置条件：</strong>已取得真实构建、发布、运行结果，或出现实际阻塞记录。</p>
+<p><strong>操作步骤与处理中：</strong>核对中文 HTML 报告、实际命令、输出流、退出码、时间、文件列表及 SHA-256；有失败时核对分类与恢复记录。</p>
+<p><strong>成功结果：</strong>每条结论有对应真实证据；环境问题标记阻塞，代码问题进入原 Developer 返修及原 QA 复测；通过结论后仍等待人工最终验收。</p>
+<p><strong>失败反馈：</strong>证据缺失、使用 <code>dotnet run</code> 替代发布产物运行、把图示当实测结果或伪造通过时，报告不符合交付标准。</p>
+<p><strong>异常恢复：</strong>补齐记录或重新实际运行；未发生的异常分支标为未触发，不声称已实测。无需为制造异常安装软件、移除运行时或增加测试框架。</p>
+<p><strong>测试判定：</strong>证据完整且分类真实方可通过报告审核；状态：尚未执行。</p>
+</div>
+</section>
+<section id="references">
+<h2>附录 B：参考依据与交付记录</h2>
+<table>
+<thead><tr><th>来源</th><th>已核实事实</th><th>本需求采用方式</th></tr></thead>
+<tbody>
+<tr><td>Microsoft Learn：<a href="https://learn.microsoft.com/en-us/dotnet/core/tutorials/create-console-app?pivots=vscode">Create a .NET console application</a></td><td>根据本轮宿主提供的已查阅资料，官方使用简单控制台工程显示固定问候并结束。具体资料更新日期及宿主查阅日期未提供。</td><td>只借用基础控制台范式；不采用教程中的用户输入增强示例。本项目固定输出无逗号的 <code>Hello World!</code>，不采用 <code>Hello, World!</code>。</td></tr>
+</tbody>
+</table>
+<p>本次为工具测试，无需市场调研。该来源属于官方技术范例，不作为成功游戏或商业表现证据。本代理未额外联网、浏览或执行验证。</p>
+<ul>
+<li>需求阅读产物由宿主保存为 <code>app/desgin/HELLO-WORLD_v1.0_需求.html</code>；本文不声明文件已落盘。</li>
+<li>文档中的工程、产物和报告路径均相对于仓库根目录。</li>
+<li>本次只提供完整 HTML 需求内容，未编写程序、编译发布、执行 QA、创建任务、上传或审批。</li>
+<li>没有未决业务选择不等于版本已获批准；正式审批与执行状态以平台记录为准。</li>
+</ul>
+</section>
+<footer class="footer">HELLO-WORLD · v1.0 · 待人工审批<br>开发、发布及全部验收用例尚未执行。人工批准后方可进入授权执行流程。</footer>
+</main>
+</body>
+</html>

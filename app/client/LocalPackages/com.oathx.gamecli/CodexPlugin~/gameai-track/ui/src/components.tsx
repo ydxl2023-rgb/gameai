@@ -97,7 +97,7 @@ export function TaskTable({ tasks, allTasks = tasks, select, canSelectDispatch =
             </Tooltip>}
             <Button type="link" style={{ whiteSpace: 'nowrap',padding:0,marginLeft:4 }} title={t.title} onClick={() => select(t)}>{id}</Button>
         </span> },
-        { title: 'Deliverable', dataIndex: 'title', width: 240, render:(title,t)=>t.group ? `共 ${t.group.total} 项 · 完成 ${t.group.completed} · 阻塞 ${t.group.blocked}${filtered ? '（筛选结果）' : ''}` : title },
+        { title: 'Deliverable', dataIndex: 'title', width: 240, render:(title,t)=>t.group ? `共 ${t.group.total} 项 · 完成 ${t.group.completed} · 阻塞 ${t.group.blocked}${filtered ? '（筛选结果）' : ''}` : <>{t.repair && <Tag color="orange">返修</Tag>}{title}</> },
         { title: 'Role', dataIndex: 'role', filteredValue:filters.role, filters: ['Design','Art', 'Development', 'QA','PM'].map(value => ({ text: value, value })) },
         { title: 'Agent', dataIndex: 'agent', render: a => a ?? '—' },
         { title: 'Status', dataIndex: 'status', filteredValue:filters.status, filters: ['待调度','执行中', '依赖阻塞', '等待交付','已完成'].map(value => ({ text: value, value })), render: (s,t) => t.group ? null : <StateTag value={s} /> },

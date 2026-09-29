@@ -165,3 +165,7 @@ namespace GameCLI.Contracts
 ## 用户阅读文档格式
 
 向用户交付的文档必须遵守 [纲要式文档输出规范](../gameai-document-format/SKILL.md)，由当前对话宿主生成带封面、目录及打印样式的独立 HTML 阅读版。Agent 仍返回规定的结构化结果，标准技能仍使用 SKILL.md，任务正文格式保持单据规范。
+
+## 专业任务的云端核验上下文
+
+GameCLIServer 在派发、固定 Agent claim、执行结束三个阶段负责平台核验；Agent 输入中的 platform_context 是本次数据库核验结果，而非离线缓存。该上下文标明 authoritative、validated_at、requirement_version_id 和 plan_version_id 时，Agent 可以按授权任务执行，不自行访问数据库或猜测 HTTP 端口。服务失联由 GameCLI 心跳取消执行；模型只交付结果与证据，不持有平台凭据或自行回写状态。

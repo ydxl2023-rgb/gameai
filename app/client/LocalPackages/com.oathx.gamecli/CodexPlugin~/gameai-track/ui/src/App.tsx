@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { App as AntApp, Alert, Badge, Button, Checkbox, ConfigProvider, Descriptions, Drawer, Empty, Form, Input, Modal, Progress, Select, Space, Spin, Splitter, Table, Tabs, Tag, Typography, theme } from 'antd';
+import { WorkflowOutput } from './WorkflowOutput';
 import { AgentHistory } from './AgentHistory';
 import { AgentCreateDialog } from './AgentCreateDialog';
+import { TaskDispatchDialog, type DispatchRow } from './TaskDispatchDialog';
 import { PmSplitButton } from './PmSplitButton';
 import zhCN from 'antd/locale/zh_CN';
 import { TrackBridge } from './bridge';
@@ -15,8 +17,13 @@ export function WorkbenchApp()
     const [addingAgent, setAddingAgent] = useState(false);
     const [reviewSession, setReviewSession] = useState<{ authenticated: boolean; name?: string; csrf?: string }>({ authenticated: false });
     const [loginOpen, setLoginOpen] = useState(false);
+    const [automaticApproval,setAutomaticApproval] = useState(false);
     const [savingReview, setSavingReview] = useState(false);
     const [startingPm, setStartingPm] = useState<string>();
+    const [dispatchRows,setDispatchRows] = useState<DispatchRow[]>();
+    const [dispatchInput,setDispatchInput] = useState<{task_id:string;revision:number}[]>([]);
+    const [dispatchBusy,setDispatchBusy] = useState(false);
+    const dispatchLock = useRef(false);
     const [savingTask,setSavingTask] = useState<string>();
     const [loginForm] = Form.useForm<{ username: string; password: string }>();
     const [persistent, setPersistent] = useState(false);
@@ -29,6 +36,7 @@ export function WorkbenchApp()
     const [review, setReview] = useState<RequirementRow>();
     const [documentPreview, setDocumentPreview] = useState<RequirementRow>();
     const [detail, setDetail] = useState<Task | Agent>();
+    useEffect(()=>setAutomaticApproval(false),[documentPreview?.version_id]);
     const [dialog, setDialog] = useState<'approve' | 'revise'>();
     const [audit, setAudit] = useState<Audit[]>([]);
     const [logs, setLogs] = useState<string[]>([]);
@@ -40,6 +48,7 @@ export function WorkbenchApp()
     const [context, setContext] = useState({ embedded: false, ready: false, mode: 'inline', modes: [] as string[] });
     const bridge = useRef<TrackBridge | null>(null);
     const mounted = useRef(true);
+    const refreshing = useRef(false);
     const [form] = Form.useForm<{ reason: string }>();
     const { message } = AntApp.useApp();
     function log(text: string) { setLogs(old => [...old.slice(-99), `${new Date().toLocaleTimeString()}  ${text}`]); }
@@ -52,15 +61,16 @@ export function WorkbenchApp()
         setData(old => snapshot.mode === 'demo' && old && old.requirement.revision === snapshot.workbench.requirement.revision ? { ...snapshot.workbench, requirement: old.requirement, agents: snapshot.workbench.agents.map(a => ({ ...a, read: old.agents.find(x => x.id === a.id)?.read ?? a.read, write: old.agents.find(x => x.id === a.id)?.write ?? a.write })) } : snapshot.workbench);
         setUpdated(new Date(snapshot.server_time).toLocaleTimeString());
         setError('');
-        log((snapshot.mode === 'postgres' ? '数据库快照已更新 · ' : '模拟快照已更新 · ') + snapshot.request_id);
+        if (snapshot.mode === 'demo') log('模拟快照已更新 · ' + snapshot.request_id);
     }
     async function refresh()
     {
-        if (!bridge.current || busy) return;
+        if (!bridge.current || refreshing.current) return;
+        refreshing.current = true;
         setBusy(true);
         try { const snapshot = await bridge.current.refresh(); if (mounted.current) receive(snapshot); }
         catch (e) { if (mounted.current) setError(e instanceof Error ? e.message : '连接失败'); }
-        finally { if (mounted.current) setBusy(false); }
+        finally { refreshing.current = false; if (mounted.current) setBusy(false); }
     }
     useEffect(() =>
     {
@@ -82,13 +92,13 @@ export function WorkbenchApp()
         void fetch('/api/track/review-session', { signal: AbortSignal.timeout(10000) }).then(r => r.json()).then(value => { if (active) setReviewSession(value); }).catch(() => {});
         return () => { active = false; };
     }, [persistent, context.embedded]);
-    const pmRunning = data?.requirements?.some(row => row.pm_job?.state === 'running') === true;
     useEffect(() =>
     {
-        if (!pmRunning) return;
-        const timer = window.setInterval(() => void refresh(), 5000);
+        if (!persistent) return;
+        // Keep observing external work even when the previous snapshot was idle.
+        const timer = window.setInterval(() => void refresh(), 3000);
         return () => window.clearInterval(timer);
-    }, [pmRunning, busy]);
+    }, [persistent]);
 
     async function splitRequirement(row: RequirementRow)
     {
@@ -109,6 +119,9 @@ export function WorkbenchApp()
     function pmButton(row: RequirementRow)
     {
         const currentRow = data?.requirements?.find(r => r.version_id === row.version_id) ?? row;
+        const automation=currentRow.approval_workflow;
+        if (automation && ['queued','pm'].includes(automation.state)) return <Tag color="processing" title="已授权此批准版本的 PM、开发与 QA 自动执行">自动流程：PM 处理中</Tag>;
+        if (automation?.state==='failed') return <Typography.Text type="danger" title={automation.error}>自动流程已暂停</Typography.Text>;
         return <PmSplitButton row={currentRow} allowed={persistent && !context.embedded && reviewSession.authenticated} busy={startingPm === row.id} start={() => void splitRequirement(currentRow)} />;
     }
     async function setTaskDispatch(task:Task,allowed:boolean)
@@ -128,6 +141,40 @@ export function WorkbenchApp()
             await refresh();
         }
         finally { setSavingTask(undefined); }
+    }
+    async function previewDispatch(tasks:Task[])
+    {
+        if (dispatchLock.current) return;
+        dispatchLock.current=true;
+        setDispatchBusy(true);
+        try
+        {
+            const input=tasks.filter(t=>t.task_uuid).map(t=>({task_id:t.task_uuid!,revision:t.dispatch_revision ?? 0}));
+            const result=await reviewRequest('review-task-preview',{tasks:input,retry:true});
+            setDispatchInput(input);
+            setDispatchRows(result.rows);
+        }
+        catch(e) { void message.error(e instanceof Error ? e.message : '派发检查失败'); }
+        finally { dispatchLock.current=false; setDispatchBusy(false); }
+    }
+    async function confirmDispatch(automatic:boolean)
+    {
+        if (dispatchLock.current || !dispatchRows?.some(r=>r.ready)) return;
+        dispatchLock.current=true;
+        setDispatchBusy(true);
+        try
+        {
+            // Submit only the tasks shown as ready; changed capacity cannot silently add another task.
+            const ready=new Set(dispatchRows.filter(r=>r.ready).map(r=>r.task_id));
+            const result=await reviewRequest('review-task-dispatch',{tasks:dispatchInput.filter(t=>ready.has(t.task_id)),retry:true,auto_continue:automatic});
+            log(`人工派发：已启动 ${result.started} 个任务。`);
+            result.rows.filter((r:DispatchRow)=>!r.ready).forEach((r:DispatchRow)=>log(`${r.id}：${r.reason}`));
+            void message.info(`已派发 ${result.started} 个任务，其余任务保留勾选`);
+            setDispatchRows(undefined);
+            await refresh();
+        }
+        catch(e) { void message.error(e instanceof Error ? e.message : '派发失败，请刷新核实执行状态'); await refresh(); }
+        finally { dispatchLock.current=false; setDispatchBusy(false); }
     }
     async function reviewRequest(path: string, body: unknown)
     {
@@ -181,7 +228,7 @@ export function WorkbenchApp()
             try
             {
                 await reviewRequest('review-decisions', { version_id: documentPreview.version_id, revision: documentPreview.revision,
-                    document_hash: documentPreview.document_hash, decision: dialog === 'approve' ? 'approved' : 'rejected', reason });
+                    document_hash: documentPreview.document_hash, decision: dialog === 'approve' ? 'approved' : 'rejected', reason, ...(dialog==='approve' && automaticApproval ? {auto_start:true} : {}) });
                 setDocumentPreview({ ...documentPreview, status });
                 setDialog(undefined); form.resetFields();
                 log(status + ' ' + documentPreview.id + ' / ' + documentPreview.version + '，已入库，未自动派工。');
@@ -220,7 +267,7 @@ export function WorkbenchApp()
     const current = data && version === data.requirement.version;
     const approvalAllowed = !savingReview && !!data && !!documentPreview && documentPreview.status === '待审批' && (persistent ? !context.embedded && reviewSession.authenticated && !!documentPreview.version_id && !!documentPreview.document_hash && data.requirements?.some(r => r.id === documentPreview.id && r.revision === documentPreview.revision && r.status === '待审批') === true : documentPreview.revision === data.requirement.revision && canApprove(identity, version, data));
     const selectedAgent = detail && 'station' in detail ? data?.agents.find(a => a.id === detail.id) : undefined;
-    const selectedTask = detail && 'dependencies' in detail ? detail : undefined;
+    const selectedTask = detail && 'dependencies' in detail ? data?.tasks.find(t=>t.id===detail.id) : undefined;
     function body()
     {
         if (!data) return busy ? <div className="placeholder"><Spin description="正在读取工作台…" /></div> : <Empty description="未取得快照，请检查服务后重试" />;
@@ -241,7 +288,7 @@ export function WorkbenchApp()
                 ]} />
 
         </Section>;
-        if (tab === 'tasks') return <Section title="任务与依赖" extra={<Input.Search aria-label="搜索任务" placeholder="任务 / Agent" value={query} allowClear onChange={e => setQuery(e.target.value)} style={{ width: 180 }} />}><Typography.Paragraph type="secondary">按主任务 → 角色分类 → 具体任务展开。勾选仅保存“允许派发”，不会立即启动；依赖完成且版本有效后才能由编排器派发。</Typography.Paragraph><TaskTable canSelectDispatch={persistent && !context.embedded && reviewSession.authenticated} savingTask={savingTask} setDispatch={(task,allowed) => void setTaskDispatch(task,allowed)} allTasks={data.tasks} tasks={data.tasks.filter(t => [t.id, t.title, t.agent ?? ''].join(' ').toLowerCase().includes(query.toLowerCase()))} select={setDetail} /></Section>;
+        if (tab === 'tasks') return <Section title="任务与依赖" extra={<Space wrap><Button type="primary" disabled={!persistent || context.embedded || !reviewSession.authenticated || !!savingTask || dispatchBusy || !data.tasks.some(t=>t.dispatch_allowed)} loading={dispatchBusy} onClick={()=>void previewDispatch(data.tasks.filter(t=>t.dispatch_allowed))}>派发已勾选任务（{data.tasks.filter(t=>t.dispatch_allowed).length}）</Button><Input.Search aria-label="搜索任务" placeholder="任务 / Agent" value={query} allowClear onChange={e => setQuery(e.target.value)} style={{ width: 180 }} /></Space>}><Typography.Paragraph type="secondary">按主任务 → 角色分类 → 具体任务展开。勾选仅保存“允许派发”，不会立即启动；请点击派发按钮，经依赖、版本和容量检查后启动。</Typography.Paragraph>{data.flows?.map(flow=><Typography.Paragraph key={flow.requirement_key} type="secondary" ellipsis={{rows:1,tooltip:flow.reason}}>{flow.requirement_key} 自动推进：{flow.state==="active"?"运行中":flow.state==="paused"?"已暂停":"已结束"} {flow.reason}</Typography.Paragraph>)}<TaskTable canSelectDispatch={persistent && !context.embedded && reviewSession.authenticated} savingTask={savingTask} setDispatch={(task,allowed) => void setTaskDispatch(task,allowed)} allTasks={data.tasks} tasks={data.tasks.filter(t => [t.id, t.title, t.agent ?? ''].join(' ').toLowerCase().includes(query.toLowerCase()))} select={setDetail} /></Section>;
         if (tab === 'versions') return <Section title="需求版本"><Table size="small" rowKey="version" pagination={false} scroll={{ x: 600 }} dataSource={data.versions?.map(({ version, status, change, reference }) => ({ version, status, change, reference })) ?? [{ version: r.version, status: r.status, change: '异常恢复与测试用例', reference: '尚未派工' }, { version: 'v1.2', status: '已批准', change: '基础规则与 UI 交付标准', reference: '4 项任务 · 2 项执行中' }]} columns={[{ title: 'Version', dataIndex: 'version' }, { title: 'State', dataIndex: 'status', render: s => <StateTag value={s} /> }, { title: 'Change', dataIndex: 'change' }, { title: 'References', dataIndex: 'reference' }, { title: 'Action', render: (_, v) => <Button type="link" onClick={() => openVersion(v.version)}>审阅</Button> }]} /><Typography.Paragraph className="note">需求版本 → PM 计划版本 → 执行编号 → 产物版本 → QA 验收版本。历史版本只读，恢复内容需新建修订并重新审批。</Typography.Paragraph></Section>;
         if (tab === 'permissions') return <>
             <Section title="人工身份权限"><Alert type="info" title="身份切换仅用于演示；正式身份来自服务端会话，管理员不会自动获得审批权限。" /><Table size="small" pagination={false} rowKey="role" dataSource={[{ role: '策划 · 人工', read: '允许', approve: '允许', manage: '禁止' }, { role: 'PM / Art / Development / QA', read: '允许', approve: '禁止', manage: '禁止' }, { role: '项目管理员', read: '允许', approve: '禁止', manage: '允许' }]} columns={[{ title: 'Role', dataIndex: 'role' }, { title: 'Read', dataIndex: 'read' }, { title: 'Approve', dataIndex: 'approve' }, { title: 'Manage', dataIndex: 'manage' }]} /></Section>
@@ -255,7 +302,7 @@ export function WorkbenchApp()
         <div className="connection"><Badge status={error ? 'error' : updated ? 'success' : 'processing'} text={error ? '连接失败 / 数据可能过期' : updated ? (persistent ? '数据库快照 · ' : '模拟快照 · ') + updated : '连接中'} /><Typography.Text type="secondary">{context.embedded ? context.mode === 'fullscreen' ? '侧栏模式' : '内嵌模式' : '浏览器预览仅验证网页与 HTTP'}</Typography.Text></div>
         {error && <Alert type="error" showIcon title={error} />}{displayError && <Alert type="warning" closable title={displayError} />}
         <Tabs className="navigation" activeKey={tab} onChange={key => { setTab(key); setDocumentPreview(undefined); }} items={tabs.map(([key, label]) => ({ key, label }))} />
-        <div className="panels"><Splitter orientation="vertical"><Splitter.Panel defaultSize="78%" min={160}><main className={['overview', 'requirements', 'tasks'].includes(tab) ? 'page-content page-content--list' : 'page-content'}>{body()}</main></Splitter.Panel><Splitter.Panel min={65} collapsible><div className="output"><div className="output-title">Output <Typography.Text type="secondary">{persistent ? "数据库持久化 · 运行日志仅当前页面" : "仅本页模拟 · 刷新浏览器清除操作"}</Typography.Text></div><pre aria-live="polite">{logs.length ? logs.join('\n') : '等待连接与操作…'}</pre></div></Splitter.Panel></Splitter>
+        <div className="panels"><Splitter orientation="vertical"><Splitter.Panel defaultSize="78%" min={160}><main className={['overview', 'requirements', 'tasks'].includes(tab) ? 'page-content page-content--list' : 'page-content'}>{body()}</main></Splitter.Panel><Splitter.Panel min={65} collapsible><WorkflowOutput events={data?.activity ?? []} persistent={persistent} logs={logs} error={error} /></Splitter.Panel></Splitter>
             <Drawer title={documentPreview ? documentPreview.id + ' / ' + documentPreview.title + ' / ' + documentPreview.version : '需求原文'} open={!!documentPreview} onClose={() => setDocumentPreview(undefined)} placement="right" size="100%" getContainer={false} rootStyle={{ position: 'absolute' }} styles={{ body: { padding: 0, overflow: 'hidden' } }} destroyOnHidden footer={
                 <div className="document-review-footer">
                     <div><Space><Typography.Text strong>{documentPreview?.version}</Typography.Text><StateTag value={documentPreview?.status ?? '待审批'} /></Space><Typography.Text type="secondary" className="document-review-hint">{persistent ? reviewSession.authenticated ? '审批绑定当前版本与原始 HTML；确认后写入数据库。' : '请先通过顶部按钮登录人工审批账户。' : approvalAllowed ? '请阅读全文后确认此版本；当前为模拟审批。' : '当前身份或版本不可审批。'}</Typography.Text></div>
@@ -269,13 +316,15 @@ export function WorkbenchApp()
             <Form form={loginForm} layout="vertical"><Form.Item name="username" label="账户" rules={[{ required: true }]}><Input autoComplete="username" /></Form.Item><Form.Item name="password" label="密码" rules={[{ required: true }]}><Input.Password autoComplete="current-password" /></Form.Item></Form>
         </Modal>
         <AgentCreateDialog open={addingAgent} close={() => setAddingAgent(false)} created={id => { setAddingAgent(false); setTab('overview'); log('已添加 Agent：' + id + '，等待节点上线及派工。'); void message.success('Agent 配置已保存'); void refresh(); }} />
+        <TaskDispatchDialog rows={dispatchRows} busy={dispatchBusy} close={()=>{if (!dispatchBusy) setDispatchRows(undefined);}} confirm={automatic=>void confirmDispatch(automatic)} />
         <Drawer title={detail?.id} open={!!detail} onClose={() => setDetail(undefined)} size={selectedAgent ? 720 : 420} getContainer={false} styles={{ wrapper: { maxWidth: '100%' } }}>
-            {selectedTask && <><Typography.Title level={5}>{selectedTask.title}</Typography.Title><StateTag value={selectedTask.status} /><Descriptions column={1} items={[{ key: 'v', label: '需求版本', children: selectedTask.version }, { key: 'a', label: 'Agent', children: selectedTask.agent ?? '未分配' }, { key: 'd', label: '依赖', children: <TaskLinks ids={selectedTask.dependencies} tasks={data?.tasks ?? []} select={setDetail} /> }]} /><Progress percent={selectedTask.progress} /><Typography.Paragraph style={{ whiteSpace: 'pre-wrap' }}>{selectedTask.description}</Typography.Paragraph><Typography.Paragraph type="secondary">来源：{selectedTask.source_refs?.join('、') || '未记录'}</Typography.Paragraph><Descriptions column={1} items={selectedTask.criteria?.map(c => ({key:c.kind,label:({preconditions:'前置条件',steps:'操作与处理',success:'成功结果',failure:'失败提示',recovery:'异常恢复',tests:'测试用例'} as Record<string,string>)[c.kind] ?? c.kind,children:<span style={{whiteSpace:'pre-wrap'}}>{c.text}</span>}))} /><Alert type="info" title={persistent ? '任务已登记；此入口仅拆分任务，不启动美术制作或程序开发。' : '模拟执行记录，没有真实产物或验收证据。'} /></>}
+            {selectedTask && <><Typography.Title level={5}>{selectedTask.title}</Typography.Title><Button type="primary" disabled={!persistent || context.embedded || !reviewSession.authenticated || !selectedTask.dispatch_allowed || !["待调度","依赖阻塞","失败"].includes(selectedTask.status) || dispatchBusy} onClick={()=>void previewDispatch([selectedTask])}>派发此任务</Button><StateTag value={selectedTask.status} /><Descriptions column={1} items={[{ key: 'v', label: '需求版本', children: selectedTask.version }, { key: 'a', label: 'Agent', children: selectedTask.agent ?? '未分配' }, { key: 'd', label: '依赖', children: <TaskLinks ids={selectedTask.dependencies} tasks={data?.tasks ?? []} select={setDetail} /> }]} />{selectedTask.repair && <Descriptions column={1} items={[{key:'source',label:'原开发 / QA 任务',children:<TaskLinks ids={[selectedTask.repair.source_task,selectedTask.repair.qa_task]} tasks={data?.tasks ?? []} select={setDetail} />},{key:'bound',label:'原开发 Agent',children:selectedTask.bound_agent},{key:'round',label:'返修轮次',children:selectedTask.repair.rounds+' / 3'},{key:'defect',label:'缺陷状态',children:({open:'等待返修',retest:'等待原 QA 复测',closed:'复测通过',exhausted:'三轮失败，需人工处理'} as Record<string,string>)[selectedTask.repair.state]},{key:'latest',label:'本轮问题',children:selectedTask.repair.details.actual}]} />}<Progress percent={selectedTask.progress} />{selectedTask.last_result && <Typography.Paragraph style={{whiteSpace:"pre-wrap"}}>{selectedTask.last_result}</Typography.Paragraph>}<Typography.Paragraph style={{ whiteSpace: 'pre-wrap' }}>{selectedTask.description}</Typography.Paragraph><Typography.Paragraph type="secondary">来源：{selectedTask.source_refs?.join('、') || '未记录'}</Typography.Paragraph><Descriptions column={1} items={selectedTask.criteria?.map(c => ({key:c.kind,label:({preconditions:'前置条件',steps:'操作与处理',success:'成功结果',failure:'失败提示',recovery:'异常恢复',tests:'测试用例'} as Record<string,string>)[c.kind] ?? c.kind,children:<span style={{whiteSpace:'pre-wrap'}}>{c.text}</span>}))} /><Alert type="info" title={persistent ? '启用自动推进后，交付和检查证据通过才放行后续已勾选任务；失败会暂停链路，QA 保留最终人工验收。' : '模拟执行记录，没有真实产物或验收证据。'} /></>}
             {selectedAgent && <Descriptions column={1} items={[{ key: 'name', label: '名称', children: selectedAgent.name ?? selectedAgent.id }, { key: 'skills', label: '技能', children: selectedAgent.skills?.map(s => s.key + (s.primary ? '（主技能）' : '')).join('、') || '未配置' }, { key: 'enabled', label: '允许调度', children: selectedAgent.enabled ? '是' : '否' }, { key: 'r', label: '角色', children: selectedAgent.role }, { key: 's', label: '状态', children: <StateTag value={selectedAgent.status} /> }, { key: 'w', label: '工作站', children: selectedAgent.station }, { key: 'c', label: '容量', children: `${selectedAgent.used} / ${selectedAgent.capacity}` }, { key: 't', label: '任务', children: selectedAgent.task ?? '—' }, { key: 'read', label: '项目读取', children: selectedAgent.read ? '允许' : '禁止' }, { key: 'write', label: '任务写入', children: selectedAgent.write ? '仅限授权任务' : '禁止' }, { key: 'p', label: '文档审批', children: '禁止，需人工批准' }]} />}
             {selectedAgent && <AgentHistory key={selectedAgent.id} agent={selectedAgent.id} bridge={bridge.current} />}
         </Drawer>
         <Modal title={(dialog === 'approve' ? '同意此版本' : '拒绝此版本') + (persistent ? '' : ' · 模拟')} confirmLoading={savingReview} open={!!dialog} onCancel={() => { if (!savingReview) setDialog(undefined); }} onOk={() => void confirm()} okText="确认" cancelText="返回审阅" okButtonProps={{ disabled: !approvalAllowed }} getContainer={false}>
-            <p>{documentPreview?.title} / {documentPreview?.version}</p><Typography.Text code>{documentPreview?.revision}</Typography.Text><p>{persistent ? "将保存当前人工账户的审批决定、版本及文档校验值。本轮不会自动派工。" : "操作只影响本页模拟状态，不写数据库、不创建任务、不启动 Agent。"}</p>
+            <p>{documentPreview?.title} / {documentPreview?.version}</p><Typography.Text code>{documentPreview?.revision}</Typography.Text><p>{persistent ? "将保存当前人工账户的审批决定、版本及文档校验值。仅勾选下方选项时，批准后自动启动后续执行。" : "操作只影响本页模拟状态，不写数据库、不创建任务、不启动 Agent。"}</p>
+            {persistent && dialog==='approve' && <Checkbox checked={automaticApproval} disabled={savingReview} onChange={e=>setAutomaticApproval(e.target.checked)}>批准后自动启动 PM 拆分，并允许本版本全部子任务按依赖执行（包含 QA 与缺陷返修）</Checkbox>}
             {dialog === 'revise' && <Form form={form} layout="vertical"><Form.Item label="拒绝原因" name="reason" rules={[{ required: true, whitespace: true, message: '请填写拒绝原因' }]}><Input.TextArea maxLength={500} showCount /></Form.Item></Form>}
         </Modal>
     </div>;

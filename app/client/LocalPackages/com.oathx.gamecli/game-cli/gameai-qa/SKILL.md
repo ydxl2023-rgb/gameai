@@ -12,8 +12,12 @@ description: 按 平台 验收标准核对指定交付版本的测试与视觉�
 - 失败分类为 code、art、spec、environment 或 test，附复现步骤和证据；不确定责任时明确说明。
 - 按 [任务依赖与交付规范](../gameai-task-delivery/SKILL.md) 向宿主返回验收结果，通过后进入人工验收，不自行合并或直接调用其他 Agent。
 
-输出 data 包含 verdict（pass/fail/blocked）、checks、category、evidence、suggested_owner、commit、build_id。修复建议交由编排器处理。遵循 [公共契约](../gameai-common/SKILL.md)。
+`qa execute` 必须遵守命令提供的结果 schema（verdict、checks、summary、files、deliverables、questions、defects、retests）；分析命令使用自身 schema。缺陷创建和修复调度由编排器处理。遵循 [公共契约](../gameai-common/SKILL.md)。
 
 ## 依赖与交付门禁
 
 执行或编写专业任务时，必须遵守 [任务依赖与交付规范](../gameai-task-delivery/SKILL.md)。单据列出真实前置编号、启动条件、交付要求及确认方式；编排器验证上游完成状态、实际文件与版本后才派工，交付提交不等于审核完成。
+
+## 执行与返修
+
+执行任务时必须读取 [QA 缺陷返修规则](../gameai-qa-repair/SKILL.md)。

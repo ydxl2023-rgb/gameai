@@ -18,7 +18,8 @@ namespace GameCLI.Plugins.Development
         public override IReadOnlyList<ICommand> Commands
         { get; } = Array.AsReadOnly(new ICommand[]
         {
-            new SpecialistAnalyzeCommand("Development")
+            new SpecialistAnalyzeCommand("Development"),
+            new SpecialistExecuteCommand("Development")
         });
     }
 }

@@ -1,12 +1,13 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { hostname } from 'node:os';
 import { z } from 'zod';
+import {ensureQaTasks} from './qa-context.js';
 import { ReviewError } from './requirements.js';
 
 const requestSchema = z.object({ version_id:z.uuid(), revision:z.string().regex(/^[0-9a-f]{64}$/), document_hash:z.string().regex(/^[0-9a-f]{64}$/) }).strict();
 const text = z.string().trim().min(1).max(12000);
 const taskSchema = z.object({
-    id:z.string().regex(/^[A-Z][A-Z0-9-]{0,31}$/), title:text.max(200), role:z.enum(['Art','Development']),
+    id:z.string().regex(/^[A-Z][A-Z0-9-]{0,31}$/), title:text.max(200), role:z.enum(['Art','Development','QA']),
     description:text, source_refs:z.array(text.max(200)).min(1).max(30),
     acceptance:z.object({ preconditions:text, steps:text, success:text, failure:text, recovery:text, tests:text }).strict(),
     depends_on:z.array(z.string()).max(100)
@@ -57,6 +58,7 @@ export function validatePmPlan(raw)
         ordered.push(task);
     }
     plan.tasks.forEach(visit);
+    if (plan.tasks.some(t=>t.role==='QA' && !t.depends_on.some(id=>byId.get(id)?.role==='Development'))) throw new ReviewError('QA 必须依赖具体程序交付任务。');
     return { ...plan, tasks:ordered };
 }
 
@@ -204,8 +206,18 @@ export async function publishPmPlan(pool, projectKey, job, result)
                 await client.query('INSERT INTO gameai.task_dependencies(project_id,task_id,depends_on_id) VALUES($1,$2,$3)',[version.project_id,row.id,ids.get(dependency)]);
             }
         }
-        const completed = (await client.query("UPDATE gameai.pm_jobs SET state='completed',plan_version_id=$2,task_count=$3,finished_at=now() WHERE id=$1 RETURNING *",[job.id,pv.id,plan.tasks.length])).rows[0];
-        await client.query("INSERT INTO gameai.audit_events(project_id,actor,event,payload) VALUES($1,'agent:PM','PM 已发布美术与程序子任务',$2)",[version.project_id,{execution_id:job.execution_id,plan_version_id:pv.id,task_count:plan.tasks.length}]);
+        const qaTasks=await ensureQaTasks(client,pv.id);
+        const automatic=(await client.query("SELECT * FROM gameai.approval_workflows WHERE version_id=$1 AND state='pm'",[version.id])).rows[0];
+        if (automatic)
+        {
+            // Only the immutable human approval authorizes selecting this exact plan's children.
+            await client.query(`UPDATE gameai.tasks SET dispatch_allowed=true,dispatch_revision=dispatch_revision+1,dispatch_selected_by=$2,dispatch_selected_at=now() WHERE plan_version_id=$1 AND parent_id IS NOT NULL`,[pv.id,automatic.requested_by]);
+            await client.query("INSERT INTO gameai.plan_dispatch_flows(plan_version_id,project_id,requested_by,state) VALUES($1,$2,$3,'active')",[pv.id,version.project_id,automatic.requested_by]);
+            await client.query("UPDATE gameai.approval_workflows SET state='dispatched',updated_at=now() WHERE version_id=$1",[version.id]);
+        }
+        const taskCount=plan.tasks.length+qaTasks.length;
+        const completed = (await client.query("UPDATE gameai.pm_jobs SET state='completed',plan_version_id=$2,task_count=$3,finished_at=now() WHERE id=$1 RETURNING *",[job.id,pv.id,taskCount])).rows[0];
+        await client.query("INSERT INTO gameai.audit_events(project_id,actor,event,payload) VALUES($1,'agent:PM','PM 已发布美术、程序与 QA 子任务',$2)",[version.project_id,{execution_id:job.execution_id,plan_version_id:pv.id,task_count:taskCount}]);
         return completed;
     });
 }
@@ -213,6 +225,8 @@ export async function publishPmPlan(pool, projectKey, job, result)
 export async function failPmJob(pool, job, error)
 {
     // An uncertain live lease must never be made retryable by a process timeout.
-    await pool.query(`UPDATE gameai.pm_jobs SET state=CASE WHEN EXISTS(SELECT 1 FROM gameai.agent_runs WHERE execution_id=$2 AND state IN ('running','unknown')) THEN 'unknown' ELSE 'failed' END,
-        error=$3,finished_at=now() WHERE id=$1 AND execution_id=$2 AND state='running'`,[job.id,job.execution_id,error.slice(0,2000)]);
+    await pool.query(`WITH failed AS (UPDATE gameai.pm_jobs SET state=CASE WHEN EXISTS(SELECT 1 FROM gameai.agent_runs WHERE execution_id=$2 AND state IN ('running','unknown')) THEN 'unknown' ELSE 'failed' END,
+        error=$3,finished_at=now() WHERE id=$1 AND execution_id=$2 AND state='running' RETURNING *)
+        INSERT INTO gameai.audit_events(project_id,actor,event,payload)
+        SELECT project_id,'agent:PM','PM 拆分失败或待核实',jsonb_build_object('execution_id',execution_id,'version_id',requirement_version_id,'state',state,'error',error) FROM failed`,[job.id,job.execution_id,error.slice(0,2000)]);
 }

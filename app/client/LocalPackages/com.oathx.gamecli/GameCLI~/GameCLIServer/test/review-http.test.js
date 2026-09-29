@@ -31,6 +31,12 @@ test('human login, origin and CSRF boundaries keep worker credentials out of app
     assert.equal((await post('review-decisions',{}, {Cookie:cookie})).status,401);
     assert.equal((await post('review-pm-split',{}, {Cookie:cookie})).status,401);
     assert.equal((await post('review-task-selection',{}, {Cookie:cookie})).status,401);
+    for (const endpoint of ['review-task-preview','review-task-dispatch'])
+    {
+        assert.equal((await post(endpoint,{}, {Cookie:cookie})).status,401);
+        assert.equal((await post(endpoint,{}, {Authorization:'Bearer '+worker.SUBMISSION_TOKEN})).status,401);
+        assert.equal((await post(endpoint,{},headers)).status,409);
+    }
     const unknown={version_id:randomUUID(),revision:'a'.repeat(64),document_hash:'b'.repeat(64),decision:'approved',reason:''};
     assert.equal((await post('review-decisions',unknown,headers)).status,409);
     assert.equal((await post('review-logout',{},headers)).status,200);

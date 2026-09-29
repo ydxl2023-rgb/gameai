@@ -16,7 +16,7 @@ namespace GameCLI.Contracts
                   "required":["id","title","role","description","source_refs","acceptance","depends_on"],
                   "properties":{
                     "id":{"type":"string"},"title":{"type":"string"},
-                    "role":{"type":"string","enum":["Art","Development"]},
+                    "role":{"type":"string","enum":["Art","Development","QA"]},
                     "description":{"type":"string"},
                     "source_refs":{"type":"array","items":{"type":"string"}},
                     "depends_on":{"type":"array","items":{"type":"string"}},

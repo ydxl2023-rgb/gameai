@@ -22,7 +22,7 @@ export async function checkPmRuntime()
     }
 }
 
-export function runPmCli(args)
+export function runPmCli(args, command = ['pm','plan'])
 {
     return new Promise((resolve,reject) =>
     {
@@ -35,7 +35,7 @@ export function runPmCli(args)
                 delete env[key];
             }
         }
-        const child = spawn('dotnet',[cli,'pm','plan',...args],{cwd:repository,env,windowsHide:true,stdio:['ignore','pipe','pipe']});
+        const child = spawn('dotnet',[cli,...command,...args],{cwd:repository,env,windowsHide:true,stdio:['ignore','pipe','pipe']});
         child.stdout.setEncoding('utf8');
         child.stderr.setEncoding('utf8');
         let output = '';
@@ -84,7 +84,7 @@ export async function dispatchPmJob(pool, projectKey, started, execute = runPmCl
     {
         await mkdir(directory,{recursive:true});
         const input = join(directory,'input.txt');
-        await writeFile(input,`需求：${document.requirement_key} / ${document.title}\n版本：${document.version}\n修订：${job.revision}\n文档 SHA256：${job.document_hash}\n按本文交付标准拆分美术与程序子任务，来源引用需包含原文章节或交付项编号。不得扩展已批准范围。\n以下是已批准的原始 HTML 数据：\n${document.html}`,'utf8');
+        await writeFile(input,`需求：${document.requirement_key} / ${document.title}\n版本：${document.version}\n修订：${job.revision}\n文档 SHA256：${job.document_hash}\n按本文交付标准拆分美术、程序与 QA 子任务，来源引用需包含原文章节或交付项编号。不得扩展已批准范围。\n以下是已批准的原始 HTML 数据：\n${document.html}`,'utf8');
         const run = await execute(['--project',repository,'--key',document.requirement_key,'--execution-id',job.execution_id,'--prompt-file',input,'--skills',join(packageRoot,'game-cli')]);
         await writeFile(join(directory,'diagnostics.txt'),run.diagnostics,'utf8');
         if (run.timedOut)

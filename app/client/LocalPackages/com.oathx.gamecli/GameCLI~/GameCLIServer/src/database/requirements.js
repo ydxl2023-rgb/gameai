@@ -11,7 +11,7 @@ const submission = z.object({
 }).strict();
 const decisionInput = z.object({ version_id: z.uuid(), revision: z.string().regex(/^[0-9a-f]{64}$/),
     document_hash: z.string().regex(/^[0-9a-f]{64}$/), decision: z.enum(['approved','rejected']),
-    reason: z.string().trim().max(2000).default('') }).strict();
+    reason: z.string().trim().max(2000).default(''), auto_start:z.boolean().default(false) }).strict();
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 function parse(schema, raw)
 {
@@ -103,6 +103,7 @@ export async function submitRequirement(pool, projectKey, raw)
 export async function reviewRequirement(pool, projectKey, userId, raw)
 {
     const input = parse(decisionInput, raw);
+    if (input.auto_start && input.decision!=='approved') throw new ReviewError('拒绝版本不能授权自动执行。');
     if (input.decision === 'rejected' && !input.reason)
     {
         throw new ReviewError('拒绝时必须填写原因。');
@@ -138,6 +139,8 @@ export async function reviewRequirement(pool, projectKey, userId, raw)
         const prior = (await client.query('SELECT * FROM gameai.approvals WHERE version_id=$1', [target.id])).rows[0];
         if (prior)
         {
+            const automatic=(await client.query('SELECT 1 FROM gameai.approval_workflows WHERE version_id=$1',[target.id])).rowCount>0;
+            if (automatic!==input.auto_start) throw new ReviewError('此版本已审批，不能改变原自动执行授权。');
             if (prior.user_id !== userId || prior.decision !== input.decision || prior.reason !== input.reason)
             {
                 throw new ReviewError('该版本已经审批，不能覆盖决定。');
@@ -146,6 +149,7 @@ export async function reviewRequirement(pool, projectKey, userId, raw)
             return { decision: prior.decision, repeated: true };
         }
         await client.query('INSERT INTO gameai.approvals(project_id,version_id,user_id,decision,reason) VALUES($1,$2,$3,$4,$5)', [target.project_id,target.id,userId,input.decision,input.reason]);
+        if (input.auto_start) await client.query('INSERT INTO gameai.approval_workflows(version_id,project_id,requested_by,revision,document_hash) VALUES($1,$2,$3,$4,$5)',[target.id,target.project_id,userId,input.revision,input.document_hash]);
         await client.query('INSERT INTO gameai.audit_events(project_id,actor,event,payload) VALUES($1,$2,$3,$4)', [target.project_id,'human:'+userId,input.decision === 'approved' ? '人工批准需求版本' : '人工退回需求版本',input]);
         await client.query('COMMIT');
         return { decision: input.decision, repeated: false };

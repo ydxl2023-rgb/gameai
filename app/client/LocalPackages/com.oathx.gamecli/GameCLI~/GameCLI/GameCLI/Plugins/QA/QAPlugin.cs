@@ -18,7 +18,8 @@ namespace GameCLI.Plugins.QA
         public override IReadOnlyList<ICommand> Commands
         { get; } = Array.AsReadOnly(new ICommand[]
         {
-            new SpecialistAnalyzeCommand("QA")
+            new SpecialistAnalyzeCommand("QA"),
+            new SpecialistExecuteCommand("QA")
         });
     }
 }

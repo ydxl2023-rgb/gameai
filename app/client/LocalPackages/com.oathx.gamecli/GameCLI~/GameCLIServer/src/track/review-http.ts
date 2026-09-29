@@ -8,6 +8,9 @@ import { agentRunRequest } from '../database/agent-runs.js';
 import { startPmJob } from '../database/pm-plans.js';
 import { setTaskDispatchSelection } from '../database/task-dispatch-selection.js';
 import { checkPmRuntime, dispatchPmJob } from './pm-dispatch.js';
+import { dispatchTasks } from '../database/task-dispatch.js';
+import {resumeApprovalWorkflows} from './approval-flow.js';
+import { runTaskChain, resumeTaskFlows } from './task-flow.js';
 
 let writer: ReturnType<typeof createPool> | undefined;
 let config: Record<string,string | undefined> | undefined;
@@ -38,6 +41,8 @@ export async function handleReviewRequest(request: IncomingMessage, response: Se
                 throw new Error('Configuration missing');
             }
             writer = createPool({ user:config.PGUSER,password:config.PGPASSWORD });
+            void resumeApprovalWorkflows(writer).catch(() => console.error('审批后自动执行恢复失败。'));
+            void resumeTaskFlows(writer).catch(() => console.error('自动推进恢复失败，等待核实。'));
         }
         // Cookies represent authenticated humans only. Worker submission credentials cannot approve.
         const sessionId = /(?:^|;\s*)gameai_review=([a-f0-9]{64})(?:;|$)/.exec(request.headers.cookie ?? '')?.[1] ?? '';
@@ -159,6 +164,7 @@ export async function handleReviewRequest(request: IncomingMessage, response: Se
         if (path === '/api/track/review-decisions')
         {
             reply(response,200,await reviewRequirement(writer,project,session!.user,input));
+            void resumeApprovalWorkflows(writer).catch(() => console.error('审批已保存，自动执行失败，请核查。'));
             return;
         }
         if (path === '/api/track/review-pm-split')
@@ -173,9 +179,22 @@ export async function handleReviewRequest(request: IncomingMessage, response: Se
             reply(response,started.created ? 202 : 200,{job_id:started.job.id,state:started.job.state,repeated:!started.created});
             return;
         }
+        if (path === '/api/track/review-task-preview' || path === '/api/track/review-task-dispatch')
+        {
+            await checkPmRuntime();
+            const commit = path.endsWith('-dispatch');
+            const result = await dispatchTasks(writer,project,session!.user,input,commit);
+            for (const job of result.jobs)
+            {
+                void runTaskChain(writer,job).catch(() => console.error('任务结果写入失败，保留执行占用等待核实。'));
+            }
+            reply(response,commit ? 202 : 200,{rows:result.rows,started:result.jobs.length});
+            return;
+        }
         if (path === '/api/track/review-task-selection')
         {
             reply(response,200,await setTaskDispatchSelection(writer,project,session!.user,input));
+            void resumeTaskFlows(writer).catch(() => console.error('自动推进检查失败。'));
             return;
         }
         reply(response,404,{error:'接口不存在。'});

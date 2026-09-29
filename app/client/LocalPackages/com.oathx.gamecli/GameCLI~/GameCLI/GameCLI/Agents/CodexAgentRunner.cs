@@ -11,17 +11,21 @@ namespace GameCLI.Agents
     internal static class CodexAgentRunner
     {
         /// <summary>Owns one role-specific Codex process and returns its final structured message.</summary>
-        public static async Task<AgentRunResult> RunAsync(string executable, string project, string role, string instructions, JsonElement schema, string prompt, string? model, string traceId, string executionId, Action<string> progress, CancellationToken cancellation, string? requirementKey = null)
+        public static async Task<AgentRunResult> RunAsync(string executable, string project, string role, string instructions, JsonElement schema, string prompt, string? model, string traceId, string executionId, Action<string> progress, CancellationToken cancellation, string? requirementKey = null, bool executeTask = false)
         {
             string inputHash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(prompt))).ToLowerInvariant();
             await using CloudAgentRun? cloud = requirementKey == null ? null : await CloudAgentRun.OpenAsync(project, role, requirementKey, executionId, inputHash, cancellation);
+            if (executeTask && cloud?.WorkspaceWrite != true)
+            {
+                throw new InvalidOperationException("Task execution requires an active cloud dispatch authorization.");
+            }
             if (cloud != null)
             {
                 cancellation = cloud.Token;
                 instructions += "\n" + cloud.Instructions;
                 progress("Fixed Agent: " + cloud.AgentKey + "\n");
             }
-            using LiveRun liveRun = new(project, executionId, role, taskTitle: "需求文档分析", mode: "draft");
+            using LiveRun liveRun = new(project, executionId, role, taskTitle: executeTask ? "执行已派发任务" : "需求文档分析", mode: executeTask ? "execute" : "draft");
             await using CodexRpcClient rpc = new(executable, project);
             progress("Codex started; initializing protocol.\n");
             await rpc.RequestAsync("initialize", new
@@ -39,7 +43,7 @@ namespace GameCLI.Agents
                 threadId = cloud?.ThreadId,
                 cwd = project,
                 model,
-                sandbox = "read-only",
+                sandbox = executeTask ? "workspace-write" : "read-only",
                 approvalPolicy = "never",
                 developerInstructions = instructions,
                 config = new Dictionary<string, object>

@@ -52,6 +52,14 @@ test('document submission, byte integrity, identity, versions and approval repla
         await assert.rejects(reviewRequirement(servicePool,projectKey,user,reject),/原因/);
         assert.equal((await reviewRequirement(servicePool,projectKey,user,{...reject,reason:'需要修订'})).decision,'rejected');
         assert.equal((await c.query('SELECT count(*)::int n FROM gameai.approvals WHERE project_id=$1',[project])).rows[0].n,2);
+        const v3=await submitRequirement(servicePool,projectKey,{...input,request_id:randomUUID(),version:'v3'});
+        const automatic={version_id:v3.version_id,revision:v3.revision,document_hash:input.sha256,decision:'approved',reason:'',auto_start:true};
+        await assert.rejects(reviewRequirement(servicePool,projectKey,outsider,automatic),/权限/);
+        assert.equal((await c.query('SELECT count(*)::int n FROM gameai.approval_workflows WHERE project_id=$1',[project])).rows[0].n,0);
+        await reviewRequirement(servicePool,projectKey,user,automatic);
+        assert.equal((await reviewRequirement(servicePool,projectKey,user,automatic)).repeated,true);
+        await assert.rejects(reviewRequirement(servicePool,projectKey,user,{...automatic,auto_start:false}),/自动执行授权/);
+        assert.equal((await c.query('SELECT count(*)::int n FROM gameai.approval_workflows WHERE project_id=$1',[project])).rows[0].n,1);
         assert.equal((await c.query('SELECT count(*)::int n FROM gameai.tasks WHERE project_id=$1',[project])).rows[0].n,0);
     }
     finally

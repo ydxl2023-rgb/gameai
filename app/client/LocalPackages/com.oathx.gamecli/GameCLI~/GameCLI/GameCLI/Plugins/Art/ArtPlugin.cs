@@ -18,7 +18,8 @@ namespace GameCLI.Plugins.Art
         public override IReadOnlyList<ICommand> Commands
         { get; } = Array.AsReadOnly(new ICommand[]
         {
-            new SpecialistAnalyzeCommand("Art")
+            new SpecialistAnalyzeCommand("Art"),
+            new SpecialistExecuteCommand("Art")
         });
     }
 }

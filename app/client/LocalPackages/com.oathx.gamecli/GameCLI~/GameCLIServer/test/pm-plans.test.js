@@ -1,3 +1,4 @@
+import {qaScenarios} from './qa-scenarios.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { randomUUID,createHash } from 'node:crypto';
@@ -8,6 +9,10 @@ import { createPool } from '../src/database/connection.js';
 import { submitRequirement,reviewRequirement } from '../src/database/requirements.js';
 import { startPmJob,publishPmPlan,failPmJob,validatePmPlan } from '../src/database/pm-plans.js';
 import { dispatchPmJob } from '../src/track/pm-dispatch.js';
+import { dispatchTasks } from '../src/database/task-dispatch.js';
+import { agentRunRequest } from '../src/database/agent-runs.js';
+import { runTaskChain } from '../src/track/task-flow.js';
+import { runTaskDispatch } from '../src/track/task-dispatch.js';
 import { setTaskDispatchSelection } from '../src/database/task-dispatch-selection.js';
 
 const acceptance = {preconditions:'已批准版本',steps:'制作并提交占位资源',success:'资源可供程序引用',failure:'缺失资源提示原因',recovery:'修正资源后重试验收',tests:'待执行：核对导入与规格'};
@@ -19,7 +24,7 @@ test('PM proposal validation rejects invalid roles, missing criteria and cyclic 
 {
     assert.deepEqual(validatePmPlan(plan).tasks.map(t => t.id),['ART-1','DEV-1']);
     assert.throws(() => validatePmPlan({...plan,tasks:[art,art]}),/编号重复/);
-    assert.throws(() => validatePmPlan({...plan,tasks:[{...art,role:'QA'}]}),/角色/);
+    assert.throws(() => validatePmPlan({...plan,tasks:[{...art,role:'Unknown'}]}),/角色/);
     assert.throws(() => validatePmPlan({...plan,tasks:[{...art,acceptance:{}}]}),/交付标准/);
     assert.throws(() => validatePmPlan({...plan,tasks:[dev]}),/不存在/);
     assert.throws(() => validatePmPlan({...plan,tasks:[dev,{...art,depends_on:['DEV-1']}]}),/循环/);
@@ -84,6 +89,13 @@ test('manual PM gate, idempotency, fixed-run proof, atomic publication and retry
         await c.query("INSERT INTO gameai.agent_runs(execution_id,conversation_id,request_hash,state) VALUES($1,$2,$3,'completed')",[started.job.execution_id,session,'a'.repeat(64)]);
         const result = {execution_id:started.job.execution_id,thread_id:'test-pm-thread',plan};
         await assert.rejects(publishPmPlan(servicePool,projectKey,started.job,{...result,plan:{...plan,tasks:[dev]}}),/不存在/);
+        await c.query('SAVEPOINT automatic_approval');
+        await c.query("INSERT INTO gameai.approval_workflows(version_id,project_id,requested_by,revision,document_hash,state) VALUES($1,$2,$3,$4,$5,'pm')",[version.version_id,p,user,version.revision,version.document_hash]);
+        await publishPmPlan(servicePool,projectKey,started.job,result);
+        assert.equal((await c.query('SELECT count(*)::int n FROM gameai.tasks WHERE project_id=$1 AND parent_id IS NOT NULL AND dispatch_allowed',[p])).rows[0].n,3);
+        assert.equal((await c.query('SELECT state FROM gameai.approval_workflows WHERE version_id=$1',[version.version_id])).rows[0].state,'dispatched');
+        assert.equal((await c.query('SELECT state FROM gameai.plan_dispatch_flows WHERE project_id=$1',[p])).rows[0].state,'active');
+        await c.query('ROLLBACK TO SAVEPOINT automatic_approval');
         failSecondTask = true;
         await assert.rejects(publishPmPlan(servicePool,projectKey,started.job,result),/Injected/);
         failSecondTask = false;
@@ -96,19 +108,19 @@ test('manual PM gate, idempotency, fixed-run proof, atomic publication and retry
             return {code:0,output:JSON.stringify(result),diagnostics:'mock PM protocol output',timedOut:false,overflow:false};
         });
         const rows = (await c.query('SELECT * FROM gameai.tasks WHERE project_id=$1 ORDER BY task_key',[p])).rows;
-        assert.equal(rows.length,3);
+        assert.equal(rows.length,4);
         for (const task of rows)
         {
-            const prefix = {PM:'T',Art:'A',Development:'P'}[task.role_code];
+            const prefix = {PM:'T',Art:'A',Development:'P',QA:'Q'}[task.role_code];
             assert.match(task.task_key,new RegExp('^'+prefix+'-[0-9]{7}$'));
         }
-        assert.equal(new Set(rows.map(t => t.task_key)).size,3);
-        assert.equal(rows.filter(t => t.parent_id).length,2);
+        assert.equal(new Set(rows.map(t => t.task_key)).size,4);
+        assert.equal(rows.filter(t => t.parent_id).length,3);
         assert.equal(rows.find(t => t.role_code === 'Development').status,'blocked');
         assert.equal(rows.find(t => t.role_code === 'Art').delivery_criteria.length,6);
-        assert.equal((await c.query('SELECT count(*)::int n FROM gameai.task_dependencies WHERE project_id=$1',[p])).rows[0].n,1);
+        assert.equal((await c.query('SELECT count(*)::int n FROM gameai.task_dependencies WHERE project_id=$1',[p])).rows[0].n,2);
         assert.equal((await publishPmPlan(servicePool,projectKey,started.job,result)).state,'completed');
-        assert.equal((await startPmJob(servicePool,projectKey,user,request)).job.task_count,2);
+        assert.equal((await startPmJob(servicePool,projectKey,user,request)).job.task_count,3);
         await failPmJob(servicePool,started.job,'late failure');
         assert.equal((await startPmJob(servicePool,projectKey,user,request)).job.state,'completed');
         const child = rows.find(t => t.role_code === 'Development');
@@ -125,6 +137,85 @@ test('manual PM gate, idempotency, fixed-run proof, atomic publication and retry
         await c.query("UPDATE gameai.tasks SET status='running' WHERE id=$1",[child.id]);
         await assert.rejects(setTaskDispatchSelection(servicePool,projectKey,user,{...selection,revision:2}),/已派发/);
         await c.query("UPDATE gameai.tasks SET status='blocked' WHERE id=$1",[child.id]);
+        const artTask=rows.find(t=>t.role_code==='Art');
+        const artAgent=(await c.query("INSERT INTO gameai.agents(project_id,agent_key,role_code,worker_id,enabled,display_name,capacity) VALUES($1,'art-01','Art',$2,true,'测试 Art',1) RETURNING id",[p,w])).rows[0].id;
+        await c.query("INSERT INTO gameai.fixed_agents VALUES($1,'Art',$2)",[p,artAgent]);
+        await c.query("INSERT INTO gameai.agent_grants(project_id,agent_id,permission_code) VALUES($2,$1,'task.write_assigned')",[artAgent,p]);
+        await c.query("INSERT INTO gameai.agent_skills(project_id,agent_id,skill_key,is_primary,content_hash) SELECT $2,$1,skill_key,true,content_hash FROM gameai.skills WHERE skill_key='gameai-art'",[artAgent,p]);
+        await setTaskDispatchSelection(servicePool,projectKey,user,{task_id:artTask.id,revision:0,allowed:true});
+        const dispatchInput={tasks:[{task_id:artTask.id,revision:1}]};
+        await assert.rejects(dispatchTasks(servicePool,projectKey,outsider,dispatchInput),/人工账户/);
+        const preview=await dispatchTasks(servicePool,projectKey,user,dispatchInput);
+        assert.equal(preview.rows[0].ready,true);
+        assert.equal(preview.jobs.length,0);
+        assert.equal((await c.query('SELECT count(*)::int n FROM gameai.executions WHERE project_id=$1',[p])).rows[0].n,0);
+        await setTaskDispatchSelection(servicePool,projectKey,user,{task_id:child.id,revision:2,allowed:true});
+        assert.match((await dispatchTasks(servicePool,projectKey,user,{tasks:[{task_id:child.id,revision:3}]})).rows[0].reason,/依赖未完成/);
+        const dispatched=await dispatchTasks(servicePool,projectKey,user,dispatchInput,true);
+        assert.equal(dispatched.jobs.length,1);
+        assert.equal((await dispatchTasks(servicePool,projectKey,user,dispatchInput,true)).jobs.length,0);
+        const job=dispatched.jobs[0];
+        const runId=job.executionId.replaceAll('-','');
+        const claim={action:'claim',execution_id:runId,role:'Art',requirement_key:'TEST-PM',worker_key:hostname().toLowerCase(),input_hash:createHash('sha256').update(job.prompt).digest('hex')};
+        await assert.rejects(agentRunRequest(servicePool,projectKey,{...claim,input_hash:'0'.repeat(64)}),/授权无效/);
+        const claimed=await agentRunRequest(servicePool,projectKey,claim);
+        assert.equal(claimed.workspace_write,true);
+        await agentRunRequest(servicePool,projectKey,{action:'attach',execution_id:runId,worker_key:claim.worker_key,thread_id:'test-art-thread'});
+        await agentRunRequest(servicePool,projectKey,{action:'finish',execution_id:runId,worker_key:claim.worker_key,state:'completed'});
+        await runTaskDispatch(servicePool,job,async(args,command)=>
+        {
+            assert.deepEqual(command,['art','execute']);
+            assert.ok(args.includes(job.executionId));
+            return {code:0,diagnostics:'deterministic test',output:JSON.stringify({ThreadId:'test-art-thread',InputSha256:createHash('sha256').update(job.prompt).digest('hex'),Text:JSON.stringify({verdict:'pass',checks:[{name:'测试文件可读取',passed:true,evidence_path:'docs/gamecli-server-architecture.md'}],summary:'测试交付',deliverables:['测试报告'],questions:[],files:['docs/gamecli-server-architecture.md']})})};
+        });
+        assert.equal((await c.query('SELECT status FROM gameai.tasks WHERE id=$1',[artTask.id])).rows[0].status,'review');
+        assert.equal((await c.query('SELECT state FROM gameai.executions WHERE id=$1',[job.executionId])).rows[0].state,'succeeded');
+        assert.match((await dispatchTasks(servicePool,projectKey,user,{tasks:[{task_id:child.id,revision:3}]})).rows[0].reason,/依赖未完成/,'Submitted output is not accepted output');
+        await c.query('SAVEPOINT automatic_scenario');
+        const devAgent=(await c.query("INSERT INTO gameai.agents(project_id,agent_key,role_code,worker_id,enabled,display_name,capacity) VALUES($1,'dev-01','Development',$2,true,'测试开发',1) RETURNING id",[p,w])).rows[0].id;
+        await c.query("INSERT INTO gameai.fixed_agents VALUES($1,'Development',$2)",[p,devAgent]);
+        await c.query("INSERT INTO gameai.agent_grants(project_id,agent_id,permission_code) VALUES($1,$2,'task.write_assigned')",[p,devAgent]);
+        await c.query("INSERT INTO gameai.agent_skills(project_id,agent_id,skill_key,is_primary,content_hash) SELECT $1,$2,skill_key,true,content_hash FROM gameai.skills WHERE skill_key='gameai-dev'",[p,devAgent]);
+        await c.query("UPDATE gameai.tasks SET status='failed' WHERE id=$1",[artTask.id]);
+        const extra=(await c.query("INSERT INTO gameai.tasks(project_id,plan_version_id,parent_id,title,role_code) VALUES($1,$2,$3,'未勾选任务','Art') RETURNING id",[p,artTask.plan_version_id,parentTask.id])).rows[0];
+        const automatic=await dispatchTasks(servicePool,projectKey,user,{...dispatchInput,auto_continue:true,retry:true},true);
+        const rolesRun=[];
+        await runTaskChain(servicePool,automatic.jobs[0],async(args,command)=>
+        {
+            const id=args[args.indexOf('--execution-id')+1].replaceAll('-','');
+            const prompt=await readFile(args[args.indexOf('--prompt-file')+1],'utf8');
+            const hash=createHash('sha256').update(prompt).digest('hex');
+            const role=command[0]==='art'?'Art':'Development';
+            rolesRun.push(role);
+            assert.equal(JSON.parse(prompt).platform_context.authoritative,true);
+            await agentRunRequest(servicePool,projectKey,{...claim,execution_id:id,role,input_hash:hash});
+            const thread=role==='Art'?'test-art-thread':'test-dev-thread';
+            await agentRunRequest(servicePool,projectKey,{action:'attach',execution_id:id,worker_key:claim.worker_key,thread_id:thread});
+            await agentRunRequest(servicePool,projectKey,{action:'finish',execution_id:id,worker_key:claim.worker_key,state:'completed'});
+            return {code:0,diagnostics:'test chain',output:JSON.stringify({ThreadId:thread,InputSha256:hash,Text:JSON.stringify({verdict:'pass',summary:'真实测试替身',deliverables:['报告'],files:['docs/gamecli-server-architecture.md'],checks:[{name:'证据可读取',passed:true,evidence_path:'docs/gamecli-server-architecture.md'}],questions:[]})})};
+        });
+        assert.deepEqual(rolesRun,['Art','Development']);
+        assert.equal((await c.query('SELECT status FROM gameai.tasks WHERE id=$1',[child.id])).rows[0].status,'completed');
+        assert.equal((await c.query('SELECT status FROM gameai.tasks WHERE id=$1',[extra.id])).rows[0].status,'pending');
+        assert.equal((await c.query('SELECT state FROM gameai.plan_dispatch_flows WHERE plan_version_id=$1',[artTask.plan_version_id])).rows[0].state,'completed');
+        await qaScenarios({c,p,w,user,projectKey,servicePool,rows,child,devAgent,claim});
+        await c.query('ROLLBACK TO SAVEPOINT automatic_scenario');
+        await c.query("UPDATE gameai.tasks SET status='failed' WHERE id=$1",[artTask.id]);
+        const failedChain=await dispatchTasks(servicePool,projectKey,user,{...dispatchInput,auto_continue:true,retry:true},true);
+        let failedCalls=0;
+        await runTaskChain(servicePool,failedChain.jobs[0],async(args)=>
+        {
+            failedCalls++;
+            const id=args[args.indexOf('--execution-id')+1].replaceAll('-','');
+            const prompt=await readFile(args[args.indexOf('--prompt-file')+1],'utf8');
+            await agentRunRequest(servicePool,projectKey,{...claim,execution_id:id,input_hash:createHash('sha256').update(prompt).digest('hex')});
+            await agentRunRequest(servicePool,projectKey,{action:'finish',execution_id:id,worker_key:claim.worker_key,state:'failed'});
+            return {code:3,diagnostics:'isolated failure',output:''};
+        });
+        assert.equal(failedCalls,1);
+        assert.equal((await c.query('SELECT state FROM gameai.plan_dispatch_flows WHERE plan_version_id=$1',[artTask.plan_version_id])).rows[0].state,'paused');
+        assert.equal((await c.query('SELECT status FROM gameai.tasks WHERE id=$1',[child.id])).rows[0].status,'blocked');
+        await c.query('ROLLBACK TO SAVEPOINT automatic_scenario');
         const next = await submitRequirement(servicePool,projectKey,{...input,request_id:randomUUID(),version:'v2'});
         await assert.rejects(setTaskDispatchSelection(servicePool,projectKey,user,{...selection,revision:2}),/最新已批准/);
         await assert.rejects(startPmJob(servicePool,projectKey,user,request),/最新/);

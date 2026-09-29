@@ -42,3 +42,5 @@
 .chat-document-reader iframe { display: block; width: 100%; overflow: hidden; border: 1px solid #405063; border-radius: 10px; background: #fff; }
 .chat-source-toggle { margin-top: 12px; color: #a8b2bf; font-size: 12px; }
 .chat-source-toggle summary { cursor: pointer; padding: 6px 0; }
+
+.output-title{flex-wrap:wrap}.output pre{min-height:0}

@@ -1,6 +1,8 @@
 import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { z } from 'zod';
+import {loadTaskContext,contextBlockReason} from './qa-context.js';
+import {isDeepStrictEqual} from 'node:util';
 import { ReviewError } from './requirements.js';
 
 const roles = z.enum(['Design','PM','Art','Development','QA']);
@@ -28,6 +30,7 @@ export async function agentRunRequest(pool, projectKey, raw)
             throw new ReviewError('项目不存在。');
         }
         // One lock serializes role assignment, worker capacity and conversation ownership.
+        await c.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))',[project.id]);
         await c.query('SELECT pg_advisory_xact_lock(hashtextextended($1,91))',[project.id]);
         const worker = (await c.query('SELECT * FROM gameai.workers WHERE project_id=$1 AND worker_key=$2 AND enabled',[project.id,input.worker_key])).rows[0];
         if (!worker)
@@ -44,6 +47,28 @@ export async function agentRunRequest(pool, projectKey, raw)
             if (!agent)
             {
                 throw new ReviewError('该角色没有当前节点可用的固定 Agent。');
+            }
+            const reservation = (await c.query(`SELECT j.*,e.agent_id,e.task_id,e.state FROM gameai.task_dispatch_jobs j JOIN gameai.executions e ON e.id=j.execution_id
+                WHERE replace(j.execution_id::text,'-','')=$1`,[input.execution_id])).rows[0];
+            if (reservation && (reservation.project_id!==project.id || reservation.agent_id!==agent.id || reservation.requirement_key!==input.requirement_key ||
+                reservation.input_hash!==input.input_hash || !['assigned','running'].includes(reservation.state) || new Date(reservation.expires_at)<=new Date()))
+            {
+                throw new ReviewError('任务派发授权无效或已过期。');
+            }
+            if (reservation)
+            {
+                const valid=await c.query(`SELECT 1 FROM gameai.tasks t JOIN gameai.plan_versions p ON p.id=t.plan_version_id
+                    JOIN gameai.requirement_versions v ON v.id=p.requirement_version_id JOIN gameai.approvals a ON a.version_id=v.id AND a.decision='approved'
+                    WHERE t.id=$1 AND (t.bound_agent_id IS NULL OR t.bound_agent_id=$2) AND t.dispatch_allowed AND p.state='published'
+                    AND EXISTS(SELECT 1 FROM gameai.agent_grants WHERE agent_id=$2 AND permission_code='task.write_assigned')
+                    AND NOT EXISTS(SELECT 1 FROM gameai.requirement_versions n WHERE n.requirement_id=v.requirement_id AND n.ordinal>v.ordinal)
+                    `,[reservation.task_id,agent.id]);
+                if (!valid.rowCount) throw new ReviewError('任务在启动前已失去审批、依赖或原 Agent 权限条件。');
+                const task=(await c.query('SELECT * FROM gameai.tasks WHERE id=$1',[reservation.task_id])).rows[0];
+                const context=await loadTaskContext(c,task);
+                const reason=await contextBlockReason(context,task);
+                if (reason) throw new ReviewError(reason);
+                if (reservation.context?.dependencies && !isDeepStrictEqual(reservation.context.dependencies,context.dependencies)) throw new ReviewError('任务输入版本已经改变。');
             }
             const skills = (await c.query(`SELECT s.skill_key,s.content_hash,s.role_code,s.enabled,g.is_primary FROM gameai.agent_skills g JOIN gameai.skills s ON s.skill_key=g.skill_key
                 WHERE g.agent_id=$1 ORDER BY g.is_primary DESC,s.skill_key`,[agent.id])).rows;
@@ -88,7 +113,7 @@ export async function agentRunRequest(pool, projectKey, raw)
                     WHERE s.worker_id=$1 AND r.state IN ('running','unknown')`,[worker.id,agent.id])).rows[0];
                 const tasks = (await c.query(`SELECT count(*)::int total,count(*) FILTER(WHERE e.agent_id=$2)::int agent_used
                     FROM gameai.executions e JOIN gameai.agents a ON a.id=e.agent_id
-                    WHERE a.worker_id=$1 AND e.state IN ('assigned','running','unknown')`,[worker.id,agent.id])).rows[0];
+                    WHERE a.worker_id=$1 AND e.state IN ('assigned','running','unknown') AND replace(e.id::text,'-','')<>$3`,[worker.id,agent.id,input.execution_id])).rows[0];
                 if (used.total + tasks.total >= worker.capacity || used.agent_used + tasks.agent_used >= 1)
                 {
                     throw new ReviewError('固定 Agent 或节点忙碌；状态未知的执行必须先核实。');
@@ -96,7 +121,8 @@ export async function agentRunRequest(pool, projectKey, raw)
                 await c.query('INSERT INTO gameai.agent_runs(execution_id,conversation_id,request_hash,state) VALUES($1,$2,$3,\'running\')',[input.execution_id,session.id,requestHash]);
                 await c.query(`INSERT INTO gameai.audit_events(project_id,actor,event,payload) VALUES($1,$2,'固定 Agent 开始执行',$3)`,[project.id,agent.agent_key,{execution_id:input.execution_id,requirement_key:input.requirement_key}]);
             }
-            result = { agent_key:agent.agent_key, conversation_id:session.id, thread_id:session.thread_id, instructions:instructions.join('\n\n') };
+            if (reservation) await c.query("UPDATE gameai.executions SET state='running' WHERE id=$1",[reservation.execution_id]);
+            result = { agent_key:agent.agent_key, conversation_id:session.id, thread_id:session.thread_id, instructions:instructions.join('\n\n'), workspace_write:!!reservation };
         }
         else
         {
