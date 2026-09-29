@@ -44,3 +44,5 @@
 .chat-source-toggle summary { cursor: pointer; padding: 6px 0; }
 
 .output-title{flex-wrap:wrap}.output pre{min-height:0}
+
+.agent-skills{display:flex;flex-direction:column;align-items:stretch;gap:4px}.agent-skill{display:flex;align-items:center;gap:6px;min-width:0}.agent-skill span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.agent-skills>.ant-btn{align-self:flex-start;padding:0;height:auto}.agent-skill .ant-tag{margin:0;flex-shrink:0}

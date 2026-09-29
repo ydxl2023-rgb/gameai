@@ -169,3 +169,10 @@ namespace GameCLI.Contracts
 ## 专业任务的云端核验上下文
 
 GameCLIServer 在派发、固定 Agent claim、执行结束三个阶段负责平台核验；Agent 输入中的 platform_context 是本次数据库核验结果，而非离线缓存。该上下文标明 authoritative、validated_at、requirement_version_id 和 plan_version_id 时，Agent 可以按授权任务执行，不自行访问数据库或猜测 HTTP 端口。服务失联由 GameCLI 心跳取消执行；模型只交付结果与证据，不持有平台凭据或自行回写状态。
+
+## Track 数据列表列宽规范（强制）
+
+- Track 中所有以列展示的同类数据列表（包括页面、树形任务和弹窗预览），必须支持拖动表头分隔线调整列宽，并支持左右方向键微调。
+- 统一使用 UI 的 `ResizableTable`，不得直接新增不支持列宽调整的 Ant Design `Table`。每个列表提供独立稳定的 `storageKey`；列配置使用稳定的 key 或 dataIndex。
+- 列宽按列表保存，切换分页、刷新数据及重载页面后保持；宿主禁止本地存储时降级为内存设置。设置合理最小宽度，超出容器时横向滚动，不能挤压回原宽度。
+- 必须保留原有排序、筛选、固定列、树形展开、勾选与操作按钮；普通描述字段和文档正文不属于本规则的数据列表。

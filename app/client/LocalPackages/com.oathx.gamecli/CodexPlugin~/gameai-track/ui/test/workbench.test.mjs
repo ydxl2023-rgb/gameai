@@ -360,3 +360,16 @@ test('workflow output restores durable events, refreshes idle work and does not 
     }
     finally {dom.window.close();}
 });
+
+
+test('all workbench data tables use the shared resizable table',async()=>
+{
+    const {readdir}=await import('node:fs/promises');
+    const directory=new URL('../src/',import.meta.url);
+    for(const name of await readdir(directory))
+    {
+        if(!name.endsWith('.tsx') || name==='ResizableTable.tsx') continue;
+        const source=await readFile(new URL(name,directory),'utf8');
+        assert.doesNotMatch(source,/<Table(?:\s|<)/,name+' must use ResizableTable');
+    }
+});

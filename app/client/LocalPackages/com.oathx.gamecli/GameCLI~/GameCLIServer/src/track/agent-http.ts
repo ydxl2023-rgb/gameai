@@ -3,7 +3,7 @@ import { readFile } from 'node:fs/promises';
 import { parseEnv } from 'node:util';
 import { randomBytes } from 'node:crypto';
 import { createPool, databaseEnabled } from '../database/connection.js';
-import { agentOptions, createAgent, AgentInputError } from '../database/agents.js';
+import { agentOptions, createAgent, addAgentSkills, AgentInputError } from '../database/agents.js';
 
 const capability = randomBytes(32).toString('hex');
 let writer: ReturnType<typeof createPool> | undefined;
@@ -31,7 +31,7 @@ export async function handleAgentRequest(request: IncomingMessage, response: Ser
             reply(response, 200, { ...await agentOptions(reader, projectKey), capability });
             return;
         }
-        if (path !== '/api/track/agents' || request.method !== 'POST')
+        if (!['/api/track/agents','/api/track/agent-skills'].includes(path) || request.method !== 'POST')
         {
             reply(response, 405, { error: '方法不允许。' });
             return;
@@ -62,7 +62,7 @@ export async function handleAgentRequest(request: IncomingMessage, response: Ser
             if (!config.PGUSER || !config.PGPASSWORD) throw new Error('Missing writer configuration');
             writer = createPool({ user: config.PGUSER, password: config.PGPASSWORD });
         }
-        reply(response, 200, await createAgent(writer, projectKey, input));
+        reply(response, 200, await (path === '/api/track/agent-skills' ? addAgentSkills(writer,projectKey,input) : createAgent(writer, projectKey, input)));
     }
     catch (error)
     {

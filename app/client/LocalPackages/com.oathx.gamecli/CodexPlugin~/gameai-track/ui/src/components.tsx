@@ -1,42 +1,38 @@
-import { Card, Table, Tag, Button, Checkbox, Tooltip } from 'antd';
+import { Card, Tag, Button, Checkbox, Tooltip } from 'antd';
 import { useEffect, useState, type ReactNode } from 'react';
 import type { ColumnsType } from 'antd/es/table';
 import type { Agent, Task } from './model';
 import { groupTaskTree, expandableTaskKeys, type TaskNode } from './task-tree';
-import { ResizableHeader } from './ResizableHeader';
+import { ResizableTable } from './ResizableTable';
 
 const taskColumnDefaults = [160,240,128,100,108,118,90];
 const taskColumnMinimums = [160,120,100,72,90,105,80];
 const taskWidthStorage = 'gameai.track.task-column-widths.v1';
-function readTaskWidths():number[]
-{
-    try
-    {
-        const saved:unknown = JSON.parse(localStorage.getItem(taskWidthStorage) ?? 'null');
-        if (Array.isArray(saved) && saved.length === taskColumnDefaults.length && saved.every((width,index)=>Number.isFinite(width) && width>=taskColumnMinimums[index] && width<=800)) return saved;
-    }
-    catch { /* Storage may be unavailable in an embedded host. */ }
-    return [...taskColumnDefaults];
-}
 export function StateTag({ value }: { value: string })
 {
-    return <Tag color={['执行中', '已批准', '空闲'].includes(value) ? 'green' : ['待审批', '依赖阻塞', '等待交付', '退回修改'].includes(value) ? 'gold' : undefined}>{value}</Tag>;
+    return <Tag color={['执行中', '工作', '已批准', '空闲'].includes(value) ? 'green' : ['待审批', '依赖阻塞', '等待交付', '退回修改'].includes(value) ? 'gold' : undefined}>{value}</Tag>;
 }
 export function Section({ title, children, extra }: { title: string; children: ReactNode; extra?: ReactNode })
 {
     return <Card size="small" title={title} extra={extra} className="section">{children}</Card>;
 }
-export function AgentTable({ agents, select }: { agents: Agent[]; select: (agent: Agent) => void })
+export function agentWorkStatus(agent:Agent):string
 {
+    return agent.used > 0 || ['执行中','待核实'].includes(agent.status) ? '工作' : '空闲';
+}
+export function AgentTable({ agents, select, addSkills }: { agents: Agent[]; select: (agent: Agent) => void; addSkills?:(agent:Agent)=>void })
+{
+    const defaults=[165,115,235,80,115,85];
+    const minimums=[120,90,160,70,100,75];
     const columns: ColumnsType<Agent> = [
         { title: 'Agent', dataIndex: 'id', render: (id, a) => <><Button type="link" title={id} onClick={() => select(a)}>{a.name ?? id}</Button>{a.fixed && <Tag color="blue">固定</Tag>}</> },
         { title: 'Role', dataIndex: 'role' },
-        { title: 'Skills', ellipsis: true, render: (_, a) => a.skills?.map(s => s.key).join('、') || '未配置' },
-        { title: 'Status', dataIndex: 'status', render: s => <StateTag value={s} /> },
+        { title: 'Skills', render: (_, a) => <div className="agent-skills">{a.skills?.map(skill=><div key={skill.key} title={skill.key} className="agent-skill"><span>{skill.key}</span>{skill.primary && <Tag>主</Tag>}</div>)}{!a.skills?.length && <span>未配置</span>}{addSkills && <Button type="link" size="small" disabled={agentWorkStatus(a)==='工作'} onClick={()=>addSkills(a)}>＋ 添加技能</Button>}</div> },
+        { title: 'Status', render: (_,a) => <Tooltip title={a.status==='待核实' ? '执行状态待核实，仍占用容量' : a.enabled===false ? '已停用，不参与派发' : a.status==='离线' ? '节点离线' : undefined}><span><StateTag value={agentWorkStatus(a)} /></span></Tooltip> },
         { title: 'Task', dataIndex: 'task', render: t => t ?? '—' },
         { title: 'Capacity', render: (_, a) => `${a.used} / ${a.capacity}` },
     ];
-    return <Table size="small" rowKey="id" dataSource={agents} columns={columns} pagination={false} scroll={{ x: 750 }} locale={{ emptyText: '当前没有符合条件的 Agent' }} />;
+    return <ResizableTable<Agent> storageKey="gameai.track.agent-widths.v1" minimumWidths={minimums} size="small" rowKey="id" dataSource={agents} columns={columns.map((column,i)=>({...column,width:defaults[i]}))} pagination={false} locale={{ emptyText: '当前没有符合条件的 Agent' }} />;
 }
 export function TaskLinks({ ids, tasks, select }: { ids: string[]; tasks: Task[]; select: (task: Task) => void })
 {
@@ -58,12 +54,6 @@ export function TaskTable({ tasks, allTasks = tasks, select, canSelectDispatch =
 {
     const [filters,setFilters] = useState({role:[] as string[],status:[] as string[]});
     const [expanded,setExpanded] = useState<React.Key[]>([]);
-    const [widths,setWidths] = useState(readTaskWidths);
-    useEffect(()=>
-    {
-        try { localStorage.setItem(taskWidthStorage,JSON.stringify(widths)); }
-        catch { /* Resizing still works when the host disallows persistence. */ }
-    },[widths]);
     const searchedIds = new Set(tasks.map(t => t.id));
     const byId = new Map(allTasks.map(t => [t.id,t]));
     const searchScope = allTasks.filter(task =>
@@ -104,12 +94,8 @@ export function TaskTable({ tasks, allTasks = tasks, select, canSelectDispatch =
         { title: 'Dependency', dataIndex: 'dependencies', width: 118, align: 'left', render: (ids,t) => t.group ? null : <TaskLinks ids={ids} tasks={allTasks} select={select} /> },
         { title: 'Version', dataIndex: 'version', sorter: (a, b) => a.version.localeCompare(b.version) },
     ];
-    const resizableColumns = columns.map((column,index)=>({...column,width:widths[index],ellipsis:index===1 || index===3,
-        onHeaderCell:()=>({style:{width:widths[index]},resizeWidth:widths[index],minimumWidth:taskColumnMinimums[index],resizeLabel:String(column.title),
-            onResizeWidth:(width:number)=>setWidths(old=>old.map((value,i)=>i===index ? width : value))})}));
-    return <Table<TaskNode> size="small" rowKey="id" tableLayout="fixed" columns={resizableColumns} dataSource={tree}
-        components={{header:{cell:ResizableHeader}}}
+    return <ResizableTable<TaskNode> storageKey={taskWidthStorage} minimumWidths={taskColumnMinimums} size="small" rowKey="id" columns={columns.map((column,index)=>({...column,width:taskColumnDefaults[index],ellipsis:index===1 || index===3}))} dataSource={tree}
         expandable={{expandedRowKeys:expanded,onExpandedRowsChange:keys=>setExpanded([...keys]),indentSize:10}}
         onChange={(_,values)=>setFilters({role:values.role?.map(String) ?? [],status:values.status?.map(String) ?? []})}
-        pagination={{ pageSize: 10, hideOnSinglePage: true }} scroll={{ x: widths.reduce((sum,width)=>sum+width,0) }} />;
+        pagination={{ pageSize: 10, hideOnSinglePage: true }} />;
 }
