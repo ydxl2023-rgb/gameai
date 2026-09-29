@@ -1,4 +1,4 @@
-import { Card, Tag, Button, Checkbox, Tooltip } from 'antd';
+import { Card, Tag, Button, Checkbox, Tooltip, Space } from 'antd';
 import { useEffect, useState, type ReactNode } from 'react';
 import type { ColumnsType } from 'antd/es/table';
 import type { Agent, Task } from './model';
@@ -47,9 +47,9 @@ export function TaskLinks({ ids, tasks, select }: { ids: string[]; tasks: Task[]
         })}
     </div>;
 }
-export function TaskTable({ tasks, allTasks = tasks, select, canSelectDispatch = false, savingTask, setDispatch }: {
+export function TaskTable({ tasks, allTasks = tasks, select, canSelectDispatch = false, savingTask, setDispatch, retryTask, retryBusy = false }: {
     tasks: Task[]; allTasks?: Task[]; select: (task: Task) => void; canSelectDispatch?:boolean;
-    savingTask?:string; setDispatch?:(task:Task,allowed:boolean)=>void;
+    savingTask?:string; setDispatch?:(task:Task,allowed:boolean)=>void; retryTask?:(task:Task)=>void; retryBusy?:boolean;
 })
 {
     const [filters,setFilters] = useState({role:[] as string[],status:[] as string[]});
@@ -89,7 +89,7 @@ export function TaskTable({ tasks, allTasks = tasks, select, canSelectDispatch =
         </span> },
         { title: 'Deliverable', dataIndex: 'title', width: 240, render:(title,t)=>t.group ? `共 ${t.group.total} 项 · 完成 ${t.group.completed} · 阻塞 ${t.group.blocked}${filtered ? '（筛选结果）' : ''}` : <>{t.repair && <Tag color="orange">返修</Tag>}{title}</> },
         { title: 'Agent', dataIndex: 'agent', render: a => a ?? '—' },
-        { title: 'Status', dataIndex: 'status', filteredValue:filters.status, filters: ['待调度','执行中', '依赖阻塞', '等待交付','已完成'].map(value => ({ text: value, value })), render: (s,t) => t.group ? null : <StateTag value={s} /> },
+        { title: 'Status', dataIndex: 'status', filteredValue:filters.status, filters: ['待调度','执行中', '依赖阻塞', '等待交付','已完成','失败'].map(value => ({ text: value, value })), render: (s,t) => t.group ? null : <Space size={4} wrap><StateTag value={s} />{s === '失败' && t.parent_id && t.role !== 'PM' && retryTask && <Tooltip title={!canSelectDispatch ? '请先登录人工审批账户' : '只重试此任务，保留原任务编号与历史；依赖、权限和重试次数由服务校验'}><Button type="link" size="small" aria-label={`重试 ${t.id}`} disabled={!canSelectDispatch || retryBusy || !!savingTask || !t.task_uuid} onClick={event=>{event.stopPropagation(); retryTask(t);}}>重试</Button></Tooltip>}</Space> },
         { title: 'Dependency', dataIndex: 'dependencies', width: 118, align: 'left', render: (ids,t) => t.group ? null : <TaskLinks ids={ids} tasks={allTasks} select={select} /> },
         { title: 'Role', dataIndex: 'role', filteredValue:filters.role, filters: ['Design','Art', 'Development', 'QA','PM'].map(value => ({ text: value, value })) },
         { title: 'Version', dataIndex: 'version', sorter: (a, b) => a.version.localeCompare(b.version) },

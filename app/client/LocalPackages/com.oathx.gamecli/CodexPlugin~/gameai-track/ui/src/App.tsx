@@ -160,6 +160,34 @@ export function WorkbenchApp()
         }
         finally { setSavingTask(undefined); }
     }
+    async function retryTask(task:Task)
+    {
+        if (dispatchLock.current || task.status !== '失败' || !task.task_uuid) return;
+        dispatchLock.current=true;
+        setDispatchBusy(true);
+        try
+        {
+            const result=await reviewRequest('review-task-dispatch',{tasks:[{task_id:task.task_uuid,revision:task.dispatch_revision ?? 0}],retry:true,auto_continue:false});
+            if (result.started > 0)
+            {
+                log(`人工重试：${task.id} 已重新启动，保留原任务和执行历史。`);
+                void message.success(`${task.id} 已重新启动`);
+            }
+            else
+            {
+                const reason=result.rows.map((row:DispatchRow)=>row.reason).join('；') || '任务当前不能重试';
+                log(`重试未启动 ${task.id}：${reason}`);
+                void message.warning(reason);
+            }
+            await refresh();
+        }
+        catch(error)
+        {
+            void message.error(error instanceof Error ? error.message : '重试失败，请刷新核实状态');
+            await refresh();
+        }
+        finally { dispatchLock.current=false; setDispatchBusy(false); }
+    }
     async function previewDispatch(tasks:Task[])
     {
         if (dispatchLock.current) return;
@@ -306,7 +334,7 @@ export function WorkbenchApp()
                 ]} />
 
         </Section>;
-        if (tab === 'tasks') return <Section title="任务与依赖" extra={<Space wrap><Button type="primary" disabled={!persistent || context.embedded || !reviewSession.authenticated || !!savingTask || dispatchBusy || !data.tasks.some(t=>t.dispatch_allowed)} loading={dispatchBusy} onClick={()=>void previewDispatch(data.tasks.filter(t=>t.dispatch_allowed))}>派发已勾选任务（{data.tasks.filter(t=>t.dispatch_allowed).length}）</Button><Input.Search aria-label="搜索任务" placeholder="任务 / Agent" value={query} allowClear onChange={e => setQuery(e.target.value)} style={{ width: 180 }} /></Space>}><Typography.Paragraph type="secondary">按主任务 → 角色分类 → 具体任务展开。勾选仅保存“允许派发”，不会立即启动；请点击派发按钮，经依赖、版本和容量检查后启动。</Typography.Paragraph>{data.flows?.map(flow=><Typography.Paragraph key={flow.requirement_key} type="secondary" ellipsis={{rows:1,tooltip:flow.reason}}>{flow.requirement_key} 自动推进：{flow.state==="active"?"运行中":flow.state==="paused"?"已暂停":"已结束"} {flow.reason}</Typography.Paragraph>)}<TaskTable canSelectDispatch={persistent && !context.embedded && reviewSession.authenticated} savingTask={savingTask} setDispatch={(task,allowed) => void setTaskDispatch(task,allowed)} allTasks={data.tasks} tasks={data.tasks.filter(t => [t.id, t.title, t.agent ?? ''].join(' ').toLowerCase().includes(query.toLowerCase()))} select={setDetail} /></Section>;
+        if (tab === 'tasks') return <Section title="任务与依赖" extra={<Space wrap><Button type="primary" disabled={!persistent || context.embedded || !reviewSession.authenticated || !!savingTask || dispatchBusy || !data.tasks.some(t=>t.dispatch_allowed)} loading={dispatchBusy} onClick={()=>void previewDispatch(data.tasks.filter(t=>t.dispatch_allowed))}>派发已勾选任务（{data.tasks.filter(t=>t.dispatch_allowed).length}）</Button><Input.Search aria-label="搜索任务" placeholder="任务 / Agent" value={query} allowClear onChange={e => setQuery(e.target.value)} style={{ width: 180 }} /></Space>}><Typography.Paragraph type="secondary">按主任务 → 角色分类 → 具体任务展开。勾选仅保存“允许派发”，不会立即启动；请点击派发按钮，经依赖、版本和容量检查后启动。</Typography.Paragraph>{data.flows?.map(flow=><Typography.Paragraph key={flow.requirement_key} type="secondary" ellipsis={{rows:1,tooltip:flow.reason}}>{flow.requirement_key} 自动推进：{flow.state==="active"?"运行中":flow.state==="paused"?"已暂停":"已结束"} {flow.reason}</Typography.Paragraph>)}<TaskTable retryTask={task=>void retryTask(task)} retryBusy={dispatchBusy} canSelectDispatch={persistent && !context.embedded && reviewSession.authenticated} savingTask={savingTask} setDispatch={(task,allowed) => void setTaskDispatch(task,allowed)} allTasks={data.tasks} tasks={data.tasks.filter(t => [t.id, t.title, t.agent ?? ''].join(' ').toLowerCase().includes(query.toLowerCase()))} select={setDetail} /></Section>;
         if (tab === 'versions') return <Section title="需求版本"><ResizableTable storageKey="gameai.track.versions-widths.v1" size="small" rowKey="version" pagination={false} scroll={{ x: 600 }} dataSource={data.versions?.map(({ version, status, change, reference }) => ({ version, status, change, reference })) ?? [{ version: r.version, status: r.status, change: '异常恢复与测试用例', reference: '尚未派工' }, { version: 'v1.2', status: '已批准', change: '基础规则与 UI 交付标准', reference: '4 项任务 · 2 项执行中' }]} columns={[{ title: 'Version', dataIndex: 'version' }, { title: 'State', dataIndex: 'status', render: s => <StateTag value={s} /> }, { title: 'Change', dataIndex: 'change' }, { title: 'References', dataIndex: 'reference' }, { title: 'Action', render: (_, v) => <Button type="link" onClick={() => openVersion(v.version)}>审阅</Button> }]} /><Typography.Paragraph className="note">需求版本 → PM 计划版本 → 执行编号 → 产物版本 → QA 验收版本。历史版本只读，恢复内容需新建修订并重新审批。</Typography.Paragraph></Section>;
         if (tab === 'permissions') return <>
             <Section title="人工身份权限"><Alert type="info" title="身份切换仅用于演示；正式身份来自服务端会话，管理员不会自动获得审批权限。" /><ResizableTable storageKey="gameai.track.human-permissions-widths.v1" size="small" pagination={false} rowKey="role" dataSource={[{ role: '策划 · 人工', read: '允许', approve: '允许', manage: '禁止' }, { role: 'PM / Art / Development / QA', read: '允许', approve: '禁止', manage: '禁止' }, { role: '项目管理员', read: '允许', approve: '禁止', manage: '允许' }]} columns={[{ title: 'Role', dataIndex: 'role' }, { title: 'Read', dataIndex: 'read' }, { title: 'Approve', dataIndex: 'approve' }, { title: 'Manage', dataIndex: 'manage' }]} /></Section>

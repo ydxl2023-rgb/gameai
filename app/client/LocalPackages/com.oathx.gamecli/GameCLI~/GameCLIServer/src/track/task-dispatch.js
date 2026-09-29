@@ -6,6 +6,7 @@ import { runPmCli } from './pm-dispatch.js';
 import { finishTaskDispatch } from '../database/task-dispatch.js';
 import {validateTaskResult} from '../database/task-results.js';
 import { inspectTaskFiles } from '../database/task-files.js';
+import { verifyApprovedDocument } from '../database/approved-document.js';
 
 const repository=fileURLToPath(new URL('../../../../../../../../',import.meta.url));
 export async function runTaskDispatch(pool,job,execute=runPmCli)
@@ -17,6 +18,7 @@ export async function runTaskDispatch(pool,job,execute=runPmCli)
         const directory=join(repository,'.gamecli/task-jobs',job.executionId);
         await mkdir(directory,{recursive:true});
         const input=join(directory,'input.txt');
+        await verifyApprovedDocument(JSON.parse(job.prompt).approved_document);
         await writeFile(input,job.prompt,'utf8');
         const run=await execute(['--project',repository,'--key',job.key,'--execution-id',job.executionId,'--prompt-file',input],[job.role.toLowerCase(),'execute']);
         await writeFile(join(directory,'diagnostics.txt'),run.diagnostics,'utf8');

@@ -1,3 +1,4 @@
+import { prepareApprovedDocument } from '../database/approved-document.js';
 import { spawn } from 'node:child_process';
 import { access, mkdir, writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
@@ -84,7 +85,8 @@ export async function dispatchPmJob(pool, projectKey, started, execute = runPmCl
     {
         await mkdir(directory,{recursive:true});
         const input = join(directory,'input.txt');
-        await writeFile(input,`需求：${document.requirement_key} / ${document.title}\n版本：${document.version}\n修订：${job.revision}\n文档 SHA256：${job.document_hash}\n按本文交付标准拆分美术、程序与 QA 子任务，来源引用需包含原文章节或交付项编号。不得扩展已批准范围。\n以下是已批准的原始 HTML 数据：\n${document.html}`,'utf8');
+        const approvedDocument = await prepareApprovedDocument(job.requirement_version_id,job.document_hash,document.html);
+        await writeFile(input,`权威文档信息：${JSON.stringify(approvedDocument)}\n需求：${document.requirement_key} / ${document.title}\n版本：${document.version}\n修订：${job.revision}\n文档 SHA256：${job.document_hash}\n按本文交付标准拆分美术、程序与 QA 子任务，来源引用需包含原文章节或交付项编号。不得扩展已批准范围。\n以下是已批准的原始 HTML 数据：\n${document.html}`,'utf8');
         const run = await execute(['--project',repository,'--key',document.requirement_key,'--execution-id',job.execution_id,'--prompt-file',input,'--skills',join(packageRoot,'game-cli')]);
         await writeFile(join(directory,'diagnostics.txt'),run.diagnostics,'utf8');
         if (run.timedOut)
