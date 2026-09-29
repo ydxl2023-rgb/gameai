@@ -1,4 +1,4 @@
-import { Card, Tag, Button, Checkbox, Tooltip, Space } from 'antd';
+import { Card, Tag, Button, Checkbox, Tooltip, Space, Progress } from 'antd';
 import { useEffect, useState, type ReactNode } from 'react';
 import type { ColumnsType } from 'antd/es/table';
 import type { Agent, Task } from './model';
@@ -18,7 +18,13 @@ export function Section({ title, children, extra }: { title: string; children: R
 }
 export function agentWorkStatus(agent:Agent):string
 {
-    return agent.used > 0 || ['执行中','待核实'].includes(agent.status) ? '工作' : '空闲';
+    if (['待核实','失败','错误中断','已中断'].includes(agent.status)) return '错误中断';
+    return agent.used > 0 || agent.status === '执行中' ? '工作' : '空闲';
+}
+export function AgentStatusTag({ agent }: { agent:Agent })
+{
+    const status = agentWorkStatus(agent);
+    return <Tag style={{color:status === '工作' ? '#73d13d' : status === '错误中断' ? '#ff7875' : '#ffffff',borderColor:'currentColor',background:'transparent'}}>{status === '工作' ? '工作中' : status}</Tag>;
 }
 export function AgentTable({ agents, select, addSkills }: { agents: Agent[]; select: (agent: Agent) => void; addSkills?:(agent:Agent)=>void })
 {
@@ -27,8 +33,8 @@ export function AgentTable({ agents, select, addSkills }: { agents: Agent[]; sel
     const columns: ColumnsType<Agent> = [
         { title: 'Agent', dataIndex: 'id', render: (id, a) => <><Button type="link" title={id} onClick={() => select(a)}>{a.name ?? id}</Button></> },
         { title: 'Role', dataIndex: 'role' },
-        { title: 'Skills', render: (_, a) => <div className="agent-skills">{a.skills?.map(skill=><div key={skill.key} title={skill.key} className="agent-skill"><span>{skill.key}</span>{skill.primary && <Tag>主</Tag>}</div>)}{!a.skills?.length && <span>未配置</span>}{addSkills && <Button type="link" size="small" disabled={agentWorkStatus(a)==='工作'} onClick={()=>addSkills(a)}>＋ 添加技能</Button>}</div> },
-        { title: 'Status', render: (_,a) => <Tooltip title={a.status==='待核实' ? '执行状态待核实，仍占用容量' : a.enabled===false ? '已停用，不参与派发' : a.status==='离线' ? '节点离线' : undefined}><span><StateTag value={agentWorkStatus(a)} /></span></Tooltip> },
+        { title: 'Skills', render: (_, a) => <div className="agent-skills">{a.skills?.map(skill=><div key={skill.key} title={skill.key} className="agent-skill"><span>{skill.key}</span>{skill.primary && <Tag>主</Tag>}</div>)}{!a.skills?.length && <span>未配置</span>}{addSkills && <Button type="link" size="small" disabled={a.used > 0 || ['执行中','待核实'].includes(a.status)} onClick={()=>addSkills(a)}>＋ 添加技能</Button>}</div> },
+        { title: 'Status', render: (_,a) => <Tooltip title={a.status==='待核实' ? '执行状态待核实，仍占用容量' : a.status==='错误中断' ? '最近一次执行失败或中断，等待处理' : a.enabled===false ? '已停用，不参与派发' : a.status==='离线' ? '节点离线' : undefined}><span><AgentStatusTag agent={a} /></span></Tooltip> },
         { title: 'Task', dataIndex: 'task', render: t => t ?? '—' },
         { title: 'Capacity', render: (_, a) => `${a.used} / ${a.capacity}` },
     ];
@@ -47,9 +53,9 @@ export function TaskLinks({ ids, tasks, select }: { ids: string[]; tasks: Task[]
         })}
     </div>;
 }
-export function TaskTable({ tasks, allTasks = tasks, select, canSelectDispatch = false, savingTask, setDispatch, retryTask, retryBusy = false }: {
+export function TaskTable({ tasks, allTasks = tasks, select, canSelectDispatch = false, savingTask, setDispatch, retryTask, retryBusy = false, openAgent }: {
     tasks: Task[]; allTasks?: Task[]; select: (task: Task) => void; canSelectDispatch?:boolean;
-    savingTask?:string; setDispatch?:(task:Task,allowed:boolean)=>void; retryTask?:(task:Task)=>void; retryBusy?:boolean;
+    savingTask?:string; setDispatch?:(task:Task,allowed:boolean)=>void; retryTask?:(task:Task)=>void; retryBusy?:boolean; openAgent?:(task:Task)=>void;
 })
 {
     const [filters,setFilters] = useState({role:[] as string[],status:[] as string[]});
@@ -89,12 +95,13 @@ export function TaskTable({ tasks, allTasks = tasks, select, canSelectDispatch =
         </span> },
         { title: 'Deliverable', dataIndex: 'title', width: 240, render:(title,t)=>t.group ? `共 ${t.group.total} 项 · 完成 ${t.group.completed} · 阻塞 ${t.group.blocked}${filtered ? '（筛选结果）' : ''}` : <>{t.repair && <Tag color="orange">返修</Tag>}{title}</> },
         { title: 'Agent', dataIndex: 'agent', render: a => a ?? '—' },
-        { title: 'Status', dataIndex: 'status', filteredValue:filters.status, filters: ['待调度','执行中', '依赖阻塞', '等待交付','已完成','失败'].map(value => ({ text: value, value })), render: (s,t) => t.group ? null : <Space size={4} wrap><StateTag value={s} />{s === '失败' && t.parent_id && t.role !== 'PM' && retryTask && <Tooltip title={!canSelectDispatch ? '请先登录人工审批账户' : '只重试此任务，保留原任务编号与历史；依赖、权限和重试次数由服务校验'}><Button type="link" size="small" aria-label={`重试 ${t.id}`} disabled={!canSelectDispatch || retryBusy || !!savingTask || !t.task_uuid} onClick={event=>{event.stopPropagation(); retryTask(t);}}>重试</Button></Tooltip>}</Space> },
+        { title: 'Status', dataIndex: 'status', filteredValue:filters.status, filters: ['待调度','执行中', '依赖阻塞', '等待交付','已完成','失败'].map(value => ({ text: value, value })), render: (s,t) => t.aggregate ? <Tooltip title={`完整范围：已完成 ${t.aggregate.completed} / ${t.aggregate.total}，失败 ${t.aggregate.failed}；待验收不计完成，筛选不改变进度`}><div style={{minWidth:64}}><span style={{fontSize:12,whiteSpace:'nowrap'}}>{t.aggregate.completed}/{t.aggregate.total} · {t.aggregate.percent}%</span><Progress percent={t.aggregate.percent} size="small" showInfo={false} strokeColor={t.aggregate.failed ? '#ff7875' : '#73d13d'} status={t.aggregate.failed ? 'exception' : 'normal'} /></div></Tooltip> : <Space size={4} wrap><StateTag value={s} />{s === '失败' && t.parent_id && t.role !== 'PM' && retryTask && <Tooltip title={!canSelectDispatch ? '请先登录人工审批账户' : '只重试此任务，保留原任务编号与历史；依赖、权限和重试次数由服务校验'}><Button type="link" size="small" aria-label={`重试 ${t.id}`} disabled={!canSelectDispatch || retryBusy || !!savingTask || !t.task_uuid} onClick={event=>{event.stopPropagation(); retryTask(t);}}>重试</Button></Tooltip>}</Space> },
         { title: 'Dependency', dataIndex: 'dependencies', width: 118, align: 'left', render: (ids,t) => t.group ? null : <TaskLinks ids={ids} tasks={allTasks} select={select} /> },
-        { title: 'Role', dataIndex: 'role', filteredValue:filters.role, filters: ['Design','Art', 'Development', 'QA','PM'].map(value => ({ text: value, value })) },
+        { title: 'Executor', key:'executor_agent', render: (_,task) => task.group || !task.executor_agent ? '—' : <Button type="link" title="查看该任务对应需求的 Agent 对话历史" disabled={!openAgent} onClick={()=>openAgent?.(task)}>{task.executor_agent}</Button> },
         { title: 'Version', dataIndex: 'version', sorter: (a, b) => a.version.localeCompare(b.version) },
     ];
     return <ResizableTable<TaskNode> storageKey={taskWidthStorage} minimumWidths={taskColumnMinimums} size="small" rowKey="id" columns={columns.map((column,index)=>({...column,width:taskColumnDefaults[index],ellipsis:index===0 || index===1 || index===2}))} dataSource={tree}
+        rowClassName={task => !task.aggregate && task.status === '已完成' ? 'task-row--completed' : ''}
         expandable={{expandedRowKeys:expanded,onExpandedRowsChange:keys=>setExpanded([...keys]),indentSize:10}}
         onChange={(_,values)=>setFilters({role:values.role?.map(String) ?? [],status:values.status?.map(String) ?? []})}
         pagination={{ pageSize: 10, hideOnSinglePage: true }} />;

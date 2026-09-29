@@ -1,3 +1,4 @@
+import { parseReadableMessage } from './readable-message';
 import { useEffect, useState } from 'react';
 import { Alert, Avatar, Button, Empty, Pagination, Select, Space, Spin, Typography } from 'antd';
 import { AutoHeightDocument } from './AutoHeightDocument';
@@ -5,7 +6,7 @@ import type { TrackBridge } from './bridge';
 interface Conversation { id: string; requirement_key: string; thread_id: string | null; }
 interface Message { id: string; role: string; text: string; turn_id: string; status: string; }
 interface History { messages: Message[]; total: number; page_size: number; thread_id: string; }
-export function AgentHistory({ agent, bridge }: { agent: string; bridge: TrackBridge | null })
+export function AgentHistory({ agent, bridge, requirementKey }: { agent: string; bridge: TrackBridge | null; requirementKey?:string })
 {
     const [conversations, setConversations] = useState<Conversation[]>([]);
     const [selected, setSelected] = useState<string>();
@@ -26,10 +27,10 @@ export function AgentHistory({ agent, bridge }: { agent: string; bridge: TrackBr
         {
             if (!active) return;
             setConversations(result.conversations);
-            setSelected(previous => result.conversations.some((c: Conversation) => c.id === previous) ? previous : result.conversations[0]?.id);
+            setSelected(previous => requirementKey ? result.conversations.find((c:Conversation)=>c.requirement_key===requirementKey)?.id : result.conversations.some((c: Conversation) => c.id === previous) ? previous : result.conversations[0]?.id);
         }).catch(e => { if (active) setError(e.message); }).finally(() => { if (active) setListing(false); });
         return () => { active = false; };
-    }, [agent, bridge, revision]);
+    }, [agent, bridge, revision, requirementKey]);
     useEffect(() =>
     {
         let active = true;
@@ -50,6 +51,7 @@ export function AgentHistory({ agent, bridge }: { agent: string; bridge: TrackBr
         {!!conversations.length && <Select aria-label="需求会话" value={selected} style={{ width: '100%', marginBottom: 12 }}
             options={conversations.map(c => ({ value: c.id, label: c.requirement_key + (c.thread_id ? ' · ' + c.thread_id : ' · 尚未启动') }))}
             onChange={id => { setSelected(id); setPage(1); }} />}
+        {!loading && requirementKey && !selected && <Alert type="info" title="该任务对应需求尚无可读取的 Agent 会话" />}
         {error && <Alert type="warning" title="历史暂不可用" description={error} showIcon />}
         {loading && <Spin description="读取会话历史" style={{ display: 'block', padding: 20 }}><div style={{ height: 20 }} /></Spin>}
         {!loading && !error && !conversations.length && <Empty description="这个 Agent 尚无已关联的会话" />}
@@ -68,11 +70,11 @@ function ChatMessage({ message, agent }: { message: Message; agent: string })
 {
 
     const user = message.role === 'user';
-    let readable = message.text;
-    let title = '';
-    let structured = false;
-    let documentHtml = '';
-    let source = message.text;
+    const parsed = user ? parseReadableMessage(message.text) : undefined;
+    let readable = parsed?.text ?? message.text;
+    let title = parsed?.title ?? '';
+    let documentHtml = parsed?.html ?? '';
+    let structured = !!parsed;
     if (!user)
     {
         try
@@ -83,32 +85,32 @@ function ChatMessage({ message, agent }: { message: Message; agent: string })
                 title = typeof value.title === 'string' ? value.title : '';
                 readable = value.summary;
                 documentHtml = typeof value.html === 'string' ? value.html : '';
-                source = JSON.stringify(value, null, 2);
                 structured = true;
             }
         }
-        catch
-        {
-            // Plain conversational replies are rendered unchanged.
-        }
+        catch { /* Plain conversational replies are rendered unchanged. */ }
     }
-    const [expanded, setExpanded] = useState(Boolean(documentHtml));
+    const [expanded, setExpanded] = useState(!user && Boolean(documentHtml));
+    const [documentOpen, setDocumentOpen] = useState(false);
     const long = readable.length > 900;
     return <article className={`chat-message ${user ? 'chat-message--user' : 'chat-message--assistant'}`} aria-label={user ? '用户消息' : 'Agent 回复'}>
         <div className="chat-author"><Avatar size={24}>{user ? '你' : 'AI'}</Avatar><span>{user ? '你' : agent}</span></div>
         <div className="chat-bubble">
             {title && <div className="chat-title">{title}</div>}
-            <div className="chat-text">{expanded ? readable : long ? readable.slice(0, 900) + '…' : readable || '（空消息）'}</div>
+            <div className="chat-text">{expanded ? readable : long ? readable.slice(0, 900) + '…' : readable || (parsed ? '' : '（空消息）')}</div>
+            {parsed?.sections.map((section,index)=><section key={index} className="chat-readable-section"><Typography.Text strong>{section.title}</Typography.Text><div className="chat-text">{section.text}</div></section>)}
             {documentHtml && <div className="chat-document">策划文档 · 保留原始排版、目录与线框图</div>}
-            {(long || documentHtml) && <Button type="text" size="small" className="chat-expand" aria-expanded={expanded} onClick={() => setExpanded(!expanded)}>{expanded ? '收起' : documentHtml ? '阅读完整文档' : '展开完整消息'}</Button>}
-            {documentHtml && expanded && <div className="chat-document-reader">
+            {(long || (!user && documentHtml)) && <Button type="text" size="small" className="chat-expand" aria-expanded={expanded} onClick={() => setExpanded(!expanded)}>{expanded ? '收起' : documentHtml ? '阅读完整文档' : '展开完整消息'}</Button>}
+            {user && documentHtml && <Button type="link" className="chat-expand" onClick={()=>setDocumentOpen(!documentOpen)}>{documentOpen ? '收起需求文档' : '查看需求文档'}</Button>}
+            {documentHtml && (user ? documentOpen : expanded) && <div className="chat-document-reader">
                 <AutoHeightDocument html={documentHtml} title={title ? title + ' · 对话文档预览' : '对话文档预览'} />
 
             </div>}
+            {parsed?.technical && <details className="chat-source-toggle"><summary>执行信息与附加上下文</summary><pre className="chat-source">{parsed.technical}</pre></details>}
             {structured && <details className="chat-source-toggle">
-                <summary>调试信息</summary>
-                <Typography.Paragraph type="secondary">原始返回数据（含 HTML 源码），仅供只读排查，不影响文档或审批状态。</Typography.Paragraph>
-                <pre className="chat-source">{source}</pre>
+                <summary>{user ? '原始消息' : '调试信息'}</summary>
+                <Typography.Paragraph type="secondary">完整原始数据（含 JSON 或 HTML 源码），仅供只读排查，不影响文档或审批状态。</Typography.Paragraph>
+                <Typography.Paragraph copyable={{text:message.text}}>复制原文</Typography.Paragraph><pre className="chat-source">{message.text}</pre>
             </details>}
         </div>
     </article>;

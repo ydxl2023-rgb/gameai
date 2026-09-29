@@ -373,3 +373,43 @@ test('all workbench data tables use the shared resizable table',async()=>
         assert.doesNotMatch(source,/<Table(?:\s|<)/,name+' must use ResizableTable');
     }
 });
+
+test('aggregate progress counts executable leaves and stays stable when filtered', async () =>
+{
+    const {groupTaskTree,taskProgress}=await moduleBundle('task-tree');
+    const root={id:'T-1',role:'PM',parent_id:null};
+    const dev={id:'P-1',role:'Development',parent_id:'T-1',status:'已完成'};
+    const qa={id:'Q-1',role:'QA',parent_id:'T-1',status:'待验收'};
+    const failed={id:'P-2',role:'Development',parent_id:'T-1',status:'失败'};
+    const all=[root,dev,qa,failed];
+    const tree=groupTaskTree([failed],all);
+    assert.deepEqual({...tree[0].aggregate},{total:3,completed:1,failed:1,percent:33});
+    assert.deepEqual({...tree[0].children[0].aggregate},{total:2,completed:1,failed:1,percent:50});
+    assert.equal(tree[0].children[0].children[0].aggregate,undefined);
+    assert.deepEqual({...taskProgress(root.id,[root])},{total:0,completed:0,failed:0,percent:0});
+    const nested=[root,{id:'P-parent',parent_id:root.id,role:'Development',status:'已完成'},{id:'P-leaf',parent_id:'P-parent',role:'Development',status:'失败'}];
+    assert.deepEqual({...taskProgress(root.id,nested)},{total:1,completed:0,failed:1,percent:0});
+});
+
+test('history presentation extracts task JSON and HTML without losing original context', async () =>
+{
+    const {parseReadableMessage}=await moduleBundle('readable-message');
+    const html='<html><body>{文档} <script>ignored()</script></body></html>';
+    const payload={task:'P-1',title:'开发问候程序',description:'创建控制台',criteria:[{kind:'steps',text:'启动程序'}],dependencies:['A-1'],approved_html:html,platform_context:{approval:'approved'}};
+    const source='附加执行规则\n'+JSON.stringify(payload)+'\n保留后记';
+    const parsed=parseReadableMessage(source);
+    assert.equal(parsed.title,'P-1 · 开发问候程序');
+    assert.equal(parsed.html,html);
+    assert.ok(parsed.sections.some(s=>s.text==='操作步骤\n启动程序'));
+    assert.ok(parsed.technical.includes('附加执行规则'));
+    assert.ok(parsed.technical.includes('保留后记'));
+    assert.ok(parsed.technical.includes('platform_context'));
+    assert.ok(!parsed.technical.includes('<html>'));
+    const pm=parseReadableMessage('需求：HELLO\n文档 SHA256：abc\n以下是已批准的原始 HTML 数据：\n'+html);
+    assert.equal(pm.html,html);
+    assert.equal(pm.text,'需求：HELLO');
+    assert.ok(pm.technical.includes('abc'));
+    assert.equal(parseReadableMessage('普通需求文本'),undefined);
+    assert.equal(parseReadableMessage('{"unknown":1}'),undefined);
+    assert.equal(parseReadableMessage('{"task":"P-1",invalid}'),undefined);
+});
