@@ -20,6 +20,7 @@ test('human login, origin and CSRF boundaries keep worker credentials out of app
     assert.equal((await post('requirements',{})).status,403);
     assert.equal((await post('requirements',{}, {Authorization:'Bearer '+worker.SUBMISSION_TOKEN})).status,409);
     assert.equal((await post('review-decisions',{}, {Authorization:'Bearer '+worker.SUBMISSION_TOKEN})).status,401);
+    assert.equal((await post('review-pm-split',{}, {Authorization:'Bearer '+worker.SUBMISSION_TOKEN})).status,401);
     assert.equal((await post('review-login',{username:human.USERNAME,password:human.PASSWORD},{Origin:'https://untrusted.example'})).status,403);
     const login=await post('review-login',{username:human.USERNAME,password:human.PASSWORD});
     assert.equal(login.status,200);
@@ -27,6 +28,7 @@ test('human login, origin and CSRF boundaries keep worker credentials out of app
     const cookie=login.headers.get('set-cookie').split(';')[0];
     const headers={Cookie:cookie,'X-GameAI-Review-CSRF':session.csrf};
     assert.equal((await post('review-decisions',{}, {Cookie:cookie})).status,401);
+    assert.equal((await post('review-pm-split',{}, {Cookie:cookie})).status,401);
     const unknown={version_id:randomUUID(),revision:'a'.repeat(64),document_hash:'b'.repeat(64),decision:'approved',reason:''};
     assert.equal((await post('review-decisions',unknown,headers)).status,409);
     assert.equal((await post('review-logout',{},headers)).status,200);

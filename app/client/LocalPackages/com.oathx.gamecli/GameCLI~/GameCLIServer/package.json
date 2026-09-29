@@ -18,6 +18,7 @@
     "db:status": "node scripts/database.mjs status",
     "test:database": "node --env-file=.env.database-admin --test test/database.test.js",
     "db:sync-skills": "node --env-file=.env.database-admin scripts/database.mjs sync-skills",
+    "test:pm": "node --env-file=.env.database-admin --test test/pm-plans.test.js",
     "test:agents": "node --env-file=.env.database-admin --test test/agent-runs.test.js",
     "test:review": "npm run build:track && node --env-file=.env.database-admin --test test/requirements.test.js test/review-http.test.js"
   },

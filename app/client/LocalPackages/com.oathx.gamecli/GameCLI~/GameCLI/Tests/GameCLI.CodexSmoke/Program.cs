@@ -81,6 +81,48 @@ internal static class Program
             Console.WriteLine("PASS " + mode);
         }
 
+        Environment.SetEnvironmentVariable("GAMECLI_FAKE_MODE", "plan");
+        string promptFile = Path.Combine(cloud.Project, "approved.txt");
+        await File.WriteAllTextAsync(promptFile, "已批准的测试 HTML");
+        string planExecution = Guid.NewGuid().ToString("N");
+        TextWriter planOriginalOut = Console.Out;
+        using StringWriter planOutput = new();
+        try
+        {
+            Console.SetOut(planOutput);
+            PluginHost planHost = new(new ICLIPlugin[]
+            {
+                new PMPlugin()
+            }, new PluginSettingsStore(Path.Combine(cloud.Project, "plugins.json")));
+            int planCode = await planHost.RunAsync(new[]
+            {
+                "pm",
+                "plan",
+                "--project",
+                cloud.Project,
+                "--key",
+                "TEST-PM",
+                "--execution-id",
+                planExecution,
+                "--prompt-file",
+                promptFile,
+                "--skills",
+                Path.Combine(root, "app/client/LocalPackages/com.oathx.gamecli/game-cli"),
+                "--codex",
+                Environment.ProcessPath ?? throw new Exception("No executable")
+            });
+            using JsonDocument result = JsonDocument.Parse(planOutput.ToString());
+            if (planCode != 0 || result.RootElement.GetProperty("execution_id").GetString() != planExecution || result.RootElement.GetProperty("plan").GetProperty("tasks")[0].GetProperty("role").GetString() != "Art")
+            {
+                throw new Exception("PM plan protocol failed: " + planOutput);
+            }
+        }
+        finally
+        {
+            Console.SetOut(planOriginalOut);
+        }
+
+        Console.WriteLine("PASS cloud PM plan proposal");
         Environment.SetEnvironmentVariable("GAMECLI_FAKE_MODE", null);
         Console.WriteLine("CODEX_PROTOCOL_SMOKE_PASSED");
         return 0;
@@ -198,6 +240,12 @@ internal static class Program
                     "Check"
                 }, Array.Empty<string>(), Array.Empty<string>(), true), Array.Empty<string>(), Array.Empty<PmError>());
                 string text = mode == "bad-json" ? "not json" : JsonSerializer.Serialize(analysis, PmContract.JsonOptions);
+                if (mode == "plan")
+                {
+                    text = """
+                        {"summary":"测试拆分","tasks":[{"id":"ART-1","title":"占位图标","role":"Art","description":"测试产物","source_refs":["4.1"],"depends_on":[],"acceptance":{"preconditions":"测试","steps":"测试","success":"测试","failure":"测试","recovery":"测试","tests":"尚未执行"}}]}
+                        """;
+                }
                 // Deliberately emit notifications immediately after the response to exercise buffering/races.
                 Send(new
                 {

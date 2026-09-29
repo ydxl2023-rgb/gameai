@@ -17,7 +17,8 @@ namespace GameCLI.Plugins.PM
         public override IReadOnlyList<ICommand> Commands
         { get; } = Array.AsReadOnly(new ICommand[]
         {
-            new PmAnalyzeCommand()
+            new PmAnalyzeCommand(),
+            new PmPlanCommand()
         });
     }
 }

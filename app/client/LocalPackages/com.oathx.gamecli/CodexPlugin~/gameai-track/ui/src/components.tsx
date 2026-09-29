@@ -22,15 +22,29 @@ export function AgentTable({ agents, select }: { agents: Agent[]; select: (agent
     ];
     return <Table size="small" rowKey="id" dataSource={agents} columns={columns} pagination={false} scroll={{ x: 750 }} locale={{ emptyText: '当前没有符合条件的 Agent' }} />;
 }
-export function TaskTable({ tasks, select }: { tasks: Task[]; select: (task: Task) => void })
+export function TaskLinks({ ids, tasks, select }: { ids: string[]; tasks: Task[]; select: (task: Task) => void })
+{
+    if (!ids.length) return <>无</>;
+    return <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 4 }}>
+        {ids.map(id =>
+        {
+            const target = tasks.find(task => task.id === id);
+            return <Button key={id} type="link" disabled={!target} title={target?.title ?? '任务未加载'}
+                style={{ padding: 0, height: 'auto', whiteSpace: 'nowrap', textAlign: 'left', fontFamily: 'monospace' }}
+                onClick={() => { if (target) select(target); }}>{id}</Button>;
+        })}
+    </div>;
+}
+export function TaskTable({ tasks, allTasks = tasks, select }: { tasks: Task[]; allTasks?: Task[]; select: (task: Task) => void })
 {
     const columns: ColumnsType<Task> = [
-        { title: 'Task', dataIndex: 'id', fixed: 'left', width: 100, render: (id, t) => <Button type="link" onClick={() => select(t)}>{id}</Button> },
+        { title: 'Task', dataIndex: 'id', fixed: 'left', width: 118, render: (id, t) => <Button type="link" style={{ whiteSpace: 'nowrap' }} title={t.title} onClick={() => select(t)}>{id}</Button> },
         { title: 'Deliverable', dataIndex: 'title', width: 240 },
+        { title: 'Parent', dataIndex: 'parent_id', width: 118, render: id => id || '—' },
         { title: 'Role', dataIndex: 'role', filters: ['Art', 'Development', 'QA'].map(value => ({ text: value, value })), onFilter: (value, t) => t.role === value },
         { title: 'Agent', dataIndex: 'agent', render: a => a ?? '—' },
         { title: 'Status', dataIndex: 'status', filters: ['执行中', '依赖阻塞', '等待交付'].map(value => ({ text: value, value })), onFilter: (value, t) => t.status === value, render: s => <StateTag value={s} /> },
-        { title: 'Dependency', dataIndex: 'dependencies', render: ids => ids.join('、') || '无' },
+        { title: 'Dependency', dataIndex: 'dependencies', width: 118, align: 'left', render: ids => <TaskLinks ids={ids} tasks={allTasks} select={select} /> },
         { title: 'Version', dataIndex: 'version', sorter: (a, b) => a.version.localeCompare(b.version) },
     ];
     return <Table size="small" rowKey="id" columns={columns} dataSource={tasks} pagination={{ pageSize: 10, hideOnSinglePage: true }} scroll={{ x: 950 }} />;

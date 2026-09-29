@@ -38,8 +38,8 @@ export async function seed(pool)
         const taskIds = {};
         for (const task of data.tasks)
         {
-            taskIds[task.id] = (await client.query(`INSERT INTO tasks(project_id,task_key,plan_version_id,title,role_code,status)
-                VALUES($1,$2,$3,$4,$5,$6) RETURNING id`, [project, task.id, planVersion, task.title, task.role, task.dependencies.length ? 'blocked' : 'pending'])).rows[0].id;
+            taskIds[task.id] = (await client.query(`INSERT INTO tasks(project_id,plan_version_id,title,role_code,status)
+                VALUES($1,$2,$3,$4,$5) RETURNING id`, [project, planVersion, task.title, task.role, task.dependencies.length ? 'blocked' : 'pending'])).rows[0].id;
         }
         for (const task of data.tasks)
         {

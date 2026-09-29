@@ -4,7 +4,7 @@
 
 Node.js + TypeScript 服务与 React / Ant Design Track 共用 PostgreSQL 业务存储。服务代码位于 app/client/LocalPackages/com.oathx.gamecli/GameCLI~/GameCLIServer。
 
-旧第三方任务系统适配、通知中转、重放协议和 CLI 订阅调度已移除。当前服务只提供工作台、MCP 读取、原始 HTML 审阅和本机 Agent 配置；没有正式审批、任务发布或工作节点接单接口。
+旧第三方任务系统适配、通知中转、重放协议和 CLI 订阅调度已移除。当前已提供工作台、MCP 读取、原始 HTML 审阅、人工审批、本机固定 Agent 配置及手动 PM 任务发布；工作节点自动接单尚未接入。
 
 ## 唯一编排入口
 
@@ -35,3 +35,16 @@ HTTP 用于查询、文档、审批及结果提交；后续 WebSocket 用于工�
 项目总览点击固定 Agent，在详情下方选择需求会话查看用户输入与 Agent 公开回复；长消息可展开完整原文，消息按原顺序分页。历史读取使用 Codex `thread/read` / `includeTurns`，不 resume、不发起 turn。数据库仅用于查询当前项目、Agent 与会话的明确关联，不开放任意 threadId 查询。
 
 本机 HTTP 接口为 `/api/track/agent-history?agent=<编号>`；带 `conversation=<关联记录ID>&page=1` 读取消息。内嵌 UI 使用只读 MCP 工具 `gameai_agent_history`。响应排除 reasoning、系统指令和工具日志，网页按文本显示，不执行回复内 HTML。只显示已关联且当前服务账户可读取的记录，不等于所有历史 Codex 聊天；不同工作站暂不支持远程取历史，需后续 Worker 回传接入。当前对话面板只读，不提供发消息或修改策划入口。
+
+## 手动 PM 拆分（已实现）
+
+需求列表及原始文档底部提供“PM 拆分任务”。仅本机页面已登录且有审批权限的人工账户可以提交 `POST /api/track/review-pm-split`，携带 `version_id`、`revision`、`document_hash` 和 CSRF；Agent 提交令牌不能调用。已批准版本不会自动触发 PM。
+
+云端验证最新批准版本及原始 HTML 的字节哈希，创建 `pm_jobs` 持久执行记录，调用本机 Release GameCLI 的 `pm plan`。该命令在固定 PM 的对应需求会话中产生结构化计划，服务校验角色、必填交付标准、依赖完整性和无环后，在同一事务内创建 PM 主任务、美术与程序子任务、依赖及发布记录。验收用例写入各子任务，本阶段不创建 QA 子任务，不启动制作或开发。
+
+重复点击返回同一作业；已成功版本禁止重复建单。明确失败可人工重试，总计最多三次。执行仍运行或结果未知时阻止再次启动；服务中断后未决作业到期显示待核实，不能自动重派，需核实原进程及固定 Agent 租约后处理。结果暂存 `.gamecli/pm-jobs/<execution_id>/`，数据库仍为唯一状态来源。正在拆分时 UI 每五秒刷新本服务快照。
+
+当前仅支持固定 PM 绑定服务器所在本机工作站，尚未实现远程 Worker 通道。迁移后运行 `node --env-file=.env.database-admin scripts/setup-pm.mjs` 追加发布权限；构建 Release CLI 和 Track，更新技能后执行 `npm run db:sync-skills`。测试运行 `npm run test:pm`，数据库用例全程事务回滚，模型执行使用确定性输出替身。
+## 统一任务短编号
+
+Task、Parent 与依赖引用统一为角色字母加短横线、七位数字：Design `D`、Art `A`、Development `P`、QA `Q`、PM 主任务 `T`。由 `007_task_numbers.sql` 的数据库序列及插入触发器统一分配，零填充、允许间断、不循环。完整中文名称保留在 title。既有编号迁移时保存 legacy_task_key，所有 UUID 关系不变。

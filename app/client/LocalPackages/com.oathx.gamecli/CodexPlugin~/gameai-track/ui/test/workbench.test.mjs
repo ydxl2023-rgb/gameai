@@ -155,3 +155,52 @@ test('authenticated review submits the opened row, never the unrelated default r
     }
     finally { dom.window.close(); }
 });
+
+test('manual PM action uses approved row, sends CSRF and locks while running', async () =>
+{
+    const html = await readFile(new URL('../../../../GameCLI~/GameCLIServer/public/track.html', import.meta.url), 'utf8');
+    const state = snapshot();
+    state.mode = 'postgres';
+    const row = {...state.workbench.requirement,id:'PM-REQ',status:'已批准',version_id:'22222222-2222-4222-8222-222222222222',document_hash:'a'.repeat(64),document_path:null,created_at:null};
+    state.workbench.requirements = [row];
+    const writes = [];
+    const dom = new JSDOM(html,{url:'http://localhost/track',runScripts:'dangerously',pretendToBeVisual:true,virtualConsole:new VirtualConsole(),beforeParse(window)
+    {
+        window.MessageChannel = class { constructor() { this.port1={onmessage:null};this.port2={postMessage:()=>setTimeout(()=>this.port1.onmessage?.({}),0)}; } };
+        window.matchMedia = () => ({matches:false,addListener(){},removeListener(){},addEventListener(){},removeEventListener(){}});
+        window.ResizeObserver = class {observe(){} unobserve(){} disconnect(){}};
+        window.AbortSignal.timeout ??= () => new window.AbortController().signal;
+        window.Element.prototype.scrollTo = () => {};
+        window.fetch = async (url,options) =>
+        {
+            if (url.endsWith('/review-session')) return {ok:true,json:async()=>({authenticated:true,name:'测试审批人',csrf:'pm-csrf'})};
+            if (options?.method === 'POST')
+            {
+                assert.ok(url.endsWith('/review-pm-split'));
+                writes.push({body:JSON.parse(options.body),csrf:options.headers['X-GameAI-Review-CSRF']});
+                row.pm_job = {state:'running',error:'',attempts:1,task_count:0};
+                return {ok:true,json:async()=>({state:'running',repeated:false})};
+            }
+            return {ok:true,json:async()=>structuredClone(state)};
+        };
+    }});
+    const doc=dom.window.document;
+    const find=(selector,text)=>[...doc.querySelectorAll(selector)].find(n=>n.textContent.replace(/\s/g,'')===text.replace(/\s/g,''));
+    try
+    {
+        await until(()=>doc.querySelector('.ant-card'));
+        find('[role=tab]','需求审批').click();
+        await until(()=>find('button','PM 拆分任务') && !find('button','PM 拆分任务').disabled);
+        assert.equal(writes.length,0,'Approval alone must not dispatch');
+        find('button','PM 拆分任务').click();
+        await until(()=>writes.length===1);
+        assert.equal(writes[0].body.version_id,row.version_id);
+        assert.equal(writes[0].body.document_hash,row.document_hash);
+        assert.equal(writes[0].csrf,'pm-csrf');
+        await until(()=>find('button','PM 拆分中')?.disabled);
+        find('button','PM 拆分中').click();
+        await delay();
+        assert.equal(writes.length,1);
+    }
+    finally {dom.window.close();}
+});

@@ -5,6 +5,8 @@ import { randomBytes, scryptSync, timingSafeEqual } from 'node:crypto';
 import { createPool, databaseEnabled } from '../database/connection.js';
 import { submitRequirement, reviewRequirement, ReviewError } from '../database/requirements.js';
 import { agentRunRequest } from '../database/agent-runs.js';
+import { startPmJob } from '../database/pm-plans.js';
+import { checkPmRuntime, dispatchPmJob } from './pm-dispatch.js';
 
 let writer: ReturnType<typeof createPool> | undefined;
 let config: Record<string,string | undefined> | undefined;
@@ -156,6 +158,18 @@ export async function handleReviewRequest(request: IncomingMessage, response: Se
         if (path === '/api/track/review-decisions')
         {
             reply(response,200,await reviewRequirement(writer,project,session!.user,input));
+            return;
+        }
+        if (path === '/api/track/review-pm-split')
+        {
+            await checkPmRuntime();
+            const started = await startPmJob(writer,project,session!.user,input);
+            // Return immediately; publication is owned by the server and guarded by a durable job.
+            if (started.created)
+            {
+                void dispatchPmJob(writer,project,started).catch(() => console.error('PM 结果状态写入失败，需要核实数据库中的执行记录。'));
+            }
+            reply(response,started.created ? 202 : 200,{job_id:started.job.id,state:started.job.state,repeated:!started.created});
             return;
         }
         reply(response,404,{error:'接口不存在。'});
