@@ -19,3 +19,26 @@
 .document-review-footer{display:flex;align-items:center;justify-content:space-between;gap:12px}.document-review-hint{display:block;font-size:12px;margin-top:4px}@media(max-width:480px){.document-review-footer{align-items:flex-start;flex-wrap:wrap}}
 
 .page-content--list>.section>.ant-card-body>.ant-typography{flex:none}
+
+/* Conversation layout: user bubbles on the right, open assistant replies on the left. */
+.agent-chat { display: flex; flex-direction: column; gap: 28px; padding: 14px 0 22px; }
+.chat-message { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.chat-message--user { align-items: flex-end; padding-left: 28px; }
+.chat-message--assistant { align-items: flex-start; padding-right: 12px; }
+.chat-author { display: flex; align-items: center; gap: 8px; font-size: 12px; color: #a8b2bf; }
+.chat-author .ant-avatar { background: #293542; color: #d9e0e8; font-size: 11px; }
+.chat-message--assistant .ant-avatar { background: #24433d; color: #a5ead4; }
+.chat-message--user .chat-author { flex-direction: row-reverse; }
+.chat-bubble { max-width: 100%; min-width: 0; box-sizing: border-box; color: #e3e8ee; }
+.chat-message--user .chat-bubble { background: #303b49; border: 1px solid #405063; padding: 14px 18px; border-radius: 18px 5px 18px 18px; }
+.chat-message--assistant .chat-bubble { padding: 3px 0 3px 32px; width: 100%; }
+.chat-text { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 14px; line-height: 1.85; }
+.chat-title { font-size: 16px; line-height: 1.6; font-weight: 600; margin-bottom: 10px; }
+.chat-document { margin-top: 14px; padding: 10px 12px; background: #202c37; border: 1px solid #354553; border-radius: 8px; font-size: 12px; color: #b2c2ce; }
+.chat-expand.ant-btn { margin-top: 8px; padding-inline: 0; color: #a5c9bd; font-size: 12px; }
+.chat-source { margin: 10px 0 0; padding: 14px; background: #131c25; border-radius: 8px; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 12px; line-height: 1.7; }
+@media (max-width: 480px) { .chat-message--user { padding-left: 16px; } .chat-message--assistant { padding-right: 0; } .chat-message--assistant .chat-bubble { padding-left: 0; } }
+.chat-document-reader { margin-top: 12px; }
+.chat-document-reader iframe { display: block; width: 100%; overflow: hidden; border: 1px solid #405063; border-radius: 10px; background: #fff; }
+.chat-source-toggle { margin-top: 12px; color: #a8b2bf; font-size: 12px; }
+.chat-source-toggle summary { cursor: pointer; padding: 6px 0; }

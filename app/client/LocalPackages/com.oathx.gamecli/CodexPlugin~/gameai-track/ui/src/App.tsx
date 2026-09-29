@@ -1,12 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
 import { App as AntApp, Alert, Badge, Button, Checkbox, ConfigProvider, Descriptions, Drawer, Empty, Form, Input, Modal, Progress, Select, Space, Spin, Splitter, Table, Tabs, Tag, Typography, theme } from 'antd';
+import { AgentHistory } from './AgentHistory';
 import { AgentCreateDialog } from './AgentCreateDialog';
 import zhCN from 'antd/locale/zh_CN';
 import { TrackBridge } from './bridge';
 import { canApprove, type Agent, type Audit, type Identity, type Snapshot, type RequirementRow, type Task, type Workbench } from './model';
 import { AgentTable, Section, StateTag, TaskTable } from './components';
 const identities = [{ value: 'design', label: '策划 · 人工审批人' }, { value: 'admin', label: '项目管理员' }, { value: 'art', label: '美术 · 只读' }, { value: 'dev', label: '开发 · 只读' }, { value: 'qa', label: 'QA · 只读' }, { value: 'pm', label: 'PM · 只读' }];
-const tabs = [['overview', '项目总览'], ['requirements', '需求审批'], ['tasks', '任务与依赖'], ['agents', 'Agent'], ['versions', '版本'], ['permissions', '权限'], ['audit', '操作记录']];
+const tabs = [['overview', '项目总览'], ['requirements', '需求审批'], ['tasks', '任务与依赖'], ['versions', '版本'], ['permissions', '权限'], ['audit', '操作记录']];
 export function WorkbenchApp()
 {
     const [data, setData] = useState<Workbench>();
@@ -176,7 +177,7 @@ export function WorkbenchApp()
         const selectedVersion = data.versions?.find(v => v.version === version);
         const r = review ?? data.requirement;
         const content = review ?? selectedVersion?.content ?? r;
-        if (tab === 'overview') return <Section title="执行中的 Agent" extra={<Space><Button type="primary" disabled={!persistent || context.embedded} onClick={() => setAddingAgent(true)}>添加 Agent</Button><Button onClick={() => setTab('agents')}>全部 Agent</Button></Space>}><AgentTable agents={data.agents.filter(a => a.status === '执行中')} select={setDetail} /></Section>;
+        if (tab === 'overview') return <Section title="固定 Agent" extra={<Space><Button type="primary" disabled={!persistent || context.embedded} onClick={() => setAddingAgent(true)}>添加 Agent</Button></Space>}><AgentTable agents={data.agents.filter(a => a.fixed)} select={setDetail} /></Section>;
         if (tab === 'requirements') return <Section title="需求审批" extra={<Input.Search aria-label="搜索需求" placeholder="需求编号 / 名称" value={requirementQuery} allowClear onChange={e => setRequirementQuery(e.target.value)} style={{ width: 200 }} />}>
             <Table<RequirementRow> size="small" rowKey="id" tableLayout="fixed" pagination={{ pageSize: 10, hideOnSinglePage: true }} scroll={{ x: 600 }}
                 dataSource={(data.requirements ?? [{ ...data.requirement, id: 'DEMO-REQ-1', document_path: null, created_at: null }]).filter(item => [item.id, item.title].join(' ').toLowerCase().includes(requirementQuery.toLowerCase()))}
@@ -191,7 +192,6 @@ export function WorkbenchApp()
 
         </Section>;
         if (tab === 'tasks') return <Section title="任务与依赖" extra={<Input.Search aria-label="搜索任务" placeholder="任务 / Agent" value={query} allowClear onChange={e => setQuery(e.target.value)} style={{ width: 180 }} />}><Typography.Paragraph type="secondary">任务使用 v1.2；依赖就绪后才允许派工。</Typography.Paragraph><TaskTable tasks={data.tasks.filter(t => [t.id, t.title, t.agent ?? ''].join(' ').toLowerCase().includes(query.toLowerCase()))} select={setDetail} /></Section>;
-        if (tab === 'agents') return <Section title="项目 Agent" extra={<Button type="primary" disabled={!persistent || context.embedded} onClick={() => setAddingAgent(true)}>添加 Agent</Button>}><Typography.Paragraph type="secondary">同角色可有多个实例；点击查看工作站、容量和授权。</Typography.Paragraph><AgentTable agents={data.agents} select={setDetail} /></Section>;
         if (tab === 'versions') return <Section title="需求版本"><Table size="small" rowKey="version" pagination={false} scroll={{ x: 600 }} dataSource={data.versions?.map(({ version, status, change, reference }) => ({ version, status, change, reference })) ?? [{ version: r.version, status: r.status, change: '异常恢复与测试用例', reference: '尚未派工' }, { version: 'v1.2', status: '已批准', change: '基础规则与 UI 交付标准', reference: '4 项任务 · 2 项执行中' }]} columns={[{ title: 'Version', dataIndex: 'version' }, { title: 'State', dataIndex: 'status', render: s => <StateTag value={s} /> }, { title: 'Change', dataIndex: 'change' }, { title: 'References', dataIndex: 'reference' }, { title: 'Action', render: (_, v) => <Button type="link" onClick={() => openVersion(v.version)}>审阅</Button> }]} /><Typography.Paragraph className="note">需求版本 → PM 计划版本 → 执行编号 → 产物版本 → QA 验收版本。历史版本只读，恢复内容需新建修订并重新审批。</Typography.Paragraph></Section>;
         if (tab === 'permissions') return <>
             <Section title="人工身份权限"><Alert type="info" title="身份切换仅用于演示；正式身份来自服务端会话，管理员不会自动获得审批权限。" /><Table size="small" pagination={false} rowKey="role" dataSource={[{ role: '策划 · 人工', read: '允许', approve: '允许', manage: '禁止' }, { role: 'PM / Art / Development / QA', read: '允许', approve: '禁止', manage: '禁止' }, { role: '项目管理员', read: '允许', approve: '禁止', manage: '允许' }]} columns={[{ title: 'Role', dataIndex: 'role' }, { title: 'Read', dataIndex: 'read' }, { title: 'Approve', dataIndex: 'approve' }, { title: 'Manage', dataIndex: 'manage' }]} /></Section>
@@ -218,10 +218,11 @@ export function WorkbenchApp()
         <Modal title="人工审批登录" open={loginOpen} confirmLoading={savingReview} onCancel={() => { if (!savingReview) setLoginOpen(false); }} onOk={() => void login()} okText="登录" cancelText="取消" getContainer={false}>
             <Form form={loginForm} layout="vertical"><Form.Item name="username" label="账户" rules={[{ required: true }]}><Input autoComplete="username" /></Form.Item><Form.Item name="password" label="密码" rules={[{ required: true }]}><Input.Password autoComplete="current-password" /></Form.Item></Form>
         </Modal>
-        <AgentCreateDialog open={addingAgent} close={() => setAddingAgent(false)} created={id => { setAddingAgent(false); setTab('agents'); log('已添加 Agent：' + id + '，等待节点上线及派工。'); void message.success('Agent 配置已保存'); void refresh(); }} />
-        <Drawer title={detail?.id} open={!!detail} onClose={() => setDetail(undefined)} size={420} getContainer={false} styles={{ wrapper: { maxWidth: '100%' } }}>
+        <AgentCreateDialog open={addingAgent} close={() => setAddingAgent(false)} created={id => { setAddingAgent(false); setTab('overview'); log('已添加 Agent：' + id + '，等待节点上线及派工。'); void message.success('Agent 配置已保存'); void refresh(); }} />
+        <Drawer title={detail?.id} open={!!detail} onClose={() => setDetail(undefined)} size={selectedAgent ? 720 : 420} getContainer={false} styles={{ wrapper: { maxWidth: '100%' } }}>
             {selectedTask && <><Typography.Title level={5}>{selectedTask.title}</Typography.Title><StateTag value={selectedTask.status} /><Descriptions column={1} items={[{ key: 'v', label: '需求版本', children: selectedTask.version }, { key: 'a', label: 'Agent', children: selectedTask.agent ?? '未分配' }, { key: 'd', label: '依赖', children: selectedTask.dependencies.join('、') || '无' }]} /><Progress percent={selectedTask.progress} /><Alert type="info" title="模拟执行记录，没有真实产物或验收证据。" /></>}
             {selectedAgent && <Descriptions column={1} items={[{ key: 'name', label: '名称', children: selectedAgent.name ?? selectedAgent.id }, { key: 'skills', label: '技能', children: selectedAgent.skills?.map(s => s.key + (s.primary ? '（主技能）' : '')).join('、') || '未配置' }, { key: 'enabled', label: '允许调度', children: selectedAgent.enabled ? '是' : '否' }, { key: 'r', label: '角色', children: selectedAgent.role }, { key: 's', label: '状态', children: <StateTag value={selectedAgent.status} /> }, { key: 'w', label: '工作站', children: selectedAgent.station }, { key: 'c', label: '容量', children: `${selectedAgent.used} / ${selectedAgent.capacity}` }, { key: 't', label: '任务', children: selectedAgent.task ?? '—' }, { key: 'read', label: '项目读取', children: selectedAgent.read ? '允许' : '禁止' }, { key: 'write', label: '任务写入', children: selectedAgent.write ? '仅限授权任务' : '禁止' }, { key: 'p', label: '文档审批', children: '禁止，需人工批准' }]} />}
+            {selectedAgent && <AgentHistory key={selectedAgent.id} agent={selectedAgent.id} bridge={bridge.current} />}
         </Drawer>
         <Modal title={(dialog === 'approve' ? '同意此版本' : '拒绝此版本') + (persistent ? '' : ' · 模拟')} confirmLoading={savingReview} open={!!dialog} onCancel={() => { if (!savingReview) setDialog(undefined); }} onOk={() => void confirm()} okText="确认" cancelText="返回审阅" okButtonProps={{ disabled: !approvalAllowed }} getContainer={false}>
             <p>{documentPreview?.title} / {documentPreview?.version}</p><Typography.Text code>{documentPreview?.revision}</Typography.Text><p>{persistent ? "将保存当前人工账户的审批决定、版本及文档校验值。本轮不会自动派工。" : "操作只影响本页模拟状态，不写数据库、不创建任务、不启动 Agent。"}</p>

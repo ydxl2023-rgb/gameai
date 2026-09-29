@@ -53,6 +53,17 @@ export async function submitRequirement(pool, projectKey, raw)
             await client.query('COMMIT');
             return prior.response;
         }
+        const fixed = (await client.query("SELECT agent_id FROM gameai.fixed_agents WHERE project_id=$1 AND role_code='Design'", [project.id])).rows[0];
+        if (fixed)
+        {
+            const execution = await client.query(`SELECT 1 FROM gameai.agent_runs r JOIN gameai.agent_conversations s ON s.id=r.conversation_id
+                WHERE r.execution_id=$1 AND r.state='completed' AND s.project_id=$2 AND s.requirement_key=$3
+                AND s.role_code='Design' AND s.thread_id=$4 AND s.agent_id=$5`, [input.execution_id,project.id,input.requirement_key,input.thread_id,fixed.agent_id]);
+            if (!execution.rowCount)
+            {
+                throw new ReviewError('文档必须来自该需求的固定 Design Agent 已完成执行。');
+            }
+        }
         const requirement = (await client.query(`INSERT INTO gameai.requirements(project_id,requirement_key,title) VALUES($1,$2,$3)
             ON CONFLICT(project_id,requirement_key) DO UPDATE SET title=gameai.requirements.title RETURNING id,title`, [project.id,input.requirement_key,input.title])).rows[0];
         if (requirement.title !== input.title)

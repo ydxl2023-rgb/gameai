@@ -85,8 +85,8 @@ test('actual bundled workbench gates approval in ' + storage, async () =>
     };
     try
     {
-        await until(() => document.querySelector('.ant-card-head-title')?.textContent === '执行中的 Agent');
-        for (const label of ['任务与依赖', 'Agent', '版本', '权限', '操作记录', '需求审批', '项目总览'])
+        await until(() => document.querySelector('.ant-card-head-title')?.textContent === '固定 Agent');
+        for (const label of ['任务与依赖', '版本', '权限', '操作记录', '需求审批', '项目总览'])
         {
             clickText('[role=tab]', label); await delay();
             assert.ok(document.querySelector('.ant-card'));

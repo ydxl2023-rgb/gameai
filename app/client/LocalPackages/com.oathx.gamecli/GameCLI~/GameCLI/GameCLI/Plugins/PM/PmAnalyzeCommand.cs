@@ -26,7 +26,7 @@ namespace GameCLI.Plugins.PM
             }.Concat(args).ToArray(), cancellationToken);
         }
 
-        private const string Usage = "GameCLI pm --analyze --project <directory> (--prompt <text> | --prompt-file <UTF-8 file>) [--codex <codex.exe>] [--skills <game-cli directory>] [--model <model>] [--timeout <seconds>] [--format human|json]";
+        private const string Usage = "GameCLI pm --analyze --project <directory> --key <requirement> (--prompt <text> | --prompt-file <UTF-8 file>) [--codex <codex.exe>] [--skills <game-cli directory>] [--model <model>] [--timeout <seconds>] [--format human|json]";
 
         private static async Task<int> RunAsync(string[] args, CancellationToken cancellationToken)
         {
@@ -58,7 +58,7 @@ namespace GameCLI.Plugins.PM
                     {
                         analyze = true;
                     }
-                    else if (key is "--project" or "--prompt" or "--prompt-file" or "--codex" or "--skills" or "--model" or "--timeout" or "--format" && i + 1 < args.Length && !args[i + 1].StartsWith("--", StringComparison.Ordinal) && values.TryAdd(key, args[i + 1]))
+                    else if (key is "--key" or "--project" or "--prompt" or "--prompt-file" or "--codex" or "--skills" or "--model" or "--timeout" or "--format" && i + 1 < args.Length && !args[i + 1].StartsWith("--", StringComparison.Ordinal) && values.TryAdd(key, args[i + 1]))
                     {
                         i++;
                     }
@@ -70,7 +70,7 @@ namespace GameCLI.Plugins.PM
 
                 string format = values.GetValueOrDefault("--format", "human");
                 json = format == "json";
-                if (!analyze || !values.ContainsKey("--project") || format is not ("human" or "json") || values.ContainsKey("--prompt") == values.ContainsKey("--prompt-file") || !int.TryParse(values.GetValueOrDefault("--timeout", "300"), out int seconds) || seconds < 1 || seconds > 3600)
+                if (!analyze || !values.ContainsKey("--project") || !values.ContainsKey("--key") || format is not ("human" or "json") || values.ContainsKey("--prompt") == values.ContainsKey("--prompt-file") || !int.TryParse(values.GetValueOrDefault("--timeout", "300"), out int seconds) || seconds < 1 || seconds > 3600)
                 {
                     throw new ArgumentException(Usage);
                 }
@@ -107,7 +107,7 @@ namespace GameCLI.Plugins.PM
                 Console.CancelKeyPress += handler;
                 cancellation.CancelAfter(TimeSpan.FromSeconds(seconds));
                 DateTimeOffset started = DateTimeOffset.UtcNow;
-                PmRunResult result = await CodexPmRunner.RunAsync(values.GetValueOrDefault("--codex", "codex"), project, skills, prompt, values.GetValueOrDefault("--model"), traceId, executionId, message => Console.Error.Write(message), cancellation.Token);
+                PmRunResult result = await CodexPmRunner.RunAsync(values.GetValueOrDefault("--codex", "codex"), project, skills, prompt, values.GetValueOrDefault("--model"), traceId, executionId, message => Console.Error.Write(message), cancellation.Token, values["--key"]);
                 int exitCode = result.Analysis.Status switch
                 {
                     "success" => 0,
@@ -133,7 +133,7 @@ namespace GameCLI.Plugins.PM
 
                 return exitCode;
             }
-            catch (Exception exception) when (exception is ArgumentException or IOException or InvalidOperationException or JsonException or OperationCanceledException or Win32Exception or UnauthorizedAccessException or CodexInteractionException)
+            catch (Exception exception) when (exception is ArgumentException or IOException or InvalidOperationException or JsonException or OperationCanceledException or Win32Exception or UnauthorizedAccessException or CodexInteractionException or HttpRequestException)
             {
                 int code = exception switch
                 {

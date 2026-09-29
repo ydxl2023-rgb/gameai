@@ -51,7 +51,7 @@ description: 分析游戏需求文档、设计玩法规则与边界、形成程�
 
 ## 当前可执行入口
 
-`GameCLI design draft --project <仓库根目录> --prompt-file <UTF-8输入> --key <需求编号> --version <版本> [--server <服务地址>]` 启动独立 Codex Design 会话。宿主加载本技能、文档格式、调研、移动端和任务描述规范及模板；本模式按提供的 schema 返回 title、summary、html、questions，宿主将完整 HTML 保存到 app/desgin。存在问题时阻塞上传，问题在当前对话集中解决。
+`GameCLI design draft --project <仓库根目录> --prompt-file <UTF-8输入> --key <需求编号> --version <版本> [--server <服务地址>]` 通过云服务领取固定 Design Agent，同一需求恢复原 Codex 会话，新需求创建隔离会话。宿主加载本技能、文档格式、调研、移动端和任务描述规范及模板；本模式按提供的 schema 返回 title、summary、html、questions，宿主将完整 HTML 保存到 app/desgin。存在问题时阻塞上传，问题在当前对话集中解决。
 
 带 server 时使用 GAMEAI_SUBMISSION_TOKEN 提交文档；仅授予提交能力，不具备审批能力。原始 HTML、版本、文件哈希、真实执行和会话编号由服务事务登记为待审批。提交失败保留 .submission.json，使用 `GameCLI design submit --submission <原文件> --server <服务地址>` 重试，不重新调用 Agent。一次上传最多三次网络尝试，服务按固定请求编号校验幂等。
 

@@ -4,6 +4,7 @@ import { parseEnv } from 'node:util';
 import { randomBytes, scryptSync, timingSafeEqual } from 'node:crypto';
 import { createPool, databaseEnabled } from '../database/connection.js';
 import { submitRequirement, reviewRequirement, ReviewError } from '../database/requirements.js';
+import { agentRunRequest } from '../database/agent-runs.js';
 
 let writer: ReturnType<typeof createPool> | undefined;
 let config: Record<string,string | undefined> | undefined;
@@ -60,7 +61,7 @@ export async function handleReviewRequest(request: IncomingMessage, response: Se
             reply(response,415,{error:'需要 JSON。'});
             return;
         }
-        const isSubmission = path === '/api/track/requirements';
+        const isSubmission = path === '/api/track/requirements' || path === '/api/track/agent-runs';
         if (isSubmission)
         {
             const supplied = Buffer.from(request.headers.authorization ?? '');
@@ -149,7 +150,7 @@ export async function handleReviewRequest(request: IncomingMessage, response: Se
         }
         if (isSubmission)
         {
-            reply(response,200,await submitRequirement(writer,project,input));
+            reply(response,200,path === '/api/track/agent-runs' ? await agentRunRequest(writer,project,input) : await submitRequirement(writer,project,input));
             return;
         }
         if (path === '/api/track/review-decisions')

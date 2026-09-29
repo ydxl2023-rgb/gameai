@@ -11,9 +11,16 @@ namespace GameCLI.Agents
     internal static class CodexAgentRunner
     {
         /// <summary>Owns one role-specific Codex process and returns its final structured message.</summary>
-        public static async Task<AgentRunResult> RunAsync(string executable, string project, string role, string instructions, JsonElement schema, string prompt, string? model, string traceId, string executionId, Action<string> progress, CancellationToken cancellation)
+        public static async Task<AgentRunResult> RunAsync(string executable, string project, string role, string instructions, JsonElement schema, string prompt, string? model, string traceId, string executionId, Action<string> progress, CancellationToken cancellation, string? requirementKey = null)
         {
             string inputHash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(prompt))).ToLowerInvariant();
+            await using CloudAgentRun? cloud = requirementKey == null ? null : await CloudAgentRun.OpenAsync(project, role, requirementKey, executionId, inputHash, cancellation);
+            if (cloud != null)
+            {
+                cancellation = cloud.Token;
+                instructions += "\n" + cloud.Instructions;
+                progress("Fixed Agent: " + cloud.AgentKey + "\n");
+            }
             using LiveRun liveRun = new(project, executionId, role, taskTitle: "需求文档分析", mode: "draft");
             await using CodexRpcClient rpc = new(executable, project);
             progress("Codex started; initializing protocol.\n");
@@ -27,8 +34,9 @@ namespace GameCLI.Agents
                 }
             }, cancellation);
             await rpc.NotifyAsync("initialized", new {}, cancellation);
-            JsonElement started = await rpc.RequestAsync("thread/start", new
+            JsonElement started = await rpc.RequestAsync(cloud?.ThreadId == null ? "thread/start" : "thread/resume", new
             {
+                threadId = cloud?.ThreadId,
                 cwd = project,
                 model,
                 sandbox = "read-only",
@@ -40,6 +48,10 @@ namespace GameCLI.Agents
                 }
             }, cancellation);
             string threadId = started.GetProperty("thread").GetProperty("id").GetString() ?? throw new JsonException("Codex did not return a thread ID.");
+            if (cloud != null)
+            {
+                await cloud.AttachAsync(threadId);
+            }
             progress(role + " thread: " + threadId + "\n");
             liveRun.SetSession(threadId, "");
             string? turnId = null;
@@ -108,6 +120,10 @@ namespace GameCLI.Agents
                         }
 
                         string result = finalText ?? throw new JsonException("Codex returned no final result.");
+                        if (cloud != null)
+                        {
+                            await cloud.CompleteAsync();
+                        }
                         progress("\nAgent turn completed.\n");
                         return new AgentRunResult(threadId, turnId, inputHash, result);
                     }

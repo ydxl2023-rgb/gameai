@@ -49,3 +49,4 @@ npm-debug.log*
 # Local Design submission payloads and server receipts
 /app/desgin/*.submission.json
 /app/desgin/*.submission.json.receipt.json
+/.gamecli/

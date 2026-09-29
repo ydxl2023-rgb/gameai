@@ -13,7 +13,7 @@ export function Section({ title, children, extra }: { title: string; children: R
 export function AgentTable({ agents, select }: { agents: Agent[]; select: (agent: Agent) => void })
 {
     const columns: ColumnsType<Agent> = [
-        { title: 'Agent', dataIndex: 'id', render: (id, a) => <Button type="link" title={id} onClick={() => select(a)}>{a.name ?? id}</Button> },
+        { title: 'Agent', dataIndex: 'id', render: (id, a) => <><Button type="link" title={id} onClick={() => select(a)}>{a.name ?? id}</Button>{a.fixed && <Tag color="blue">固定</Tag>}</> },
         { title: 'Role', dataIndex: 'role' },
         { title: 'Skills', ellipsis: true, render: (_, a) => a.skills?.map(s => s.key).join('、') || '未配置' },
         { title: 'Status', dataIndex: 'status', render: s => <StateTag value={s} /> },

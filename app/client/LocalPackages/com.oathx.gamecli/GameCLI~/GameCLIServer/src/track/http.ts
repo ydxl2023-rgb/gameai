@@ -5,6 +5,8 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { createSnapshot, readDocument } from './snapshot.js';
 import { handleAgentRequest } from './agent-http.js';
+import { agentHistory } from './agent-history.js';
+import { z } from 'zod';
 
 export const resourceUri = 'ui://gameai-track/v3.html';
 const mimeType = 'text/html;profile=mcp-app';
@@ -38,6 +40,21 @@ export function createMcpServer(html: string)
         description: '刷新 GameAI Track 数据库或演示快照，返回数据来源及测试数据标记。',
         inputSchema: {}, annotations
     }, reply);
+    server.registerTool('gameai_agent_history', {
+        description: '读取当前项目 Agent 已绑定会话的用户消息与公开回复，不启动或恢复任务。',
+        inputSchema: { agent: z.string(), conversation: z.string().optional(), page: z.number().int().positive().optional() },
+        annotations
+    }, async ({ agent, conversation, page }) =>
+    {
+        try
+        {
+            return { content: [], structuredContent: await agentHistory(agent, conversation, page) };
+        }
+        catch (error)
+        {
+            return { isError: true, content: [{ type: 'text' as const, text: error instanceof Error ? error.message : '历史读取失败。' }] };
+        }
+    });
     return server;
 }
 
@@ -51,7 +68,7 @@ export async function handleTrackRequest(request: IncomingMessage, response: Ser
 {
     const path = new URL(request.url ?? '/', 'http://localhost').pathname;
     const documentId = /^\/api\/track\/documents\/([0-9a-f-]{36})$/i.exec(path)?.[1];
-    if (!documentId && !['/mcp', '/track', '/api/track/demo', '/api/track/snapshot', '/api/track/agents', '/api/track/agent-options', '/api/track/requirements', '/api/track/review-session', '/api/track/review-login', '/api/track/review-logout', '/api/track/review-decisions'].includes(path))
+    if (!documentId && !['/mcp', '/track', '/api/track/demo', '/api/track/snapshot', '/api/track/agent-history', '/api/track/agents', '/api/track/agent-options', '/api/track/agent-runs', '/api/track/requirements', '/api/track/review-session', '/api/track/review-login', '/api/track/review-logout', '/api/track/review-decisions'].includes(path))
     {
         return false;
     }
@@ -68,9 +85,27 @@ export async function handleTrackRequest(request: IncomingMessage, response: Ser
         json(response, 403, { error: '请求来源不允许。' });
         return true;
     }
-    if (path === '/api/track/requirements' || path.startsWith('/api/track/review-'))
+    if (path === '/api/track/agent-runs' || path === '/api/track/requirements' || path.startsWith('/api/track/review-'))
     {
         await handleReviewRequest(request, response);
+        return true;
+    }
+    if (path === '/api/track/agent-history')
+    {
+        if (request.method !== 'GET')
+        {
+            json(response, 405, { error: '方法不允许。' });
+            return true;
+        }
+        const query = new URL(request.url!, 'http://localhost').searchParams;
+        try
+        {
+            json(response, 200, await agentHistory(query.get('agent') ?? '', query.get('conversation') ?? undefined, Number(query.get('page') ?? 1)));
+        }
+        catch (error)
+        {
+            json(response, 409, { error: error instanceof Error ? error.message : '历史读取失败。' });
+        }
         return true;
     }
     if (path === '/api/track/agents' || path === '/api/track/agent-options')

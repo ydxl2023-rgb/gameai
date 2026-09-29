@@ -23,7 +23,7 @@ test('MCP discovery, resource and repeated read-only calls use the actual HTTP t
     await client.connect(new StreamableHTTPClientTransport(new URL(base + '/mcp')));
     t.after(() => client.close());
     const { tools } = await client.listTools();
-    assert.deepEqual(tools.map(tool => tool.name).sort(), ['gameai_track_open', 'gameai_track_snapshot']);
+    assert.deepEqual(tools.map(tool => tool.name).sort(), ['gameai_agent_history', 'gameai_track_open', 'gameai_track_snapshot']);
     assert.ok(tools.every(tool => tool.annotations.readOnlyHint));
     assert.equal(tools.find(tool => tool.name === 'gameai_track_open')._meta.ui.resourceUri, resourceUri);
     assert.equal(tools.find(tool => tool.name === 'gameai_track_snapshot')._meta, undefined);
@@ -67,7 +67,7 @@ test('Codex-managed stdio works without an HTTP listener and exits with the clie
     {
         await client.connect(transport);
         const listing = await client.listTools();
-        assert.equal(listing.tools.length, 2);
+        assert.equal(listing.tools.length, 3);
         const response = await client.callTool({ name: 'gameai_track_open', arguments: {} });
         assert.equal(response.structuredContent.mode, 'demo');
         assert.equal(response.structuredContent.workbench.tasks.length, 4);

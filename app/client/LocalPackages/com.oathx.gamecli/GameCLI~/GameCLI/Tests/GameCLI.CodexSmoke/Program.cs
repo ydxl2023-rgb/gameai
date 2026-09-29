@@ -18,6 +18,7 @@ internal static class Program
         }
 
         string root = Path.GetFullPath(args[0]);
+        await using FakeCloud cloud = new();
         foreach ((string mode, int expected) in new[]
         {
             ("success", 0),
@@ -50,7 +51,11 @@ internal static class Program
                     "pm",
                     "--analyze",
                     "--project",
-                    root,
+                    cloud.Project,
+                    "--skills",
+                    Path.Combine(root, "app/client/LocalPackages/com.oathx.gamecli/game-cli"),
+                    "--key",
+                    "TEST-PM",
                     "--prompt",
                     "A test requirement",
                     "--codex",
@@ -107,9 +112,13 @@ internal static class Program
                     result = new {}
                 });
             }
-            else if (method == "thread/start")
+            else if (method is "thread/start" or "thread/resume")
             {
                 JsonElement p = message.GetProperty("params");
+                if (method == "thread/resume" && p.GetProperty("threadId").GetString() != "thread-test")
+                {
+                    throw new Exception("Original conversation was not resumed");
+                }
                 if (p.GetProperty("sandbox").GetString() != "read-only" || !p.GetProperty("developerInstructions").GetString()!.Contains("# PM Agent"))
                 {
                     throw new Exception("Missing role instructions or sandbox");

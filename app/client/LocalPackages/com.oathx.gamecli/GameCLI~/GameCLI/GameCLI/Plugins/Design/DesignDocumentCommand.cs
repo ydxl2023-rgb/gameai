@@ -82,7 +82,7 @@ namespace GameCLI.Plugins.Design
                     {"type":"object","properties":{"title":{"type":"string"},"summary":{"type":"string"},"html":{"type":"string"},"questions":{"type":"array","items":{"type":"string"}}},"required":["title","summary","html","questions"],"additionalProperties":false}
                     """);
                     string executionId = Guid.NewGuid().ToString("N");
-                    AgentRunResult run = await CodexAgentRunner.RunAsync(values.GetValueOrDefault("--codex", "codex"), project, "Design", instructions.ToString(), schema.RootElement.Clone(), prompt, values.GetValueOrDefault("--model"), Guid.NewGuid().ToString("N"), executionId, text => Console.Error.Write(text), timeout.Token);
+                    AgentRunResult run = await CodexAgentRunner.RunAsync(values.GetValueOrDefault("--codex", "codex"), project, "Design", instructions.ToString(), schema.RootElement.Clone(), prompt, values.GetValueOrDefault("--model"), Guid.NewGuid().ToString("N"), executionId, text => Console.Error.Write(text), timeout.Token, values["--key"]);
                     using JsonDocument result = JsonDocument.Parse(run.Text);
                     JsonElement output = result.RootElement;
                     if (output.GetProperty("questions").GetArrayLength() != 0)

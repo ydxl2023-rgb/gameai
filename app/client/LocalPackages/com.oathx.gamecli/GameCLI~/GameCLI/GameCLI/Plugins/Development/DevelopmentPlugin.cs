@@ -1,9 +1,10 @@
 using GameCLI.Abstractions;
+using GameCLI.Agents;
 
 namespace GameCLI.Plugins.Development
 {
     /// <summary>
-    /// Reserves the development capability group; it currently registers no commands.
+    /// Registers read-only analysis through the fixed role Agent.
     /// </summary>
     public sealed class DevelopmentPlugin : CLIPlugin
     {
@@ -11,10 +12,13 @@ namespace GameCLI.Plugins.Development
         public override string Id => "development";
 
         /// <inheritdoc />
-        public override string Description => "Development agent (commands not implemented)";
+        public override string Description => "Development agent (fixed Agent analysis)";
 
         /// <inheritdoc />
         public override IReadOnlyList<ICommand> Commands
-        { get; } = Array.AsReadOnly(new ICommand[] {});
+        { get; } = Array.AsReadOnly(new ICommand[]
+        {
+            new SpecialistAnalyzeCommand("Development")
+        });
     }
 }

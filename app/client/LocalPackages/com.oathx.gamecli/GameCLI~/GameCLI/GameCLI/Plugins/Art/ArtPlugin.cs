@@ -1,9 +1,10 @@
 using GameCLI.Abstractions;
+using GameCLI.Agents;
 
 namespace GameCLI.Plugins.Art
 {
     /// <summary>
-    /// Reserves the art capability group; it currently registers no commands.
+    /// Registers read-only analysis through the fixed role Agent.
     /// </summary>
     public sealed class ArtPlugin : CLIPlugin
     {
@@ -11,10 +12,13 @@ namespace GameCLI.Plugins.Art
         public override string Id => "art";
 
         /// <inheritdoc />
-        public override string Description => "Art production (commands not implemented)";
+        public override string Description => "Art production (fixed Agent analysis)";
 
         /// <inheritdoc />
         public override IReadOnlyList<ICommand> Commands
-        { get; } = Array.AsReadOnly(new ICommand[] {});
+        { get; } = Array.AsReadOnly(new ICommand[]
+        {
+            new SpecialistAnalyzeCommand("Art")
+        });
     }
 }

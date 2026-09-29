@@ -38,12 +38,12 @@ export class TrackBridge
             catch (error) { this.onError(error instanceof Error ? error : new Error('快照错误')); }
         }
     };
-    private rpc(method: string, params: unknown): Promise<any>
+    private rpc(method: string, params: unknown, timeout = 10000): Promise<any>
     {
         return new Promise((resolve, reject) =>
         {
             const id = ++this.nextId;
-            const timer = setTimeout(() => { this.pending.delete(id); reject(new Error('宿主调用超时：' + method)); }, 10000);
+            const timer = setTimeout(() => { this.pending.delete(id); reject(new Error('宿主调用超时：' + method)); }, timeout);
             this.pending.set(id, { resolve, reject, timer });
             window.parent.postMessage({ jsonrpc: '2.0', id, method, params }, '*');
         });
@@ -74,6 +74,21 @@ export class TrackBridge
         if (result?.mode !== 'inline' && result?.mode !== 'fullscreen') throw new Error('宿主未返回有效展示模式。');
         this.context({ displayMode: result.mode });
         if (result.mode !== mode) throw new Error('宿主未切换展示模式，已保留当前视图。');
+    }
+    async history(agent: string, conversation?: string, page = 1)
+    {
+        if (!this.embedded)
+        {
+            const query = new URLSearchParams({ agent, page: String(page) });
+            if (conversation) query.set('conversation', conversation);
+            const response = await fetch('/api/track/agent-history?' + query, { cache: 'no-store', signal: AbortSignal.timeout(25000) });
+            const body = await response.json();
+            if (!response.ok) throw new Error(body.error ?? '历史读取失败。');
+            return body;
+        }
+        const result = await this.rpc('tools/call', { name: 'gameai_agent_history', arguments: { agent, conversation, page } }, 25000);
+        if (result?.isError) throw new Error(result.content?.[0]?.text ?? '历史读取失败。');
+        return result.structuredContent;
     }
     dispose()
     {

@@ -11,13 +11,14 @@
     "test": "node --test test/server.test.js",
     "build:track": "tsc -p tsconfig.json && tsc -p tsconfig.ui.json && node scripts/build-track.mjs",
     "start:track": "node dist/track/demo.js",
-    "test:track": "npm run build:track && node --test test/track.test.js && npm test --prefix ../../CodexPlugin~/gameai-track/ui",
+    "test:track": "npm run build:track && node --test test/track.test.js test/agent-history.test.js && npm test --prefix ../../CodexPlugin~/gameai-track/ui",
     "setup:track": "npm ci --prefix ../../CodexPlugin~/gameai-track/ui",
     "db:migrate": "node --env-file=.env.database-admin scripts/database.mjs migrate",
     "db:seed": "node --env-file=.env.database-admin scripts/database.mjs seed",
     "db:status": "node scripts/database.mjs status",
     "test:database": "node --env-file=.env.database-admin --test test/database.test.js",
     "db:sync-skills": "node --env-file=.env.database-admin scripts/database.mjs sync-skills",
+    "test:agents": "node --env-file=.env.database-admin --test test/agent-runs.test.js",
     "test:review": "npm run build:track && node --env-file=.env.database-admin --test test/requirements.test.js test/review-http.test.js"
   },
   "dependencies": {
