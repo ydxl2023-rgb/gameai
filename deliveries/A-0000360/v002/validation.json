@@ -1,0 +1,66 @@
+[
+  {
+    "file": "layers\\L1-background.png",
+    "width": 128,
+    "height": 128,
+    "transparentPixels": 5079,
+    "centerAlpha": 253,
+    "sha256": "7F5C0AA7C5DDDDFBAAAB53B4E19EC698EBCE734D34763323E6FFB6D2559C1199"
+  },
+  {
+    "file": "layers\\L2-item10.png",
+    "width": 128,
+    "height": 128,
+    "transparentPixels": 13465,
+    "centerAlpha": 253,
+    "sha256": "D9021EADE05B7C8E710C96C26E69E24BDBD6923DDC3F2B290AE3DAFA4C6C0D48"
+  },
+  {
+    "file": "layers\\L2-item40.png",
+    "width": 128,
+    "height": 128,
+    "transparentPixels": 14195,
+    "centerAlpha": 253,
+    "sha256": "5DC1BF9969AB69F151C9B695CD122FBC5742F06207926D5E64B47695ADAEDB7F"
+  },
+  {
+    "file": "layers\\L3-item10-text.png",
+    "width": 128,
+    "height": 128,
+    "transparentPixels": 16001,
+    "centerAlpha": 0,
+    "sha256": "765BDEDF2C70A3031AD3C451675D2813A9944A2226FDC94A7FAEAD3852068A7C"
+  },
+  {
+    "file": "layers\\L3-item40-text.png",
+    "width": 128,
+    "height": 128,
+    "transparentPixels": 16011,
+    "centerAlpha": 0,
+    "sha256": "E925C313A292EFC1930D8A804911D6362B669BA022B95093C66DA3503B940D56"
+  },
+  {
+    "file": "layers\\L4-frame.png",
+    "width": 128,
+    "height": 128,
+    "transparentPixels": 12815,
+    "centerAlpha": 0,
+    "sha256": "9BDCFF0EFFEADDFC96B2F133752AF16D2D68C501D5084D22231D30AF9001F97C"
+  },
+  {
+    "file": "preview\\item10-128.png",
+    "width": 128,
+    "height": 128,
+    "transparentPixels": 2726,
+    "centerAlpha": 255,
+    "sha256": "DAADD7D5C4ECC68F656FB75FA95C9C77F6A44BF508258472D204CEA5BDFBC7D5"
+  },
+  {
+    "file": "preview\\item40-128.png",
+    "width": 128,
+    "height": 128,
+    "transparentPixels": 2726,
+    "centerAlpha": 255,
+    "sha256": "4F28484AEEEEA43B669F4E0DAC67E4923D047FCC415467025D6AA34861ED4A17"
+  }
+]

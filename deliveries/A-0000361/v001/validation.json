@@ -1,0 +1,23 @@
+[
+  {
+    "variant": "P02",
+    "height": 820,
+    "cornerPixelMismatches": 0,
+    "cornersUnchanged": true,
+    "width": 1620
+  },
+  {
+    "variant": "P03",
+    "height": 590,
+    "cornerPixelMismatches": 0,
+    "cornersUnchanged": true,
+    "width": 1220
+  },
+  {
+    "variant": "P04",
+    "height": 820,
+    "cornerPixelMismatches": 0,
+    "cornersUnchanged": true,
+    "width": 1620
+  }
+]

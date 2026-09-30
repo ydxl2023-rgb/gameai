@@ -1,0 +1,10 @@
+<!doctype html><html lang="zh-CN"><meta charset="utf-8"><title>A-0000360 道具框生图交付</title><style>body{max-width:860px;margin:32px auto;padding:24px;background:#172438;color:#edf3fc;font:16px/1.8 system-ui}h2{border-bottom:1px solid #61738b}img{width:128px;height:128px;background:repeating-conic-gradient(#334155 0% 25%,#475569 0% 50%) 0/16px 16px}figure{margin:20px 0}a{color:#91caff}.rule{color:#ff8585}code{background:#263951;padding:3px}table{border-collapse:collapse;width:100%}td,th{border:1px solid #61738b;padding:10px;text-align:left}</style>
+<h1>A-0000360 · 奖励道具框</h1><p>交付版本：v002。仅重制本任务，保留上一版本，不派发下游任务。</p>
+<h2>完整效果</h2><figure><img src="preview/item40-128.png"><figcaption>测试晶石 ×8 · 128×128</figcaption></figure><figure><img src="preview/item10-128.png"><figcaption>测试金币 ×6 · 128×128</figcaption></figure>
+<h2>独立分层</h2><p class="rule">绘制顺序：背景层 → 图标层 → 文本层 → 框体层。每层均为独立 128×128 透明通道图片。</p>
+<figure><img src="layers/L1-background.png"><figcaption>背景层 · 生图制作</figcaption></figure>
+<figure><img src="layers/L2-item40.png"><img src="layers/L2-item10.png"><figcaption>图标层 · 两种测试道具分别生图制作</figcaption></figure>
+<figure><img src="layers/L3-item40-text.png"><img src="layers/L3-item10-text.png"><figcaption>文本层 · 名称与数量独立排版；接入时替换为动态文本</figcaption></figure>
+<figure><img src="layers/L4-frame.png"><figcaption>框体层 · 生图制作，中心透明</figcaption></figure>
+<h2>交付文件</h2><table><tr><th>目录或文件</th><th>用途</th></tr><tr><td>source/</td><td>四张实际生图原件</td></tr><tr><td>layers/</td><td>背景、两种图标、两种文本、框体</td></tr><tr><td>preview/</td><td>两张独立完整效果图</td></tr><tr><td><a href="generation.json">generation.json</a></td><td>生成工具、提示词、来源说明与绘制顺序</td></tr><tr><td><a href="validation.json">validation.json</a></td><td>尺寸、透明像素与文件校验值</td></tr><tr><td>export.ps1</td><td>可重现的尺寸导出、文字排版和分层合成</td></tr></table>
+<h2>检查与边界</h2><p>八张导出图片均为 128×128，框体中心透明；已查看两张完整效果图。背景、图标和框体均使用 imagegen 实际生成。文字使用确定性排版，避免生图文字失真。</p><p class="rule">本交付为当前对话单项制作，不冒充固定 art-01 的云执行记录。未更新 Track 运行状态或启动其他任务；未进行 Unity 导入、九宫格拉伸、正式动态长文本及大数量运行验收。</p></html>

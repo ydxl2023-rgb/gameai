@@ -1,0 +1,22 @@
+[
+  {
+    "sha256": "e93ecc60baaf56d4e1ff359fbadd1d16ae8f0619525ea31b673ce7b0707c5ba9",
+    "path": "source\\generated-panel.png"
+  },
+  {
+    "sha256": "6d7804b565f4c94db11c52abbcecb6a82492e735ea62c7f27e70a4c5d703a085",
+    "path": "assets\\UI-PANEL.png"
+  },
+  {
+    "sha256": "b4d353845a63b62292896dc0ddbfb55bbe60230ceed5a28bda8e4dbfc5484eed",
+    "path": "preview\\P02.png"
+  },
+  {
+    "sha256": "c031f741cb1912f8dd1b3029af3bb690a75e8bcbc53d67df79367172db39ac3b",
+    "path": "preview\\P03.png"
+  },
+  {
+    "sha256": "b4d353845a63b62292896dc0ddbfb55bbe60230ceed5a28bda8e4dbfc5484eed",
+    "path": "preview\\P04.png"
+  }
+]

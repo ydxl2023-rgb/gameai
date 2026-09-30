@@ -1,0 +1,25 @@
+{
+  "task": "A-0000360",
+  "version": "v002",
+  "producer": "当前 Codex 对话",
+  "tool": "image_gen.imagegen",
+  "platform_run_id": null,
+  "platform_status_updated": false,
+  "model": null,
+  "seed": null,
+  "transparent_background": true,
+  "prompt_prefix": "Production mobile game UI reward slot layer. Square canvas, front orthographic. Restrained clean slate blue and silver style with readable highlights, no flourish. Will be exported to 128x128.",
+  "prompts": {
+    "L1-background": "BACKGROUND LAYER only: centered rounded square slate blue inset panel, x/y 6%-94%, subtle painted texture, no rim no icons no text; outside panel transparent.",
+    "L2-icon": "ITEM40 ICON LAYER only: one cyan faceted diamond token, x26%-74% y18%-60%, clean readable stylized mobile reward icon, isolated on transparent canvas, no container no text.",
+    "L2-item10": "ITEM10 ICON LAYER only: one warm gold coin with modest star embossing, x26%-74% y18%-60%, clean readable stylized mobile reward icon, isolated on transparent canvas, no container no text.",
+    "L4-frame": "FRAME LAYER only: centered softly rounded square brushed silver border x/y6%-94%, uniform narrow 5% rim, subtle beveled corners, ENTIRE interior completely transparent, outside transparent, no background panel no icons no text."
+  },
+  "layer_order": [
+    "L1-background",
+    "L2-item40 / L2-item10",
+    "L3-item40-text / L3-item10-text",
+    "L4-frame"
+  ],
+  "notes": "实际生图原件保留在 source。文字层为可替换的程序排版，export.ps1 仅执行尺寸导出、文字排版、合成和检查；未伪造平台 art-01 执行记录。"
+}

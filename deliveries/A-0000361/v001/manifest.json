@@ -1,0 +1,46 @@
+{
+  "task_id": "A-0000361",
+  "version": "v001",
+  "tool": "image_gen.imagegen",
+  "prompt": "Production mobile game UI nine-slice window panel texture. Single square panel, front orthographic view, simple understated slate blue body with thin brushed silver bevel rim, matching clean blue/silver reward inventory UI. Opaque completely uniform dark slate blue interior with NO texture NO gradient NO central decoration so it stretches cleanly. Rounded outer corners confined to corner zones within outer 12 percent. Straight uniform edge strips away from corners, no ornaments. Panel fills canvas to within 3 percent outer transparent margin. Transparent background outside the panel. No text, icons, buttons, title bar, symbols, diagrams or mockup device. One isolated finished panel sprite suitable for nine-slicing. High quality polished but restrained game UI material. Square image.",
+  "model": null,
+  "seed": null,
+  "platform_execution_id": null,
+  "produced_by": "当前 Codex 对话",
+  "sprite": {
+    "path": "assets/UI-PANEL.png",
+    "width": 512,
+    "height": 512,
+    "border": {
+      "left": 80,
+      "bottom": 80,
+      "right": 80,
+      "top": 80
+    },
+    "border_note": "512像素导出图上观察圆角转折后选择80像素保护区，离线九宫格预览；Unity导入尚未验证",
+    "image_type": "Sliced",
+    "raycast_target": false
+  },
+  "variants": [
+    {
+      "id": "P02",
+      "width": 1620,
+      "height": 820
+    },
+    {
+      "id": "P03",
+      "width": 1220,
+      "height": 590
+    },
+    {
+      "id": "P04",
+      "width": 1620,
+      "height": 820
+    }
+  ],
+  "limitations": [
+    "未执行Unity导入和运行态验证",
+    "生图存在细微边缘杂色和中心材质变化，保留原件，视觉质量需人工审阅",
+    "未回写Track状态，未派发下游"
+  ]
+}
