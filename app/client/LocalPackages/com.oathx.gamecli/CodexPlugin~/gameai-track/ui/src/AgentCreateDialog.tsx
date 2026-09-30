@@ -34,7 +34,7 @@ export function AgentCreateDialog({ open, close, created }: { open: boolean; clo
                 if (!controller.signal.aborted)
                 {
                     setOptions(result);
-                    form.setFieldsValue({ primary_skill: result.skills.find((s: SkillOption) => s.role_code === 'Design')?.skill_key });
+                    form.setFieldsValue({ primary_skill: result.skills.find((s: SkillOption) => s.role_code === 'Design' && !s.skill_key.includes('/'))?.skill_key });
                 }
             }
             catch (e)
@@ -74,10 +74,10 @@ export function AgentCreateDialog({ open, close, created }: { open: boolean; clo
         {!options && !error && <Spin style={{ margin: 20 }} />}
         <Form form={form} layout="vertical" disabled={!options || saving} initialValues={{ role: 'Design', capacity: 1, enabled: true, extra_skills: [] }} style={{ marginTop: 16 }}>
             <Form.Item name="name" label="Agent 名称" rules={[{ required: true, whitespace: true, message: '请输入名称' }]}><Input maxLength={80} placeholder="例如：活动策划 Agent" /></Form.Item>
-            <Form.Item name="role" label="角色" rules={[{ required: true }]}><Select options={['Design', 'PM', 'Art', 'Development', 'QA'].map(value => ({ value, label: value }))} onChange={value => form.setFieldsValue({ primary_skill: options?.skills.find(s => s.role_code === value)?.skill_key })} /></Form.Item>
+            <Form.Item name="role" label="角色" rules={[{ required: true }]}><Select options={['Design', 'PM', 'Art', 'Development', 'QA'].map(value => ({ value, label: value }))} onChange={value => form.setFieldsValue({ primary_skill: options?.skills.find(s => s.role_code === value && !s.skill_key.includes('/'))?.skill_key, extra_skills: [] })} /></Form.Item>
             <Form.Item name="worker_id" label="执行节点" rules={[{ required: true, message: '请选择节点' }]}><Select placeholder="选择已有 GameCLI 节点" options={options?.workers.map(w => ({ value: w.id, label: `${w.name} · 容量 ${w.capacity} · ${w.enabled && w.last_heartbeat_at && Date.now() - Date.parse(w.last_heartbeat_at) < 60000 ? '在线' : '离线'}` }))} onChange={() => form.setFieldValue('capacity', 1)} /></Form.Item>
-            <Form.Item name="primary_skill" label="主技能" rules={[{ required: true, message: '请选择匹配角色的主技能' }]}><Select options={options?.skills.filter(s => s.role_code === role).map(s => ({ value: s.skill_key, label: s.name }))} /></Form.Item>
-            <Form.Item name="extra_skills" label="辅助技能"><Select mode="multiple" allowClear placeholder="可多选" options={options?.skills.filter(s => !s.role_code).map(s => ({ value: s.skill_key, label: s.name }))} /></Form.Item>
+            <Form.Item name="primary_skill" label="主技能" rules={[{ required: true, message: '请选择匹配角色的主技能' }]}><Select options={options?.skills.filter(s => s.role_code === role && !s.skill_key.includes('/')).map(s => ({ value: s.skill_key, label: s.name }))} /></Form.Item>
+            <Form.Item name="extra_skills" label="专业／公共技能"><Select mode="multiple" allowClear placeholder="可多选" options={options?.skills.filter(s => !s.role_code || (s.role_code === role && s.skill_key.includes('/'))).map(s => ({ value: s.skill_key, label: s.name }))} /></Form.Item>
             <Form.Item name="capacity" label="并发容量" rules={[{ required: true }]}><InputNumber min={1} max={Math.min(worker?.capacity ?? 16, 16)} precision={0} /></Form.Item>
             <Form.Item name="enabled" label="允许后续调度" valuePropName="checked"><Switch /></Form.Item>
         </Form>

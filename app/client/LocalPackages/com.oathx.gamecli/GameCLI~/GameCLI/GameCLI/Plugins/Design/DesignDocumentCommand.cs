@@ -71,12 +71,12 @@ namespace GameCLI.Plugins.Design
                     }
                     string skillRoot = values.GetValueOrDefault("--skills", Path.Combine(project, "app/client/LocalPackages/com.oathx.gamecli/game-cli"));
                     StringBuilder instructions = new();
-                    foreach (string skill in new[] { "gameai-design", "gameai-document-format", "gameai-requirement-discovery", "gameai-mobile-requirements", "gameai-task-writing", "gameai-common", "gameai-cli-development" })
+                    foreach (string skill in new[] { "gameai-design", "gameai-common/gameai-document-format", "gameai-design/gameai-requirement-discovery", "gameai-common/gameai-mobile-requirements", "gameai-common/gameai-task-writing", "gameai-common", "gameai-common/gameai-cli-development" })
                     {
                         instructions.AppendLine(await File.ReadAllTextAsync(Path.Combine(skillRoot, skill, "SKILL.md"), timeout.Token));
                     }
-                    instructions.AppendLine(await File.ReadAllTextAsync(Path.Combine(skillRoot, "gameai-document-format/assets/outline-template.html"), timeout.Token));
-                    instructions.AppendLine(await File.ReadAllTextAsync(Path.Combine(skillRoot, "gameai-document-format/assets/phone-landscape-frame.svg"), timeout.Token));
+                    instructions.AppendLine(await File.ReadAllTextAsync(Path.Combine(skillRoot, "gameai-common/gameai-document-format/assets/outline-template.html"), timeout.Token));
+                    instructions.AppendLine(await File.ReadAllTextAsync(Path.Combine(skillRoot, "gameai-common/gameai-document-format/assets/phone-landscape-frame.svg"), timeout.Token));
                     instructions.AppendLine("Produce the complete Chinese standalone HTML in the html field. This host saves the actual file. Do not write files, approve, upload, dispatch, or invoke tools. Use provided verified research and user choices; do not invent browsing. Return questions for material unresolved choices; no submission occurs until questions is empty. Document status must be 待人工审批. No external assets or executable scripts. Render all wireframes inline. The requested version is " + values["--version"] + ".");
                     using JsonDocument schema = JsonDocument.Parse("""
                     {"type":"object","properties":{"title":{"type":"string"},"summary":{"type":"string"},"html":{"type":"string"},"questions":{"type":"array","items":{"type":"string"}}},"required":["title","summary","html","questions"],"additionalProperties":false}

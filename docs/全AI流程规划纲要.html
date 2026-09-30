@@ -1587,7 +1587,7 @@ description: 拆解游戏需求并定义 JIRA 任务与验收标准；用于 PM 
 <li>代理提交不等于批准。美术抽检完成后再次调度；程序交付通过校验后自动完成子任务并启动验收，不增加程序人工审批；最终验收由用户完成。上游返工或版本变化使下游旧交付失效。</li>
 <li>当前串行、按调用推进，不常驻监听；缺少美术工具、运行环境或测试证据时阻塞，不伪造成功。跨机器并发、自动缺陷闭环和跨需求变更审批仍属后续工作。</li>
 </ul>
-<p>单一职责规范：<code>game-cli/gameai-task-delivery/SKILL.md</code>；详见 <code>docs/agent-workflow-development-guide.md</code>。</p>
+<p>单一职责规范：<code>game-cli/gameai-common/gameai-task-delivery/SKILL.md</code>；详见 <code>docs/agent-workflow-development-guide.md</code>。</p>
 <h2>集中协调服务与通知通道</h2>
 <p>团队模式采用 Node.js GameCLIServer 接收 JIRA Webhook，通过固定 WebSocket 协议连接 C# GameCLI 客户端。JIRA 继续作为需求、审批、依赖和交付的唯一可信来源；事件缓存不是业务状态库。</p>
 <p>当前已实现局域网免认证项目事件订阅、JIRA 回调令牌校验、心跳、重连、有限补发与重新核对提示。集中派工、执行租约、自动核对及结果回写仍待实现；不能将状态广播直接解释为所有客户端的执行授权。</p>
@@ -1606,5 +1606,9 @@ description: 拆解游戏需求并定义 JIRA 任务与验收标准；用于 PM 
 <p>需求建单门禁已实现：人工确认后，先上传对应版本 HTML 并核验文件哈希，再启动项目管理代理分拆和创建子任务。上传最多三次，失败停止；次数与回执保存在 JIRA，恢复不清零，上传结果不明时先核对附件。</p>
 <p>较大的工作流快照以带 SHA-256 校验的 gzip-base64-v1 封装无损保存于同一个 JIRA 属性；小快照和已有明文属性保持兼容。解压大小上限 1MB，压缩后仍须满足 32000 字节限制，超过时停止，不截断需求、审批或执行历史。</p>
 <p>PM 按独立交付标准输出同角色多任务，以 depends_on 表达真实依赖并按拓扑顺序发布。新增 orchestrator --replan，仅迁移尚未开始、无交付记录的已发布计划；PreviousPlan 保留旧计划，原子保存新计划后复用旧任务编号并补建其他任务，最终刷新全部单据依赖编号。执行中断使用 resume，不重新拆分；调度仅在 tasks_created 后允许。当前每计划最多 20 项，显式迁移一次。</p>
-<aside class="notice"><h3>实施更新：手动 PM 拆分（2026-09-29）</h3><p>当前开发阶段采用：HTML 入库 → 人工批准具体版本 → 在需求列表或阅读窗口点击“PM 拆分任务” → 云端复核版本及文件 → 本机 GameCLI 调用固定 PM → 原子创建主任务、美术与程序子任务及真实依赖。六项交付标准和测试用例保存到各子任务。重复点击不重复建单；失败最多三次，未知执行需核实。自动 PM 调度、远程 Worker 派工及制作开发执行后续实现。本说明优先于本文此前的自动派工时序。</p></aside></body>
+<aside class="notice"><h3>实施更新：手动 PM 拆分（2026-09-29）</h3><p>当前开发阶段采用：HTML 入库 → 人工批准具体版本 → 在需求列表或阅读窗口点击“PM 拆分任务” → 云端复核版本及文件 → 本机 GameCLI 调用固定 PM → 原子创建主任务、美术与程序子任务及真实依赖。六项交付标准和测试用例保存到各子任务。重复点击不重复建单；失败最多三次，未知执行需核实。自动 PM 调度、远程 Worker 派工及制作开发执行后续实现。本说明优先于本文此前的自动派工时序。</p></aside>
+<section id="specialist-skill-directories"><h2>专业子技能目录</h2><p>Design、Art、Development、QA 保留主技能及公共流程规则，专业规则放入主技能内部子目录，每个目录包含标准 SKILL.md。</p><ul><li>Design：design-system、design-battle、design-excel。</li><li>Art：art-ui、art-2d、art-3d、art-animation、art-vfx。</li><li>Development：dev-unity、dev-cocos、dev-godot、dev-web。</li><li>QA：qa-unity、qa-cocos、qa-godot、qa-web。</li></ul><p>已实现专业子技能扫描登记、本角色专业技能选择，以及执行时主技能和公共依赖加载。专业技能以主目录／子目录为唯一编号，不能跨角色添加，也不能替代角色主技能。本次不增加固定 Agent，不改变现有审批与云端派工。控制台任务由主技能处理。</p></section>
+<section id="common-skill-layout"><h2>公共技能归属</h2><p>公共契约入口 gameai-common 下放置 gameai-task-writing、gameai-task-delivery、gameai-document-format（包含模板资源）、gameai-mobile-requirements、gameai-cli-development。gameai-requirement-discovery 归属 gameai-design，gameai-qa-repair 归属 gameai-qa，返修规则供开发和验收共享。</p><p>按任务加载所需公共规则，不默认加载全部公共子技能。目录迁移同步客户端路径和云端技能绑定，保留 Agent 身份、授权及历史。</p></section>
+<section id="unity-skill-location"><h2>Unity 开发与验证统一入口</h2><p>Unity 开发和验证规则统一保存在 gameai-dev/dev-unity/SKILL.md，gameai-unity 已合并并删除。QA 通过 unity-validation 章节复用验证规则，不加载开发职责。旧技能编号及已有绑定由同步事务迁移并去重。</p></section>
+</body>
 </html>

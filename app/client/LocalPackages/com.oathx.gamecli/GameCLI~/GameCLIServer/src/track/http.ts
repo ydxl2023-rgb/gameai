@@ -19,11 +19,20 @@ export function createMcpServer(html: string)
         contents: [{ uri: resourceUri, mimeType, text: html, _meta: { 'openai/ui': { availableDisplayModes: ['inline', 'fullscreen'] }, ui: { prefersBorder: true, csp: { connectDomains: [], resourceDomains: [] } } } }]
     }));
     const annotations = { readOnlyHint: true, destructiveHint: false, openWorldHint: false };
-    const reply = async () =>
+    const reply = async (input: { document_version?: string } = {}) =>
     {
         try
         {
             const snapshot = await createSnapshot();
+            if (input.document_version)
+            {
+                const rows = 'requirements' in snapshot.workbench ? snapshot.workbench.requirements : [];
+                const row = rows.find((item: {version_id: string; document_url?: string | null}) => item.version_id === input.document_version);
+                const artifactId = row?.document_url ? /\/documents\/([0-9a-f-]{36})$/i.exec(row.document_url)?.[1] : null;
+                const bytes = artifactId ? await readDocument(artifactId) : null;
+                if (!bytes) throw new Error('未找到关联的 HTML 文档。');
+                return { content: [], structuredContent: { ...snapshot, document: { version_id: input.document_version, html: bytes.toString('utf8') } } };
+            }
             return { content: [{ type: 'text' as const, text: snapshot.notice }], structuredContent: snapshot };
         }
         catch
@@ -38,7 +47,7 @@ export function createMcpServer(html: string)
     }, reply);
     server.registerTool('gameai_track_snapshot', {
         description: '刷新 GameAI Track 数据库或演示快照，返回数据来源及测试数据标记。',
-        inputSchema: {}, annotations
+        inputSchema: { document_version: z.uuid().optional() }, annotations
     }, reply);
     server.registerTool('gameai_agent_history', {
         description: '读取当前项目 Agent 已绑定会话的用户消息与公开回复，不启动或恢复任务。',

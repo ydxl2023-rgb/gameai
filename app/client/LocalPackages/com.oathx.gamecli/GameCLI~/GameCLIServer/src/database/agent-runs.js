@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { readFile } from 'node:fs/promises';
+import { loadSkillInstructions, isPrimarySkill, canUseExtraSkill } from './skill-catalog.js';
 import { z } from 'zod';
 import {loadTaskContext,contextBlockReason} from './qa-context.js';
 import {isDeepStrictEqual} from 'node:util';
@@ -76,20 +76,18 @@ export async function agentRunRequest(pool, projectKey, raw)
             {
                 throw new ReviewError('固定 Agent 使用的技能已停用。');
             }
-            if (!skills.some(s => s.is_primary && s.role_code === input.role))
+            if (!skills.some(s => s.is_primary && isPrimarySkill(s) && s.role_code === input.role))
             {
                 throw new ReviewError('固定 Agent 缺少对应角色主技能。');
             }
-            const instructions = [];
-            for (const skill of skills)
+            if (skills.some(s => !s.is_primary && !canUseExtraSkill(s, input.role)))
             {
-                const bytes = await readFile(new URL('../../../../game-cli/'+skill.skill_key+'/SKILL.md',import.meta.url));
-                if (createHash('sha256').update(bytes).digest('hex') !== skill.content_hash)
-                {
-                    throw new ReviewError('技能已改变，请先同步技能目录。');
-                }
-                instructions.push(bytes.toString('utf8'));
+                throw new ReviewError('固定 Agent 配置了其他角色的专业技能。');
             }
+            const catalog = (await c.query('SELECT skill_key,content_hash,enabled FROM gameai.skills')).rows;
+            let instructions;
+            try { instructions = await loadSkillInstructions(skills, catalog, undefined, input.role); }
+            catch (error) { throw new ReviewError(error.message); }
             const session = (await c.query(`INSERT INTO gameai.agent_conversations(project_id,requirement_key,role_code,agent_id,worker_id)
                 VALUES($1,$2,$3,$4,$5) ON CONFLICT(project_id,requirement_key,role_code) DO UPDATE SET requirement_key=EXCLUDED.requirement_key RETURNING *`,
                 [project.id,input.requirement_key,input.role,agent.id,worker.id])).rows[0];
@@ -122,7 +120,7 @@ export async function agentRunRequest(pool, projectKey, raw)
                 await c.query(`INSERT INTO gameai.audit_events(project_id,actor,event,payload) VALUES($1,$2,'固定 Agent 开始执行',$3)`,[project.id,agent.agent_key,{execution_id:input.execution_id,requirement_key:input.requirement_key}]);
             }
             if (reservation) await c.query("UPDATE gameai.executions SET state='running' WHERE id=$1",[reservation.execution_id]);
-            result = { agent_key:agent.agent_key, conversation_id:session.id, thread_id:session.thread_id, instructions:instructions.join('\n\n'), workspace_write:!!reservation };
+            result = { agent_key:agent.agent_key, conversation_id:session.id, thread_id:session.thread_id, instructions, workspace_write:!!reservation };
         }
         else
         {

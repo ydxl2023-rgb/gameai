@@ -28,10 +28,10 @@ namespace GameCLI.Agents
             {
                 "gameai-pm",
                 "gameai-common",
-                "gameai-task-delivery",
-                "gameai-task-writing",
-                "gameai-mobile-requirements",
-                "gameai-cli-development"
+                "gameai-common/gameai-task-delivery",
+                "gameai-common/gameai-task-writing",
+                "gameai-common/gameai-mobile-requirements",
+                "gameai-common/gameai-cli-development"
             };
             StringBuilder instructions = new();
             foreach (string name in skillNames)

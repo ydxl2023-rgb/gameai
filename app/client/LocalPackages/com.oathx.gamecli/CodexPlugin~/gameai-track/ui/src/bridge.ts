@@ -90,6 +90,20 @@ export class TrackBridge
         if (result?.isError) throw new Error(result.content?.[0]?.text ?? '历史读取失败。');
         return result.structuredContent;
     }
+    async document(version: string)
+    {
+        const result = await this.rpc('tools/call', { name: 'gameai_track_snapshot', arguments: { document_version: version } });
+        if (result?.isError) throw new Error(result.content?.[0]?.text ?? '文档读取失败。');
+        if (result?.structuredContent?.document?.version_id !== version || typeof result?.structuredContent?.document?.html !== 'string') throw new Error('文档响应不匹配，请重新连接 Track 插件。');
+        return result.structuredContent.document.html as string;
+    }
+    async openReview(url: string)
+    {
+        const target = new URL(url);
+        if (target.protocol !== 'http:' || target.hostname !== '127.0.0.1' || target.pathname !== '/track' || target.username || target.password || target.search || target.hash) throw new Error('人工审批地址无效。');
+        const result = await this.rpc('ui/open-link', { url: target.href });
+        if (result?.isError) throw new Error('宿主未打开人工审批页面。');
+    }
     dispose()
     {
         window.removeEventListener('message', this.receive);

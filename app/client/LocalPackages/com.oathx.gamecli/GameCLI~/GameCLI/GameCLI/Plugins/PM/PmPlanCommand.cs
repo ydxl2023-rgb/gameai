@@ -69,10 +69,10 @@ namespace GameCLI.Plugins.PM
                 {
                     "gameai-pm",
                     "gameai-common",
-                    "gameai-task-delivery",
-                    "gameai-task-writing",
-                    "gameai-mobile-requirements",
-                    "gameai-cli-development"
+                    "gameai-common/gameai-task-delivery",
+                    "gameai-common/gameai-task-writing",
+                    "gameai-common/gameai-mobile-requirements",
+                    "gameai-common/gameai-cli-development"
                 })
                 {
                     instructions.AppendLine(await File.ReadAllTextAsync(Path.Combine(values["--skills"], skill, "SKILL.md"), cancellationToken));

@@ -139,9 +139,9 @@ namespace GameCLI.Contracts
 
 - 包内 `Editor` 放 UnityEditor、桥接和导入验证；`Runtime` 放可复用运行时契约。独立 CLI 留在 `GameCLI~`，不让 Unity 导入其源码。
 - 资产变更保留已有 .meta GUID。不要为完成 CLI 工作重建用户场景或移动现有资产。
-- 标准技能全部放在包根 `game-cli/<skill-name>/SKILL.md`，使用包含 name/description 的 YAML frontmatter，目录名与 name 一致。
+- 标准主技能放在包根 `game-cli/<skill-name>/SKILL.md`，专业子技能放在对应主技能目录的 `<specialist-name>/SKILL.md`，使用包含 name/description 的 YAML frontmatter，目录名与 name 一致。
 - Design、PM、Art、Development、QA 五个专业角色技能与 common/task-delivery/unity 公共技能保持职责边界。本开发技能负责工程约定，不增加业务 Agent。
-- 技能互引使用同级相对路径；分发时携带依赖，不能依赖开发机绝对路径。只按需增加 references、scripts、assets。
+- 技能互引使用相对路径；子技能通过 `../SKILL.md` 引用所属主技能；分发时携带依赖，不能依赖开发机绝对路径。只按需增加 references、scripts、assets。
 - 新增或修改技能优先保持单一职责；可复用专项规则独立为技能，由角色主技能引用。宿主禁用文件读取时，必须显式加载所需依赖技能内容，不能只传入无法打开的链接。
 - 协调服务使用版本化 JSON 与 WebSocket 协议；事件通知不等于派工授权。Node.js 依赖提交 package.json 和锁文件，不提交 node_modules、真实 .env 或令牌。服务端遵守单一职责、四空格、Allman 大括号、英文源码注释及可取消的连接生命周期约定；C# 属性排版规则不机械套用到 JavaScript。
 - 结构或契约变化同步 `Docs/structure.md` 与仓库 `docs/全AI流程规划纲要.html`，明确区分已实现与规划。
@@ -158,13 +158,13 @@ namespace GameCLI.Contracts
 
 ## 专业需求同步登记
 
-策划分析完成后先在当前 Codex 对话展示草案并反复修订。用户明确确认完整版本后，PM 才统一登记美术、程序开发和测试验收需求，按 [PM 的交付标准拆分规范](../gameai-pm/SKILL.md) 创建可独立交付、独立验收的子任务，同一专业可以有多项。单据登记不等于开始制作、编码或测试。依赖精确到实际使用的前置产物，测试依赖对应交付任务；按拓扑顺序登记，执行前核验所有前置交付。已发布计划及编号在恢复时原样复用，禁止重复创建；计划迁移统一经云端接口执行，接口未实现时明确阻塞。
+策划分析完成后先在当前 Codex 对话展示草案并反复修订。用户明确确认完整版本后，PM 才统一登记美术、程序开发和测试验收需求，按 PM 的交付标准拆分规范（处理拆分任务时读取 `../../gameai-pm/SKILL.md`） 创建可独立交付、独立验收的子任务，同一专业可以有多项。单据登记不等于开始制作、编码或测试。依赖精确到实际使用的前置产物，测试依赖对应交付任务；按拓扑顺序登记，执行前核验所有前置交付。已发布计划及编号在恢复时原样复用，禁止重复创建；计划迁移统一经云端接口执行，接口未实现时明确阻塞。
 
 客户端不得实现第二套业务调度或恢复决策。GameCLIServer 负责状态、审批、依赖、任务分配、租约与重试；GameCLI 仅通信、执行云端授权任务、启动 Agent 和回传结果。当前云端正式派工接口仍待实现，不得由本地工作流代替。
 
 ## 用户阅读文档格式
 
-向用户交付的文档必须遵守 [纲要式文档输出规范](../gameai-document-format/SKILL.md)，由当前对话宿主生成带封面、目录及打印样式的独立 HTML 阅读版。Agent 仍返回规定的结构化结果，标准技能仍使用 SKILL.md，任务正文格式保持单据规范。
+向用户交付的文档必须遵守 纲要式文档输出规范（交付阅读文档时读取 `../gameai-document-format/SKILL.md`），由当前对话宿主生成带封面、目录及打印样式的独立 HTML 阅读版。Agent 仍返回规定的结构化结果，标准技能仍使用 SKILL.md，任务正文格式保持单据规范。
 
 ## 专业任务的云端核验上下文
 

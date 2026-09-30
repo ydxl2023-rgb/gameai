@@ -85,7 +85,7 @@ test('actual bundled workbench gates approval in ' + storage, async () =>
     };
     try
     {
-        await until(() => document.querySelector('.ant-card-head-title')?.textContent === '固定 Agent');
+        await until(() => document.querySelector('.ant-card-head-title')?.textContent === 'Agent');
         for (const label of ['任务与依赖', '版本', '权限', '操作记录', '需求审批', '项目总览'])
         {
             clickText('[role=tab]', label); await delay();
@@ -412,4 +412,48 @@ test('history presentation extracts task JSON and HTML without losing original c
     assert.equal(parseReadableMessage('普通需求文本'),undefined);
     assert.equal(parseReadableMessage('{"unknown":1}'),undefined);
     assert.equal(parseReadableMessage('{"task":"P-1",invalid}'),undefined);
+});
+
+test('embedded requirement uses MCP HTML and retains a human login entry without allowing approval', async () =>
+{
+    const html = await readFile(new URL('../../../../GameCLI~/GameCLIServer/public/track.html', import.meta.url), 'utf8');
+    const state = snapshot(); state.mode = 'postgres'; state.review_url = 'http://127.0.0.1:18090/track';
+    const row = {...state.workbench.requirement,id:'EMBED-1',status:'待审批',version_id:'22222222-2222-4222-8222-222222222222',document_hash:'a'.repeat(64),document_path:'uploaded/embedded.html',document_url:'/api/track/documents/relative'};
+    state.workbench.requirements=[row];
+    const calls=[];
+    const dom = new JSDOM(html,{url:'https://host.invalid/ui',runScripts:'dangerously',pretendToBeVisual:true,virtualConsole:new VirtualConsole(),beforeParse(window)
+    {
+        const parent={postMessage(message)
+        {
+            if (!message.id) return;
+            calls.push(message);
+            let result={};
+            if(message.method==='ui/initialize') result={hostContext:{displayMode:'inline',availableDisplayModes:['inline','fullscreen']}};
+            if(message.method==='tools/call') result={structuredContent: message.params.arguments.document_version ? {...state,document:{version_id:row.version_id,html:'<!doctype html><html><body>真实需求原文</body></html>'}} : state};
+            setTimeout(()=>window.dispatchEvent(new window.MessageEvent('message',{source:parent,data:{jsonrpc:'2.0',id:message.id,result}})),0);
+        }};
+        Object.defineProperty(window,'parent',{value:parent});
+        window.MessageChannel=class {constructor(){this.port1={onmessage:null};this.port2={postMessage:()=>setTimeout(()=>this.port1.onmessage?.({}),0)};}};
+        window.matchMedia=()=>({matches:false,addListener(){},removeListener(){},addEventListener(){},removeEventListener(){}});
+        window.ResizeObserver=class {observe(){} unobserve(){} disconnect(){}};
+        window.Element.prototype.scrollTo=()=>{};
+        window.fetch=()=>{throw new Error('Embedded view must not fetch relative HTTP endpoints');};
+    }});
+    const d=dom.window.document;
+    const find=(selector,text)=>[...d.querySelectorAll(selector)].find(n=>n.textContent.replace(/\s/g,'')===text);
+    try
+    {
+        await until(()=>find('button','审批人登录'));
+        find('[role=tab]','需求审批').click();
+        await until(()=>find('a','embedded.html')); find('a','embedded.html').click();
+        await until(()=>d.querySelector('iframe')?.getAttribute('srcdoc')?.includes('真实需求原文'));
+        assert.equal(d.querySelector('iframe').getAttribute('src'),null);
+        assert.equal(d.querySelector('iframe').getAttribute('sandbox'),'');
+        assert.equal(find('button','同意').disabled,true);
+        find('button','审批人登录').click();
+        await until(()=>calls.some(c=>c.method==='ui/open-link'));
+        assert.equal(calls.find(c=>c.method==='ui/open-link').params.url,state.review_url);
+        assert.ok(calls.some(c=>c.method==='tools/call' && c.params.arguments.document_version===row.version_id));
+    }
+    finally {dom.window.close();}
 });

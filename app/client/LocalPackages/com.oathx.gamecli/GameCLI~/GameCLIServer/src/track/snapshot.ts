@@ -15,7 +15,8 @@ export async function createSnapshot()
             is_test: result.is_test,
             server_time: new Date().toISOString(),
             request_id: randomUUID(),
-            notice: '数据来自 PostgreSQL；本机可配置 Agent、登录审批人并审阅文档，自动派工尚未开放。',
+            notice: '数据来自 PostgreSQL；人工审批在本机登录页面完成，后续执行遵循 Agent 自动配置。',
+            review_url: 'http://127.0.0.1:' + (process.env.GAMECLI_TRACK_PORT ?? '18090') + '/track',
             workbench: result.workbench
         };
     }

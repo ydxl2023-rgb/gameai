@@ -39,6 +39,9 @@ export function WorkbenchApp()
     const [requirementQuery, setRequirementQuery] = useState('');
     const [review, setReview] = useState<RequirementRow>();
     const [documentPreview, setDocumentPreview] = useState<RequirementRow>();
+    const [documentHtml, setDocumentHtml] = useState<string>();
+    const [documentError, setDocumentError] = useState('');
+    const [reviewUrl, setReviewUrl] = useState('http://127.0.0.1:18090/track');
     const [detail, setDetail] = useState<Task | Agent>();
     const [historyRequirement,setHistoryRequirement] = useState<string>();
     useEffect(()=>setAutomaticApproval(false),[documentPreview?.version_id]);
@@ -51,6 +54,14 @@ export function WorkbenchApp()
     const [switching, setSwitching] = useState(false);
     const [updated, setUpdated] = useState('');
     const [context, setContext] = useState({ embedded: false, ready: false, mode: 'inline', modes: [] as string[] });
+    useEffect(() =>
+    {
+        setDocumentHtml(undefined); setDocumentError('');
+        if (!context.embedded || !documentPreview?.version_id) return;
+        let active = true;
+        void bridge.current?.document(documentPreview.version_id).then(html => { if (active) setDocumentHtml(html); }).catch(e => { if (active) setDocumentError(e.message); });
+        return () => { active = false; };
+    }, [documentPreview?.version_id, context.embedded]);
     const bridge = useRef<TrackBridge | null>(null);
     const mounted = useRef(true);
     const refreshing = useRef(false);
@@ -59,6 +70,7 @@ export function WorkbenchApp()
     function log(text: string) { setLogs(old => [...old.slice(-99), `${new Date().toLocaleTimeString()}  ${text}`]); }
     function receive(snapshot: Snapshot)
     {
+        if (typeof (snapshot as Snapshot & {review_url?:string}).review_url === 'string') setReviewUrl((snapshot as Snapshot & {review_url:string}).review_url);
         // Transport refreshes do not silently erase local demonstration decisions.
         setPersistent(snapshot.mode === 'postgres');
         setTestData(snapshot.is_test === true);
@@ -343,7 +355,7 @@ export function WorkbenchApp()
         return <Section title="操作记录"><ResizableTable storageKey="gameai.track.audit-widths.v1" size="small" rowKey="id" dataSource={audit} pagination={{ pageSize: 10, hideOnSinglePage: true }} scroll={{ x: 550 }} locale={{ emptyText: '尚无操作记录；模拟审批和权限调整将记录在这里。' }} columns={[{ title: 'Time', dataIndex: 'time' }, { title: 'Actor', dataIndex: 'actor' }, { title: 'Event', dataIndex: 'event' }]} /></Section>;
     }
     return <div className="workbench">
-        <header className="app-header"><Space><Typography.Text strong>◈ GameAI / Track</Typography.Text><Tag color={persistent ? "green" : "gold"}>{persistent ? `PostgreSQL · ${testData ? "测试数据" : "项目数据"}` : "组件演示 · 模拟数据"}</Tag></Space><Space>{persistent && !context.embedded && <Button onClick={() => { if (reviewSession.authenticated) { void reviewRequest('review-logout', {}).then(() => setReviewSession({ authenticated: false })).catch(e => void message.error(e.message)); } else setLoginOpen(true); }}>{reviewSession.authenticated ? reviewSession.name + ' · 退出' : '审批人登录'}</Button>}<Button loading={busy} onClick={() => void refresh()}>刷新</Button>{context.embedded && <Button loading={switching} disabled={!context.ready || !context.modes.includes(context.mode === 'inline' ? 'fullscreen' : 'inline')} onClick={() => void display()}>{context.mode === 'inline' ? '在侧栏打开' : '返回对话'}</Button>}</Space></header>
+        <header className="app-header"><Space><Typography.Text strong>◈ GameAI / Track</Typography.Text><Tag color={persistent ? "green" : "gold"}>{persistent ? `PostgreSQL · ${testData ? "测试数据" : "项目数据"}` : "组件演示 · 模拟数据"}</Tag></Space><Space>{persistent && <Button onClick={() => { if (context.embedded) { void bridge.current?.openReview(reviewUrl).catch(e => void message.error(e.message)); } else if (reviewSession.authenticated) { void reviewRequest('review-logout', {}).then(() => setReviewSession({ authenticated: false })).catch(e => void message.error(e.message)); } else setLoginOpen(true); }}>{!context.embedded && reviewSession.authenticated ? reviewSession.name + ' · 退出' : '审批人登录'}</Button>}<Button loading={busy} onClick={() => void refresh()}>刷新</Button>{context.embedded && <Button loading={switching} disabled={!context.ready || !context.modes.includes(context.mode === 'inline' ? 'fullscreen' : 'inline')} onClick={() => void display()}>{context.mode === 'inline' ? '在侧栏打开' : '返回对话'}</Button>}</Space></header>
         <div className="context-row"><Typography.Text strong>{data?.project.name ?? 'GameAI'}</Typography.Text><div className="counters"><span>待审批 <b>{data?.requirements?.filter(r => r.status === '待审批').length ?? (data?.requirement.status === '待审批' ? 1 : 0)}</b></span><span>工作 <b>{data?.agents.filter(a => agentWorkStatus(a) === '工作').length ?? '—'}</b></span><span>阻塞 <b>{data?.tasks.filter(t => t.status === '依赖阻塞' || t.status === '等待交付').length ?? '—'}</b></span><span>空闲 <b>{data?.agents.filter(a => a.enabled !== false && agentWorkStatus(a) === '空闲').length ?? '—'}</b></span></div><Typography.Text>{persistent ? reviewSession.authenticated ? reviewSession.name : "人工审批：未登录" : ""}</Typography.Text>{!persistent && <Select aria-label="模拟身份" value={identity} onChange={v => { setIdentity(v); setDialog(undefined); }} options={identities} style={{ width: 166 }} />}</div>
         <div className="connection"><Badge status={error ? 'error' : updated ? 'success' : 'processing'} text={error ? '连接失败 / 数据可能过期' : updated ? (persistent ? '数据库快照 · ' : '模拟快照 · ') + updated : '连接中'} /><Typography.Text type="secondary">{context.embedded ? context.mode === 'fullscreen' ? '侧栏模式' : '内嵌模式' : '浏览器预览仅验证网页与 HTTP'}</Typography.Text></div>
         {error && <Alert type="error" showIcon title={error} />}{displayError && <Alert type="warning" closable title={displayError} />}
@@ -351,11 +363,14 @@ export function WorkbenchApp()
         <div className="panels"><Splitter orientation="vertical"><Splitter.Panel defaultSize="78%" min={160}><main className={['overview', 'requirements', 'tasks', 'versions', 'permissions', 'audit'].includes(tab) ? 'page-content page-content--list' : 'page-content'}>{body()}</main></Splitter.Panel><Splitter.Panel min={65} collapsible><WorkflowOutput events={data?.activity ?? []} persistent={persistent} logs={logs} error={error} /></Splitter.Panel></Splitter>
             <Drawer title={documentPreview ? documentPreview.id + ' / ' + documentPreview.title + ' / ' + documentPreview.version : '需求原文'} open={!!documentPreview} onClose={() => setDocumentPreview(undefined)} placement="right" size="100%" getContainer={false} rootStyle={{ position: 'absolute' }} styles={{ body: { padding: 0, overflow: 'hidden' } }} destroyOnHidden footer={
                 <div className="document-review-footer">
-                    <div><Space><Typography.Text strong>{documentPreview?.version}</Typography.Text><StateTag value={documentPreview?.status ?? '待审批'} /></Space><Typography.Text type="secondary" className="document-review-hint">{persistent ? reviewSession.authenticated ? '审批绑定当前版本与原始 HTML；确认后写入数据库。' : '请先通过顶部按钮登录人工审批账户。' : approvalAllowed ? '请阅读全文后确认此版本；当前为模拟审批。' : '当前身份或版本不可审批。'}</Typography.Text></div>
+                    <div><Space><Typography.Text strong>{documentPreview?.version}</Typography.Text><StateTag value={documentPreview?.status ?? '待审批'} /></Space><Typography.Text type="secondary" className="document-review-hint">{persistent ? reviewSession.authenticated ? '审批绑定当前版本与原始 HTML；确认后写入数据库。' : context.embedded ? '内嵌面板只读；点击审批人登录，在本机页面阅读并完成审批。' : '请先通过顶部按钮登录人工审批账户。' : approvalAllowed ? '请阅读全文后确认此版本；当前为模拟审批。' : '当前身份或版本不可审批。'}</Typography.Text></div>
                     <Space>{documentPreview && pmButton(documentPreview)}<Button danger disabled={!approvalAllowed} onClick={() => { form.resetFields(); setDialog('revise'); }}>拒绝</Button><Button type="primary" disabled={!approvalAllowed} onClick={() => setDialog('approve')}>同意</Button></Space>
                 </div>
             }>
-                {documentPreview?.document_url && <iframe className="requirement-original" title="需求原始 HTML" src={documentPreview.document_url} sandbox="" referrerPolicy="no-referrer" />}
+                {context.embedded && !documentHtml && !documentError && <Spin description="正在读取原始 HTML…" />}
+                {documentError && <Alert type="error" showIcon title={documentError} />}
+                {context.embedded && documentHtml && <iframe className="requirement-original" title="需求原始 HTML" srcDoc={'<meta http-equiv="Content-Security-Policy" content="default-src &#39;none&#39;; script-src &#39;none&#39;; style-src &#39;unsafe-inline&#39;; img-src data:; base-uri &#39;none&#39;; form-action &#39;none&#39;">' + documentHtml} sandbox="" referrerPolicy="no-referrer" />}
+                {!context.embedded && documentPreview?.document_url && <iframe className="requirement-original" title="需求原始 HTML" src={documentPreview.document_url} sandbox="" referrerPolicy="no-referrer" />}
             </Drawer>
         </div>
         <Modal title="人工审批登录" open={loginOpen} confirmLoading={savingReview} onCancel={() => { if (!savingReview) setLoginOpen(false); }} onOk={() => void login()} okText="登录" cancelText="取消" getContainer={false}>

@@ -7,9 +7,9 @@ description: 提供流水线共用的结构化结果、文件哈希与 Trace 约
 
 ## 强制编码规范
 
-凡使用 GameCLI 的工程，其自有 C# 代码的后续开发、修改和审查必须严格遵守 [GameCLI 编码规范](../gameai-cli-development/SKILL.md)。所有参与编码、编排和验收的角色必须执行该要求，不得将其视为建议或仅限工具仓库的约定。编排器安排开发任务时必须传递此规范，开发交付与 QA 验收必须检查符合性，违规代码不能判定通过。
+凡使用 GameCLI 的工程，其自有 C# 代码的后续开发、修改和审查必须严格遵守 [GameCLI 编码规范](gameai-cli-development/SKILL.md)。所有参与编码、编排和验收的角色必须执行该要求，不得将其视为建议或仅限工具仓库的约定。编排器安排开发任务时必须传递此规范，开发交付与 QA 验收必须检查符合性，违规代码不能判定通过。
 
-复制或安装本技能及角色技能时，必须同时携带 `gameai-cli-development`，并在目标工程的 AGENTS.md 或等效 AI 工具入口引用该规范。
+复制或安装本技能及角色技能时，必须同时携带 `gameai-common/gameai-cli-development`，并在目标工程的 AGENTS.md 或等效 AI 工具入口引用该规范。
 
 ## 结果与证据
 
@@ -28,7 +28,7 @@ description: 提供流水线共用的结构化结果、文件哈希与 Trace 约
 
 ## 用户阅读文档格式
 
-向用户交付的文档必须遵守 [纲要式文档输出规范](../gameai-document-format/SKILL.md)，由当前对话宿主生成带封面、目录及打印样式的独立 HTML 阅读版。Agent 仍返回规定的结构化结果，标准技能仍使用 SKILL.md，任务正文格式保持单据规范。
+向用户交付的文档必须遵守 [纲要式文档输出规范](gameai-document-format/SKILL.md)，由当前对话宿主生成带封面、目录及打印样式的独立 HTML 阅读版。Agent 仍返回规定的结构化结果，标准技能仍使用 SKILL.md，任务正文格式保持单据规范。
 
 ## 固定 Agent 执行约定
 
@@ -44,3 +44,13 @@ description: 提供流水线共用的结构化结果、文件哈希与 Trace 约
 - PM 和专业执行 Agent 只使用宿主提供的权威文档信息：requirement_version_id、path、sha256。专业任务输入位于 approved_document；正文中的示例文件名和旧任务描述中的路径不能替代它。
 - 服务从数据库读取批准原文，校验并保存到工程相对目录 app/desgin/approved/，核验成功才启动执行。Agent 不改写这份批准原文；缺失或哈希不符应报告阻塞。
 - PM 的来源引用采用宿主实际路径及章节编号，禁止推测文件名。Design 在生成时尚不知道保存地址，不承诺具体文件名；真实地址由宿主落盘后返回。
+
+## 公共子技能按需使用
+
+- `gameai-task-writing/SKILL.md`：Design、PM 编写任务描述时使用。
+- `gameai-task-delivery/SKILL.md`：专业任务依赖及交付核验时使用。
+- `gameai-document-format/SKILL.md`：交付供人阅读的 HTML 文档时使用。
+- `gameai-mobile-requirements/SKILL.md`：设计移动平台需求时使用，以明确批准的平台约束为准。
+- `gameai-cli-development/SKILL.md`：工程开发及 C# 规范检查时使用，遵守上面的强制编码规则。
+
+公共入口不默认加载全部子技能。角色主技能引用其必要依赖，执行宿主按所选技能及实际引用加载；复制或安装时保留相对目录结构。

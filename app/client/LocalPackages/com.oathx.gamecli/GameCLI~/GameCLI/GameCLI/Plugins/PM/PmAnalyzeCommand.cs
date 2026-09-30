@@ -92,10 +92,10 @@ namespace GameCLI.Plugins.PM
                 {
                     "gameai-pm",
                     "gameai-common",
-                    "gameai-task-delivery",
-                    "gameai-task-writing",
-                    "gameai-mobile-requirements",
-                    "gameai-cli-development"
+                    "gameai-common/gameai-task-delivery",
+                    "gameai-common/gameai-task-writing",
+                    "gameai-common/gameai-mobile-requirements",
+                    "gameai-common/gameai-cli-development"
                 })
                 {
                     if (!File.Exists(Path.Combine(skills, name, "SKILL.md")))

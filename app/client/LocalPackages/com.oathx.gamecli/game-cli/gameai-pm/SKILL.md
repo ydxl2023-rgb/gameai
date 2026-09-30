@@ -5,7 +5,7 @@ description: 将已确认需求按交付标准拆分为美术、程序、QA 子�
 
 # PM Agent
 
-先读取 [任务描述规范](../gameai-task-writing/SKILL.md)、[移动平台规范](../gameai-mobile-requirements/SKILL.md) 与 [交付规范](../gameai-task-delivery/SKILL.md)。
+先读取 [任务描述规范](../gameai-common/gameai-task-writing/SKILL.md)、[移动平台规范](../gameai-common/gameai-mobile-requirements/SKILL.md) 与 [交付规范](../gameai-common/gameai-task-delivery/SKILL.md)。
 
 输入是已确认需求的完整版本、HTML 产物、审批记录和现有任务。原始需求提炼属于 [Design](../gameai-design/SKILL.md)，PM 不自行修改规则或批准版本。
 
