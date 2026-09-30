@@ -1,0 +1,11 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>A-0000269 道具框交付</title><style>body{font:16px/1.7 system-ui,sans-serif;background:#edf1f6;color:#172536;margin:0}main{max-width:900px;margin:auto;padding:28px}section{background:white;padding:24px;margin:18px 0;border-radius:12px}h1,h2{line-height:1.4}.rule{color:#c52828}.asset{display:block;width:128px;height:128px;background:repeating-conic-gradient(#dce2e8 0% 25%,#fff 0% 50%) 0/16px 16px;border:1px solid #bec8d4}.zoom{width:256px;height:256px}code{overflow-wrap:anywhere}a{color:#1765ac}</style></head><body><main>
+<h1>A-0000269 · 四层道具框</h1><p>本次按人工新增生产要求制作：深蓝底板、金色道具图标、独立数量文字、铜金色框体。数量 99 仅为可替换的展示样例。</p>
+<p class="rule">交付规则：所有最终图层及合成图均为 128×128 像素，使用真实透明通道；背景 → 图标 → 文本 → 框体依次叠加。预览中的棋盘格仅用于展示透明区域，不属于图片内容。</p>
+<section><h2>合成效果</h2><p>原始尺寸：</p><a href="preview/itembox-128.png"><img class="asset" src="preview/itembox-128.png" alt="完整道具框"></a><p>放大预览（文件仍为 128×128）：</p><img class="asset zoom" src="preview/itembox-128.png" alt="道具框放大预览"></section>
+<section><h2>L1 · 背景层</h2><img class="asset" src="layers/L1-background.png" alt="背景层"><p>独立深蓝底板，保留细微材质。<a href="layers/L1-background.png">查看文件</a></p></section>
+<section><h2>L2 · 图标层</h2><img class="asset" src="layers/L2-icon.png" alt="图标层"><p>独立金币示例图标，可替换为其他道具。<a href="layers/L2-icon.png">查看文件</a></p></section>
+<section><h2>L3 · 文本层</h2><img class="asset" src="layers/L3-text.png" alt="数量层"><p>独立数量文字 99，包含描边；运行时由文本组件替换。<a href="layers/L3-text.png">查看文件</a></p></section>
+<section><h2>L4 · 框体层</h2><img class="asset" src="layers/L4-frame.png" alt="框体层"><p>独立铜金色边框，内部透明。<a href="layers/L4-frame.png">查看文件</a></p></section>
+<section><h2>交付内容与检验</h2><p>源生图、提示词、字体设置及导出脚本位于 <code>source/</code>；四层文件位于 <code>layers/</code>；独立合成图位于 <code>preview/</code>。</p><p><a href="manifest.json">交付清单</a> · <a href="checks.json">图片检查结果</a></p><p class="rule">本次完成图片生产与文件检查；长名称、多奖励布局、引擎导入和游戏运行验收尚未执行。资源交付不代表下游任务自动获准启动。</p></section>
+</main></body></html>

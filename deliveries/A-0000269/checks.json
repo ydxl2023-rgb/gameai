@@ -1,0 +1,65 @@
+{
+  "passed": true,
+  "composite_mismatched_pixels": 0,
+  "frame_center_region_opaque_pixels": 5,
+  "images": [
+    {
+      "path": "layers/L1-background.png",
+      "width": 128,
+      "height": 128,
+      "format": "Format32bppArgb",
+      "visible": 10674,
+      "transparent": 5710,
+      "center_alpha": 252,
+      "corner_alpha": 0
+    },
+    {
+      "path": "layers/L2-icon.png",
+      "width": 128,
+      "height": 128,
+      "format": "Format32bppArgb",
+      "visible": 2810,
+      "transparent": 13574,
+      "center_alpha": 253,
+      "corner_alpha": 0
+    },
+    {
+      "path": "layers/L3-text.png",
+      "width": 128,
+      "height": 128,
+      "format": "Format32bppArgb",
+      "visible": 356,
+      "transparent": 16028,
+      "center_alpha": 0,
+      "corner_alpha": 0
+    },
+    {
+      "path": "layers/L4-frame.png",
+      "width": 128,
+      "height": 128,
+      "format": "Format32bppArgb",
+      "visible": 3079,
+      "transparent": 13305,
+      "center_alpha": 0,
+      "corner_alpha": 0
+    },
+    {
+      "path": "preview/itembox-128.png",
+      "width": 128,
+      "height": 128,
+      "format": "Format32bppArgb",
+      "visible": 12207,
+      "transparent": 4177,
+      "center_alpha": 255,
+      "corner_alpha": 0
+    }
+  ],
+  "not_executed": [
+    "引擎导入",
+    "长名称与多奖励布局",
+    "游戏运行验收"
+  ],
+  "frame_center_region_max_alpha": 1,
+  "frame_center_region_effectively_opaque_pixels": 0,
+  "alpha_note": "中心区域存在5个alpha=1的缩放插值像素，透明度约99.6%；无可见实心背景。"
+}

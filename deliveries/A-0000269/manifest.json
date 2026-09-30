@@ -1,0 +1,179 @@
+{
+  "schema_version": 1,
+  "task_id": "A-0000269",
+  "requirement_key": "LOGIN-7-REDRAFT",
+  "requirement_version": "v1.1",
+  "delivery_directory": "deliveries/A-0000269",
+  "skill": "gameai-art/art-2d/art-2d-itembox",
+  "specification": "按本次人工要求生产四层真实资源，替代原单据占位图标范围；本清单记录新增生产约定，未改变已批准需求版本。",
+  "canvas": {
+    "layer_order": [
+      "L1-background",
+      "L2-icon",
+      "L3-text",
+      "L4-frame"
+    ],
+    "format": "PNG",
+    "color_mode": "RGBA",
+    "origin": "左上角",
+    "height": 128,
+    "width": 128
+  },
+  "production": {
+    "icon": "内置 imagegen 独立生图",
+    "seed": null,
+    "native_source_size": [
+      1280,
+      1280
+    ],
+    "model": null,
+    "background": "内置 imagegen 独立生图",
+    "text": "独立 Arial Bold 数量文字层",
+    "export": "PowerShell 7 / System.Drawing 等比例缩放与透明叠加",
+    "frame": "内置 imagegen 独立生图"
+  },
+  "quantity_sample": "99，仅用于预览，运行时由文本组件控制",
+  "style": "未指定风格时采用深蓝与铜金色手游道具框，金币为示例图标",
+  "unity_import": {
+    "mipmaps": false,
+    "sprite_mode": "Single",
+    "alpha_is_transparency": true,
+    "texture_type": "Sprite (2D and UI)",
+    "max_size": 128,
+    "sRGB": true,
+    "compression": "正式导入时检查透明边缘，当前未执行导入"
+  },
+  "validation": {
+    "passed": true,
+    "composite_mismatched_pixels": 0,
+    "frame_center_region_opaque_pixels": 5,
+    "images": [
+      {
+        "path": "layers/L1-background.png",
+        "width": 128,
+        "height": 128,
+        "format": "Format32bppArgb",
+        "visible": 10674,
+        "transparent": 5710,
+        "center_alpha": 252,
+        "corner_alpha": 0
+      },
+      {
+        "path": "layers/L2-icon.png",
+        "width": 128,
+        "height": 128,
+        "format": "Format32bppArgb",
+        "visible": 2810,
+        "transparent": 13574,
+        "center_alpha": 253,
+        "corner_alpha": 0
+      },
+      {
+        "path": "layers/L3-text.png",
+        "width": 128,
+        "height": 128,
+        "format": "Format32bppArgb",
+        "visible": 356,
+        "transparent": 16028,
+        "center_alpha": 0,
+        "corner_alpha": 0
+      },
+      {
+        "path": "layers/L4-frame.png",
+        "width": 128,
+        "height": 128,
+        "format": "Format32bppArgb",
+        "visible": 3079,
+        "transparent": 13305,
+        "center_alpha": 0,
+        "corner_alpha": 0
+      },
+      {
+        "path": "preview/itembox-128.png",
+        "width": 128,
+        "height": 128,
+        "format": "Format32bppArgb",
+        "visible": 12207,
+        "transparent": 4177,
+        "center_alpha": 255,
+        "corner_alpha": 0
+      }
+    ],
+    "not_executed": [
+      "引擎导入",
+      "长名称与多奖励布局",
+      "游戏运行验收"
+    ],
+    "frame_center_region_max_alpha": 1,
+    "frame_center_region_effectively_opaque_pixels": 0,
+    "alpha_note": "中心区域存在5个alpha=1的缩放插值像素，透明度约99.6%；无可见实心背景。"
+  },
+  "workflow_state": "文件生产已完成，待人工审阅；未回写平台任务完成状态，未启动下游任务",
+  "files": [
+    {
+      "path": "交付预览.html",
+      "bytes": 2805,
+      "sha256": "71c8baad4c23181f836f057b2521ad4e48adbd0057d00d84c83e4671b832d4d9"
+    },
+    {
+      "path": "checks.json",
+      "bytes": 1638,
+      "sha256": "bcdb700f648d8ab78196e8557fdc1139fb3a30aad88fce992be1dd4223fdadc1"
+    },
+    {
+      "path": "layers/L1-background.png",
+      "bytes": 21530,
+      "sha256": "6a6768ff867abc07d2a2563b5b992a82dcc4cc3c5b66d559b278c4666bec64d6"
+    },
+    {
+      "path": "layers/L2-icon.png",
+      "bytes": 10226,
+      "sha256": "d39d765a8718d7c86628acf719bde8d081f77a76669c696550c8ad4af6479863"
+    },
+    {
+      "path": "layers/L3-text.png",
+      "bytes": 1061,
+      "sha256": "5fac963769fe1ae615f00bb0384bc6ea1b01d7767c73449fbdce61e4f2bdbb0f"
+    },
+    {
+      "path": "layers/L4-frame.png",
+      "bytes": 10562,
+      "sha256": "8036023de1a1df3df71c687b4cbd224a23ba7f5de4f868edbe70230cf25de44a"
+    },
+    {
+      "path": "preview/itembox-128.png",
+      "bytes": 33115,
+      "sha256": "3a79b26bb58bb3ff460e629a6dff6a98064ecf67a474291f41daea4adc113c06"
+    },
+    {
+      "path": "source/export-itembox.ps1",
+      "bytes": 3496,
+      "sha256": "e4e21399ced25c4c1d13c2bdf89627fb9b70fb7bfdac5727b89dfa33904f567e"
+    },
+    {
+      "path": "source/L1-background-generated.png",
+      "bytes": 1702860,
+      "sha256": "54fc53be946fd877b09e97065b49f3bbe7d42927483f96fc49a7b060e0cc926e"
+    },
+    {
+      "path": "source/L2-icon-generated.png",
+      "bytes": 580099,
+      "sha256": "737362951f1d8191491ee0c99e87c369e876282b7baf845f878338d890d333e9"
+    },
+    {
+      "path": "source/L4-frame-generated.png",
+      "bytes": 421938,
+      "sha256": "907b801eb107a9fbb726d8202d676d82e41521d3f7287da7e40420bb5edb311f"
+    },
+    {
+      "path": "source/prompts.json",
+      "bytes": 2734,
+      "sha256": "f32b4f7ff607d9adc2539c3ebb859486549964f192724f2d6f853d0b3abbedf1"
+    },
+    {
+      "path": "source/text-settings.json",
+      "bytes": 102,
+      "sha256": "1d1a23c4c7690dbd70064325c93ecde0d258ffbf701508472bbacfca06c94261"
+    }
+  ]
+}
