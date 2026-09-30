@@ -24,6 +24,9 @@ try
     await pool.query('GRANT SELECT,INSERT,UPDATE ON gameai.qa_defects TO '+role);
     await pool.query('GRANT UPDATE(bound_agent_id) ON gameai.tasks TO '+role);
     await pool.query('GRANT SELECT,INSERT,UPDATE ON gameai.approval_workflows TO '+role);
+    await pool.query('GRANT SELECT,INSERT ON gameai.task_edits TO '+role);
+    await pool.query('GRANT UPDATE(title,description,delivery_criteria,content_revision) ON gameai.tasks TO '+role);
+    await pool.query('GRANT DELETE ON gameai.task_dependencies TO '+role);
     await pool.query('GRANT UPDATE(auto_execute,automation_revision) ON gameai.agents TO '+role);
     console.log('PM 任务发布所需数据库权限已配置。');
 }

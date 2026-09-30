@@ -1,3 +1,4 @@
+import {canEditTasks,editTaskField} from '../database/task-edits.js';
 import {setAgentAutomation} from '../database/agent-automation.js';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { readFile } from 'node:fs/promises';
@@ -57,7 +58,7 @@ export async function handleReviewRequest(request: IncomingMessage, response: Se
         const session = sessions.get(sessionId);
         if (path === '/api/track/review-session' && request.method === 'GET')
         {
-            reply(response,200,session ? { authenticated:true, name:session.name, csrf:session.csrf } : { authenticated:false });
+            reply(response,200,session ? { authenticated:true, name:session.name, csrf:session.csrf, task_edit:await canEditTasks(writer,project,session.user) } : { authenticated:false });
             return;
         }
         if (request.method !== 'POST')
@@ -94,7 +95,7 @@ export async function handleReviewRequest(request: IncomingMessage, response: Se
         for await (const chunk of request)
         {
             size += chunk.length;
-            if (size > (isSubmission ? 8*1024*1024 : 8192))
+            if (size > (isSubmission ? 8*1024*1024 : path==='/api/track/review-task-edit' ? 32768 : 8192))
             {
                 reply(response,413,{error:'提交过大。'});
                 return;
@@ -131,7 +132,7 @@ export async function handleReviewRequest(request: IncomingMessage, response: Se
             }
             const human = (await writer.query(`SELECT u.id,u.display_name,c.password_hash FROM gameai.users u JOIN gameai.human_credentials c ON c.user_id=u.id
                 WHERE u.subject=$1 AND u.enabled AND EXISTS(SELECT 1 FROM gameai.user_roles ur JOIN gameai.role_permissions rp ON rp.role_code=ur.role_code
-                JOIN gameai.projects p ON p.id=ur.project_id WHERE ur.user_id=u.id AND p.project_key=$2 AND rp.permission_code='requirement.approve')`,[input.username,project])).rows[0];
+                JOIN gameai.projects p ON p.id=ur.project_id WHERE ur.user_id=u.id AND p.project_key=$2 AND rp.permission_code IN ('requirement.approve','task.edit'))`,[input.username,project])).rows[0];
             const [salt,stored] = (human?.password_hash ?? 'invalid:'+'0'.repeat(64)).split(':');
             const actual = scryptSync(input.password,salt,32);
             const expected = Buffer.from(stored,'hex');
@@ -147,7 +148,7 @@ export async function handleReviewRequest(request: IncomingMessage, response: Se
             }
             sessions.set(id,{user:human.id,name:human.display_name,csrf:randomBytes(32).toString('hex'),expires:Date.now()+8*3600000});
             response.setHeader('Set-Cookie',`gameai_review=${id}; Path=/api/track; HttpOnly; SameSite=Strict; Max-Age=28800`);
-            reply(response,200,{authenticated:true,name:human.display_name,csrf:sessions.get(id)!.csrf});
+            reply(response,200,{authenticated:true,name:human.display_name,csrf:sessions.get(id)!.csrf,task_edit:await canEditTasks(writer,project,human.id)});
             return;
         }
         if (path === '/api/track/review-logout')
@@ -197,6 +198,11 @@ export async function handleReviewRequest(request: IncomingMessage, response: Se
             reply(response,200,await setAgentAutomation(writer,project,session!.user,input));
             void resumeApprovalWorkflows(writer).catch(()=>console.error('自动 PM 检查失败。'));
             void resumeTaskFlows(writer).catch(()=>console.error('自动任务检查失败。'));
+            return;
+        }
+        if (path === '/api/track/review-task-edit')
+        {
+            reply(response,200,await editTaskField(writer,project,session!.user,input));
             return;
         }
         if (path === '/api/track/review-task-selection')

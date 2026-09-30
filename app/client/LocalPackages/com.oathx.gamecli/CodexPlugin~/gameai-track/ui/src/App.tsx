@@ -17,10 +17,11 @@ const identities = [{ value: 'design', label: '策划 · 人工审批人' }, { v
 const tabs = [['overview', '项目总览'], ['requirements', '需求审批'], ['tasks', '任务与依赖'], ['versions', '版本'], ['permissions', '权限'], ['audit', '操作记录']];
 export function WorkbenchApp()
 {
+    const [taskEditing,setTaskEditing] = useState(false);
     const [data, setData] = useState<Workbench>();
     const [skillAgent,setSkillAgent] = useState<Agent>();
     const [addingAgent, setAddingAgent] = useState(false);
-    const [reviewSession, setReviewSession] = useState<{ authenticated: boolean; name?: string; csrf?: string }>({ authenticated: false });
+    const [reviewSession, setReviewSession] = useState<{ authenticated: boolean; name?: string; csrf?: string; task_edit?:boolean }>({ authenticated: false });
     const [loginOpen, setLoginOpen] = useState(false);
     const [savingAutomation,setSavingAutomation] = useState<string>();
     const [automaticApproval,setAutomaticApproval] = useState(false);
@@ -238,6 +239,12 @@ export function WorkbenchApp()
         catch(e) { void message.error(e instanceof Error ? e.message : '派发失败，请刷新核实执行状态'); await refresh(); }
         finally { dispatchLock.current=false; setDispatchBusy(false); }
     }
+    async function saveTaskField(task:Task,field:string,value:string|string[],reason:string,revision:number)
+    {
+        await reviewRequest('review-task-edit',{task_id:task.task_uuid,revision,field,value,reason});
+        await refresh();
+        void message.success('修改已保存；该任务需重新确认派发。');
+    }
     async function reviewRequest(path: string, body: unknown)
     {
         const response = await fetch('/api/track/' + path, {
@@ -382,9 +389,13 @@ export function WorkbenchApp()
         <AgentSkillsDialog agent={skillAgent} close={()=>setSkillAgent(undefined)} saved={()=>{setSkillAgent(undefined);void refresh();}} />
         <AgentCreateDialog open={addingAgent} close={() => setAddingAgent(false)} created={id => { setAddingAgent(false); setTab('overview'); log('已添加 Agent：' + id + '，等待节点上线及派工。'); void message.success('Agent 配置已保存'); void refresh(); }} />
         <TaskDispatchDialog rows={dispatchRows} busy={dispatchBusy} close={()=>{if (!dispatchBusy) setDispatchRows(undefined);}} confirm={automatic=>void confirmDispatch(automatic)} />
-        <Drawer title={detail?.id} open={!!detail} onClose={() => setDetail(undefined)} size={selectedAgent ? 720 : 880} getContainer={false} styles={{ wrapper: { maxWidth: '100%' } }}>
-            {selectedTask && <TaskDetail task={selectedTask} tasks={data?.tasks ?? []} bridge={bridge.current} select={setDetail}
-            dispatchDisabled={!persistent || context.embedded || !reviewSession.authenticated || !canDispatchTask(selectedTask) || dispatchBusy}
+        <Drawer title={detail?.id} open={!!detail} onClose={() => {if(!taskEditing || window.confirm("当前内容尚未保存，是否放弃修改？")){setTaskEditing(false);setDetail(undefined);}}} size={selectedAgent ? 720 : 880} getContainer={false} styles={{ wrapper: { maxWidth: '100%' } }}>
+            {selectedTask && <TaskDetail task={selectedTask} key={selectedTask.id} tasks={data?.tasks ?? []} bridge={bridge.current} select={task=>{if(!taskEditing || window.confirm("当前内容尚未保存，是否放弃修改？")){setTaskEditing(false);setDetail(task);}}}
+            editable={persistent && !context.embedded && !!reviewSession.task_edit && !!selectedTask.parent_id && ['待调度','依赖阻塞','失败'].includes(selectedTask.status)}
+            editReason={!persistent ? '模拟模式不可编辑' : context.embedded ? '请在本机 Track 页面登录后编辑' : !reviewSession.authenticated ? '请先登录人工账户，登录后即可编辑单条内容' : !reviewSession.task_edit ? '当前账户没有任务编辑权限' : !selectedTask.parent_id ? '主任务为汇总项，不可编辑' : !['待调度','依赖阻塞','失败'].includes(selectedTask.status) ? '当前任务已执行或进入验收，不可直接修改' : undefined}
+            requestLogin={persistent && !context.embedded && !reviewSession.authenticated ? ()=>setLoginOpen(true) : undefined}
+            onEditing={setTaskEditing} save={(field,value,reason,revision)=>saveTaskField(selectedTask,field,value,reason,revision)}
+            dispatchDisabled={!persistent || context.embedded || !reviewSession.authenticated || !canDispatchTask(selectedTask) || dispatchBusy || taskEditing}
             dispatch={()=>void previewDispatch([selectedTask])}/>}
             {selectedAgent && <Descriptions column={1} items={[{ key: 'name', label: '名称', children: selectedAgent.name ?? selectedAgent.id }, { key: 'skills', label: '技能', children: selectedAgent.skills?.map(s => s.key + (s.primary ? '（主技能）' : '')).join('、') || '未配置' }, { key: 'enabled', label: '允许调度', children: selectedAgent.enabled ? '是' : '否' }, { key: 'r', label: '角色', children: selectedAgent.role }, { key: 's', label: '状态', children: <AgentStatusTag agent={selectedAgent} /> }, { key: 'w', label: '工作站', children: selectedAgent.station }, { key: 'c', label: '容量', children: `${selectedAgent.used} / ${selectedAgent.capacity}` }, { key: 't', label: '任务', children: selectedAgent.task ?? '—' }, { key: 'read', label: '项目读取', children: selectedAgent.read ? '允许' : '禁止' }, { key: 'write', label: '任务写入', children: selectedAgent.write ? '仅限授权任务' : '禁止' }, { key: 'p', label: '文档审批', children: '禁止，需人工批准' }]} />}
             {selectedAgent && <AgentHistory key={selectedAgent.id+(historyRequirement ?? '')} agent={selectedAgent.id} requirementKey={historyRequirement} bridge={bridge.current} />}
