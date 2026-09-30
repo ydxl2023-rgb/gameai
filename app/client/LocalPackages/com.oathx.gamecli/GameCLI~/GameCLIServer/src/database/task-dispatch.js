@@ -57,7 +57,8 @@ export async function dispatchTasks(pool,projectKey,userId,raw,commit=false,auto
             if (!reason && automaticDispatch)
             {
                 const flow=(await c.query('SELECT agent_policy FROM gameai.plan_dispatch_flows WHERE plan_version_id=$1',[t.plan_version_id])).rows[0];
-                if(flow?.agent_policy && (!a?.auto_execute || !flow.agent_policy.some(entry=>entry.id===a.id && entry.role_code===t.role_code))) reason='对应 Agent 未授权自动执行，等待人工派发';
+                // A plan-level continuation flag never overrides the current Agent automation permission.
+                if(!flow || !a?.auto_execute || (flow.agent_policy && !flow.agent_policy.some(entry=>entry.id===a.id && entry.role_code===t.role_code))) reason='对应 Agent 未授权自动执行，等待人工派发';
             }
             if (!reason && t.bound_agent_id && t.bound_agent_id!==a?.id) reason='原执行 Agent 不可用，禁止改派其他 Agent';
             if (!reason && (!a?.enabled || !a.worker_enabled || a.worker_key.toLowerCase()!==hostname().toLowerCase())) reason='没有绑定本机的可用固定 Agent';

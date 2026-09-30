@@ -90,8 +90,17 @@ export class TrackBridge
         if (result?.isError) throw new Error(result.content?.[0]?.text ?? '历史读取失败。');
         return result.structuredContent;
     }
-    async document(version: string)
+    async document(version: string, url?: string | null)
     {
+        if (!this.embedded)
+        {
+            if (!url) throw new Error('该任务尚未关联原始 HTML 文档。');
+            const target = new URL(url, window.location.href);
+            if (target.origin !== window.location.origin || !/^\/api\/track\/documents\/[0-9a-f-]{36}$/i.test(target.pathname)) throw new Error('文档关联地址无效。');
+            const response = await fetch(target.pathname, {cache:'no-store', signal:AbortSignal.timeout(10000)});
+            if (!response.ok) throw new Error('文档读取失败：HTTP ' + response.status);
+            return response.text();
+        }
         const result = await this.rpc('tools/call', { name: 'gameai_track_snapshot', arguments: { document_version: version } });
         if (result?.isError) throw new Error(result.content?.[0]?.text ?? '文档读取失败。');
         if (result?.structuredContent?.document?.version_id !== version || typeof result?.structuredContent?.document?.html !== 'string') throw new Error('文档响应不匹配，请重新连接 Track 插件。');

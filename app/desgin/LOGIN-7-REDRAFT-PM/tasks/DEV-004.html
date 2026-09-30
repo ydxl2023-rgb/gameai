@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>交付完整奖励原子记账与手动领取幂等恢复</title>
+<style>
+  :root {
+    --bg: #ffffff;
+    --fg: #1f2328;
+    --muted: #57606a;
+    --border: #d0d7de;
+    --code-bg: #f6f8fa;
+    --accent: #0969da;
+    --accent-soft: #ddf4ff;
+    --warn: #bf8700;
+    --warn-soft: #fff8c5;
+    --ok: #1a7f37;
+    --ok-soft: #dafbe1;
+    --err: #cf222e;
+    --err-soft: #ffebe9;
+    --rule-color: #b42318;
+  }
+
+  * { box-sizing: border-box; }
+
+  .rule, .rule * { color: var(--rule-color) !important; }
+  svg .rule, svg .rule * { fill: var(--rule-color); }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: #f6f8fa;
+    color: var(--fg);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+                 "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue",
+                 Arial, sans-serif;
+    font-size: 14px;
+    line-height: 1.7;
+  }
+
+  .page {
+    max-width: 900px;
+    margin: 0 auto;
+    background: var(--bg);
+    padding: 60px 70px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+  }
+
+  /* 封面 */
+  .cover {
+    text-align: center;
+    padding: 80px 0 60px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 48px;
+  }
+  .cover h1 {
+    font-size: 34px;
+    margin: 0 0 16px;
+    letter-spacing: 1px;
+  }
+  .cover .subtitle {
+    font-size: 16px;
+    color: var(--muted);
+    margin-bottom: 30px;
+  }
+  .cover .meta {
+    display: inline-block;
+    text-align: left;
+    font-size: 13px;
+    color: var(--muted);
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    padding: 12px 30px;
+  }
+  .cover .meta span { display: inline-block; min-width: 90px; color: var(--fg); }
+
+  /* 标题 */
+  h1 { font-size: 26px; margin: 48px 0 16px; padding-bottom: 8px; border-bottom: 2px solid var(--fg); }
+  h2 { font-size: 20px; margin: 36px 0 12px; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
+  h3 { font-size: 16px; margin: 24px 0 8px; color: #24292f; }
+  h4 { font-size: 14px; margin: 16px 0 6px; color: var(--muted); }
+
+  p { margin: 8px 0; }
+
+  /* 代码 */
+  code {
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    background: var(--code-bg);
+    padding: 2px 5px;
+    border-radius: 4px;
+    font-size: 12.5px;
+  }
+  pre {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 14px 16px;
+    overflow-x: auto;
+    font-size: 12px;
+    line-height: 1.6;
+    margin: 12px 0;
+  }
+  pre code {
+    background: none;
+    padding: 0;
+    font-size: 12px;
+  }
+
+  /* 表格 */
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 14px 0;
+    font-size: 13px;
+  }
+  th, td {
+    border: 1px solid var(--border);
+    padding: 8px 10px;
+    text-align: left;
+    vertical-align: top;
+  }
+  th { background: #f6f8fa; font-weight: 600; }
+  tr:nth-child(even) td { background: #fafbfc; }
+
+  /* 引用 */
+  blockquote {
+    border-left: 4px solid var(--accent);
+    margin: 12px 0;
+    padding: 6px 14px;
+    background: var(--accent-soft);
+    border-radius: 0 6px 6px 0;
+    color: #0a3069;
+    font-size: 13.5px;
+  }
+
+  /* 提示框 */
+  .callout {
+    padding: 12px 16px;
+    border-radius: 6px;
+    margin: 14px 0;
+    font-size: 13.5px;
+    border-left: 4px solid;
+  }
+  .callout.info { background: var(--accent-soft); border-color: var(--accent); }
+  .callout.warn { background: var(--warn-soft); border-color: var(--warn); }
+  .callout.ok   { background: var(--ok-soft);   border-color: var(--ok); }
+  .callout.err  { background: var(--err-soft);  border-color: var(--err); }
+
+  /* 列表 */
+  ul, ol { padding-left: 24px; margin: 8px 0; }
+  li { margin: 4px 0; }
+
+  /* 图表容器 */
+  .diagram {
+    margin: 24px 0;
+    padding: 20px;
+    background: #fafbfc;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow-x: auto;
+    text-align: center;
+  }
+  .diagram svg { max-width: 100%; height: auto; }
+  .diagram .caption {
+    font-size: 12.5px;
+    color: var(--muted);
+    margin-top: 10px;
+    font-style: italic;
+  }
+
+  /* 目录 */
+  .toc {
+    background: #fafbfc;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px 28px;
+    margin: 24px 0 40px;
+  }
+  .toc h3 { margin-top: 0; }
+  .toc ol { margin: 0; padding-left: 20px; }
+  .toc a { color: var(--accent); text-decoration: none; }
+  .toc a:hover { text-decoration: underline; }
+
+  /* 打印 */
+  @page {
+    size: A4;
+    margin: 18mm 16mm;
+  }
+  @media print {
+    html, body { background: #fff; font-size: 11.5pt; }
+    .page { box-shadow: none; padding: 0; max-width: 100%; }
+    h1 { page-break-before: auto; }
+    h2 { page-break-after: avoid; }
+    pre, table, .diagram { page-break-inside: avoid; }
+    .cover { page-break-after: always; }
+    .no-print { display: none; }
+    a { color: var(--fg); text-decoration: none; }
+  }
+
+  /* 页脚 */
+  .footer {
+    margin-top: 60px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border);
+    text-align: center;
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  .print-btn {
+    position: fixed;
+    right: 24px;
+    bottom: 24px;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 999px;
+    padding: 12px 22px;
+    font-size: 14px;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(9,105,218,0.35);
+    z-index: 100;
+  }
+  .print-btn:hover { background: #0860ca; }
+
+.page { overflow-wrap: anywhere; }
+@media screen and (max-width: 700px) { .page { padding: 24px 18px; } .cover { padding: 30px 0; } .cover h1 { font-size: 26px; } .toc { padding: 16px; } }
+.wire-gallery { display: flex; flex-direction: column; gap: 24px; }
+.wire-step { width: 100%; }
+</style>
+<style>.wire-step{margin:24px 0;padding:12px;border:1px solid #d0d7de;break-inside:avoid}.wire-step>svg{display:block;width:100%;height:auto}.wire-step figcaption,.layer-note{margin:10px 0}.layer-note{padding:12px;background:#f6f8fa}.task-standard{white-space:pre-wrap;overflow-wrap:anywhere}svg .rule,svg .rule *{fill:var(--rule-color)}@media print{.wire-step{break-inside:auto}}</style></head>
+<body>
+<button class="print-btn no-print" onclick="window.print()">打印 / 导出文档</button>
+<main class="page">
+<header class="cover">
+<h1>交付完整奖励原子记账与手动领取幂等恢复</h1>
+<div class="subtitle">DEV-004 · 程序任务单据</div>
+<div class="meta">来源：七日登录活动 v1.1<br>状态：只读拆分预演<br>日期：2026年9月30日</div>
+</header>
+<nav class="toc" aria-label="目录"><h3>目录</h3><ol><li><a href="#scope">任务与来源</a></li><li><a href="#wireframes">线框与分层</a></li><li><a href="#delivery">交付与验收</a></li><li><a href="#gate">完成门禁</a></li></ol></nav>
+<section id="scope"><h1>1. 任务与来源</h1><table><tbody><tr><th>临时编号</th><td>DEV-004</td></tr><tr><th>负责角色</th><td>程序</td></tr><tr><th>源需求</th><td>LOGIN-7-REDRAFT · v1.1<br><a href="../../七日累计登录活动需求案-分层审阅版.html">查看原始需求 HTML</a></td></tr><tr><th>原始文件 SHA-256</th><td><code>60ae816171888547a08b219267eeefecd30e07bb8da47c34ef883fad6e3c64b4</code></td></tr><tr><th>状态</th><td>拆分预演 · 未审批 · 未发布</td></tr><tr><th>前置依赖</th><td class="rule"><a href="DEV-001.html">DEV-001</a>、<a href="DEV-002.html">DEV-002</a>、<a href="DEV-003.html">DEV-003</a></td></tr></tbody></table><p class="rule">本单据是宿主将固定 PM Agent 已返回的拆分草案排版为 HTML，并复用原需求线框；没有改动任务范围和依赖，未创建平台任务。</p><p><a href="../../七日累计登录活动-PM任务拆分预演.html#task-DEV-004">返回 PM 拆分总览</a></p></section><section id="wireframes"><h1>2. 对应线框与分层</h1><p class="rule">以下线框仅说明本任务逻辑所关联的玩家交互，不要求本任务制作界面；实际范围以第三节交付标准为准。图示复用源需求，设备、安全区和图层标注不是运行界面资产。多个视图按原操作顺序单列排列。</p><figure class="wire-step"><h3>视图二 · P02活动弹窗 → C02关闭返回P01</h3><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2000 1160" role="img" aria-label="七档完整活动弹窗线框"><title>七档奖励完整显示，1920×1080横屏画布</title><rect x="4" y="4" width="1992" height="1152" rx="110" fill="#20252c"></rect><svg x="40" y="40" width="1920" height="1080" viewBox="0 0 1920 1080"><rect width="1920" height="1080" rx="80" fill="#eef0f3"></rect><rect x="130" y="65" width="1660" height="905" rx="16" fill="none" stroke="#a3adba" stroke-width="3" stroke-dasharray="10 12"></rect><rect x="150" y="90" width="1620" height="850" rx="24" fill="white" stroke="#34404d" stroke-width="4"></rect><g font-family="Microsoft YaHei,Arial,sans-serif" fill="#34404d"><text x="210" y="170" font-size="44">P02 七日累计登录</text><rect x="1570" y="120" width="150" height="72" rx="8" fill="#f0f2f4" stroke="#34404d"></rect><text x="1645" y="167" font-size="30" text-anchor="middle">C02 关闭</text><text x="210" y="247" font-size="32">I01 累计登录 3/7天　｜　I02 第4/14个活动日</text><text x="210" y="303" font-size="29" class="rule">I03 到期时间：按锁定时区显示服务器确认的日期与00:00</text><text x="210" y="355" font-size="29" class="rule">14个活动日内累计登录；漏登保留；到期补发已解锁未领奖励</text><g fill="#f5f6f8" stroke="#8793a1" stroke-width="2"><rect x="200" y="410" width="200" height="330" rx="10"></rect><rect x="420" y="410" width="200" height="330" rx="10"></rect><rect x="640" y="410" width="200" height="330" rx="10"></rect><rect x="860" y="410" width="200" height="330" rx="10"></rect><rect x="1080" y="410" width="200" height="330" rx="10"></rect><rect x="1300" y="410" width="200" height="330" rx="10"></rect><rect x="1520" y="410" width="200" height="330" rx="10"></rect></g><g text-anchor="middle" font-size="27"><text x="300" y="460">第1档</text><text x="520" y="460">第2档</text><text x="740" y="460">第3档</text><text x="960" y="460">第4档</text><text x="1180" y="460">第5档</text><text x="1400" y="460">第6档</text><text x="1620" y="460">第7档</text><text x="300" y="698">已领取</text><text x="520" y="643">C03-2</text><text x="740" y="643">C03-3</text><text x="960" y="698">未解锁</text><text x="1180" y="698">未解锁</text><text x="1400" y="698">未解锁</text><text x="1620" y="698">未解锁</text></g><rect x="440" y="660" width="160" height="57" rx="8" fill="#e0e6ec" stroke="#34404d"></rect><rect x="660" y="660" width="160" height="57" rx="8" fill="#e0e6ec" stroke="#34404d"></rect><text x="520" y="698" font-size="28" text-anchor="middle">领取</text><text x="740" y="698" font-size="28" text-anchor="middle">领取</text><text x="210" y="850" font-size="28">I04 当前状态：活动进行中</text><rect x="1320" y="800" width="400" height="80" rx="8" fill="#f0f2f4" stroke="#34404d"></rect><text x="1520" y="851" text-anchor="middle" font-size="29">C04 测试邮件记录</text></g><path d="M0 335 H38 Q80 335 80 380 V700 Q80 745 38 745 H0 Z" fill="#20252c"></path><rect x="700" y="1020" width="520" height="12" rx="6" fill="#333b46"></rect><g data-reward="R01-1-1" transform="translate(210 490)"><g data-layer="background" data-layer-id="R01-1-1-L1"><rect width="180" height="62" rx="6" fill="#eef3f7"></rect></g><g data-layer="icon" data-layer-id="R01-1-1-L2"><rect x="9" y="9" width="44" height="44" fill="#dde6ef" stroke="#54758a" stroke-dasharray="4 3"></rect><path d="M31 15 L47 31 L31 47 L15 31 Z" fill="none" stroke="#54758a"></path></g><g data-layer="text" data-layer-id="R01-1-1-L3" fill="#34404d" text-anchor="start"><text x="62" y="27" font-size="19">测试石</text><text x="62" y="50" font-size="19">×8</text></g><g data-layer="frame" data-layer-id="R01-1-1-L4"><rect width="180" height="62" rx="6" fill="none" stroke="#937953" stroke-width="2"></rect></g></g><g data-reward="R01-1-2" transform="translate(210 562)"><g data-layer="background" data-layer-id="R01-1-2-L1"><rect width="180" height="62" rx="6" fill="#eef3f7"></rect></g><g data-layer="icon" data-layer-id="R01-1-2-L2"><rect x="9" y="9" width="44" height="44" fill="#dde6ef" stroke="#54758a" stroke-dasharray="4 3"></rect><path d="M31 15 L47 31 L31 47 L15 31 Z" fill="none" stroke="#54758a"></path></g><g data-layer="text" data-layer-id="R01-1-2-L3" fill="#34404d" text-anchor="start"><text x="62" y="27" font-size="19">测试币</text><text x="62" y="50" font-size="19">×6</text></g><g data-layer="frame" data-layer-id="R01-1-2-L4"><rect width="180" height="62" rx="6" fill="none" stroke="#937953" stroke-width="2"></rect></g></g><g data-reward="R01-2-1" transform="translate(430 490)"><g data-layer="background" data-layer-id="R01-2-1-L1"><rect width="180" height="62" rx="6" fill="#eef3f7"></rect></g><g data-layer="icon" data-layer-id="R01-2-1-L2"><rect x="9" y="9" width="44" height="44" fill="#dde6ef" stroke="#54758a" stroke-dasharray="4 3"></rect><path d="M31 15 L47 31 L31 47 L15 31 Z" fill="none" stroke="#54758a"></path></g><g data-layer="text" data-layer-id="R01-2-1-L3" fill="#34404d" text-anchor="start"><text x="62" y="27" font-size="19">测试币</text><text x="62" y="50" font-size="19">×12</text></g><g data-layer="frame" data-layer-id="R01-2-1-L4"><rect width="180" height="62" rx="6" fill="none" stroke="#937953" stroke-width="2"></rect></g></g><g data-reward="R01-3-1" transform="translate(650 490)"><g data-layer="background" data-layer-id="R01-3-1-L1"><rect width="180" height="62" rx="6" fill="#eef3f7"></rect></g><g data-layer="icon" data-layer-id="R01-3-1-L2"><rect x="9" y="9" width="44" height="44" fill="#dde6ef" stroke="#54758a" stroke-dasharray="4 3"></rect><path d="M31 15 L47 31 L31 47 L15 31 Z" fill="none" stroke="#54758a"></path></g><g data-layer="text" data-layer-id="R01-3-1-L3" fill="#34404d" text-anchor="start"><text x="62" y="27" font-size="19">测试石</text><text x="62" y="50" font-size="19">×12</text></g><g data-layer="frame" data-layer-id="R01-3-1-L4"><rect width="180" height="62" rx="6" fill="none" stroke="#937953" stroke-width="2"></rect></g></g><g data-reward="R01-4-1" transform="translate(870 490)"><g data-layer="background" data-layer-id="R01-4-1-L1"><rect width="180" height="62" rx="6" fill="#eef3f7"></rect></g><g data-layer="icon" data-layer-id="R01-4-1-L2"><rect x="9" y="9" width="44" height="44" fill="#dde6ef" stroke="#54758a" stroke-dasharray="4 3"></rect><path d="M31 15 L47 31 L31 47 L15 31 Z" fill="none" stroke="#54758a"></path></g><g data-layer="text" data-layer-id="R01-4-1-L3" fill="#34404d" text-anchor="start"><text x="62" y="27" font-size="19">测试币</text><text x="62" y="50" font-size="19">×18</text></g><g data-layer="frame" data-layer-id="R01-4-1-L4"><rect width="180" height="62" rx="6" fill="none" stroke="#937953" stroke-width="2"></rect></g></g><g data-reward="R01-5-1" transform="translate(1090 490)"><g data-layer="background" data-layer-id="R01-5-1-L1"><rect width="180" height="62" rx="6" fill="#eef3f7"></rect></g><g data-layer="icon" data-layer-id="R01-5-1-L2"><rect x="9" y="9" width="44" height="44" fill="#dde6ef" stroke="#54758a" stroke-dasharray="4 3"></rect><path d="M31 15 L47 31 L31 47 L15 31 Z" fill="none" stroke="#54758a"></path></g><g data-layer="text" data-layer-id="R01-5-1-L3" fill="#34404d" text-anchor="start"><text x="62" y="27" font-size="19">测试石</text><text x="62" y="50" font-size="19">×16</text></g><g data-layer="frame" data-layer-id="R01-5-1-L4"><rect width="180" height="62" rx="6" fill="none" stroke="#937953" stroke-width="2"></rect></g></g><g data-reward="R01-6-1" transform="translate(1310 490)"><g data-layer="background" data-layer-id="R01-6-1-L1"><rect width="180" height="62" rx="6" fill="#eef3f7"></rect></g><g data-layer="icon" data-layer-id="R01-6-1-L2"><rect x="9" y="9" width="44" height="44" fill="#dde6ef" stroke="#54758a" stroke-dasharray="4 3"></rect><path d="M31 15 L47 31 L31 47 L15 31 Z" fill="none" stroke="#54758a"></path></g><g data-layer="text" data-layer-id="R01-6-1-L3" fill="#34404d" text-anchor="start"><text x="62" y="27" font-size="19">测试币</text><text x="62" y="50" font-size="19">×24</text></g><g data-layer="frame" data-layer-id="R01-6-1-L4"><rect width="180" height="62" rx="6" fill="none" stroke="#937953" stroke-width="2"></rect></g></g><g data-reward="R01-7-1" transform="translate(1530 490)"><g data-layer="background" data-layer-id="R01-7-1-L1"><rect width="180" height="62" rx="6" fill="#eef3f7"></rect></g><g data-layer="icon" data-layer-id="R01-7-1-L2"><rect x="9" y="9" width="44" height="44" fill="#dde6ef" stroke="#54758a" stroke-dasharray="4 3"></rect><path d="M31 15 L47 31 L31 47 L15 31 Z" fill="none" stroke="#54758a"></path></g><g data-layer="text" data-layer-id="R01-7-1-L3" fill="#34404d" text-anchor="start"><text x="62" y="27" font-size="19">测试石</text><text x="62" y="50" font-size="19">×20</text></g><g data-layer="frame" data-layer-id="R01-7-1-L4"><rect width="180" height="62" rx="6" fill="none" stroke="#937953" stroke-width="2"></rect></g></g><g data-reward="R01-7-2" transform="translate(1530 562)"><g data-layer="background" data-layer-id="R01-7-2-L1"><rect width="180" height="62" rx="6" fill="#eef3f7"></rect></g><g data-layer="icon" data-layer-id="R01-7-2-L2"><rect x="9" y="9" width="44" height="44" fill="#dde6ef" stroke="#54758a" stroke-dasharray="4 3"></rect><path d="M31 15 L47 31 L31 47 L15 31 Z" fill="none" stroke="#54758a"></path></g><g data-layer="text" data-layer-id="R01-7-2-L3" fill="#34404d" text-anchor="start"><text x="62" y="27" font-size="19">测试币</text><text x="62" y="50" font-size="19">×30</text></g><g data-layer="frame" data-layer-id="R01-7-2-L4"><rect width="180" height="62" rx="6" fill="none" stroke="#937953" stroke-width="2"></rect></g></g></svg></svg><figcaption class="rule">示例为第4活动日累计登录3天，第1档已领取，第2、3档可分别领取。七档完整呈现，不增加横向翻页或一键领取。C03-1至C03-7对应各档领取位置，状态文字按服务器结果替换。C04进入记录查看分支。</figcaption><p class="layer-note rule">R01 道具框：L1背景（浅底）→ L2图标（虚线占位）→ L3文本（名称／数量）→ L4框体（透明描边）。层号仅用于交付标注，不进入游戏界面。</p></figure>
+<figure class="wire-step"><h3>视图三 · P02领取处理中 · C02仍可关闭返回P01</h3><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2000 1160" role="img" aria-label="活动领取处理中线框"><title>领取处理中，1920×1080横屏画布</title><rect x="4" y="4" width="1992" height="1152" rx="110" fill="#20252c"></rect><svg x="40" y="40" width="1920" height="1080" viewBox="0 0 1920 1080"><rect width="1920" height="1080" rx="80" fill="#eef0f3"></rect><rect x="130" y="65" width="1660" height="905" rx="16" fill="none" stroke="#a3adba" stroke-width="3" stroke-dasharray="10 12"></rect><rect x="150" y="90" width="1620" height="850" rx="24" fill="white" stroke="#34404d" stroke-width="4"></rect><g font-family="Microsoft YaHei,Arial,sans-serif" fill="#34404d"><text x="210" y="170" font-size="44">P02 七日累计登录</text><rect x="1570" y="120" width="150" height="72" rx="8" fill="#f0f2f4" stroke="#34404d"></rect><text x="1645" y="167" font-size="30" text-anchor="middle">C02 关闭</text><text x="210" y="270" font-size="32">累计登录 3/7天　｜　第4/14个活动日</text><text x="210" y="340" font-size="29">领取中使用原七档布局，所有奖励内容保持可见</text><g fill="#f5f6f8" stroke="#8793a1" stroke-width="2"><rect x="200" y="410" width="200" height="330" rx="10"></rect><rect x="420" y="410" width="200" height="330" rx="10"></rect><rect x="640" y="410" width="200" height="330" rx="10"></rect><rect x="860" y="410" width="200" height="330" rx="10"></rect><rect x="1080" y="410" width="200" height="330" rx="10"></rect><rect x="1300" y="410" width="200" height="330" rx="10"></rect><rect x="1520" y="410" width="200" height="330" rx="10"></rect></g><g text-anchor="middle" font-size="27"><text x="300" y="460">第1档</text><text x="520" y="460">第2档</text><text x="740" y="460">第3档</text><text x="960" y="460">第4档</text><text x="1180" y="460">第5档</text><text x="1400" y="460">第6档</text><text x="1620" y="460">第7档</text><text x="300" y="693">已领取</text><text x="520" y="693">领取中…</text><text x="740" y="693">领取（置灰）</text><text x="960" y="693">未解锁</text><text x="1180" y="693">未解锁</text><text x="1400" y="693">未解锁</text><text x="1620" y="693">未解锁</text></g><text x="210" y="850" font-size="28" class="rule">C03-2请求期间不重复提交；返回不撤销已提交请求</text></g><path d="M0 335 H38 Q80 335 80 380 V700 Q80 745 38 745 H0 Z" fill="#20252c"></path><rect x="700" y="1020" width="520" height="12" rx="6" fill="#333b46"></rect><g data-reward="R01-1-1" transform="translate(210 490)"><g data-layer="background" data-layer-id="R01-1-1-L1"><rect width="180" height="62" rx="6" fill="#eef3f7"></rect></g><g data-layer="icon" data-layer-id="R01-1-1-L2"><rect x="9" y="9" width="44" height="44" fill="#dde6ef" stroke="#54758a" stroke-dasharray="4 3"></rect><path d="M31 15 L47 31 L31 47 L15 31 Z" fill="none" stroke="#54758a"></path></g><g data-layer="text" data-layer-id="R01-1-1-L3" fill="#34404d" text-anchor="start"><text x="62" y="27" font-size="19">测试石</text><text x="62" y="50" font-size="19">×8</text></g><g data-layer="frame" data-layer-id="R01-1-1-L4"><rect width="180" height="62" rx="6" fill="none" stroke="#937953" stroke-width="2"></rect></g></g><g data-reward="R01-1-2" transform="translate(210 562)"><g data-layer="background" data-layer-id="R01-1-2-L1"><rect width="180" height="62" rx="6" fill="#eef3f7"></rect></g><g data-layer="icon" data-layer-id="R01-1-2-L2"><rect x="9" y="9" width="44" height="44" fill="#dde6ef" stroke="#54758a" stroke-dasharray="4 3"></rect><path d="M31 15 L47 31 L31 47 L15 31 Z" fill="none" stroke="#54758a"></path></g><g data-layer="text" data-layer-id="R01-1-2-L3" fill="#34404d" text-anchor="start"><text x="62" y="27" font-size="19">测试币</text><text x="62" y="50" font-size="19">×6</text></g><g data-layer="frame" data-layer-id="R01-1-2-L4"><rect width="180" height="62" rx="6" fill="none" stroke="#937953" stroke-width="2"></rect></g></g><g data-reward="R01-2-1" transform="translate(430 490)"><g data-layer="background" data-layer-id="R01-2-1-L1"><rect width="180" height="62" rx="6" fill="#eef3f7"></rect></g><g data-layer="icon" data-layer-id="R01-2-1-L2"><rect x="9" y="9" width="44" height="44" fill="#dde6ef" stroke="#54758a" stroke-dasharray="4 3"></rect><path d="M31 15 L47 31 L31 47 L15 31 Z" fill="none" stroke="#54758a"></path></g><g data-layer="text" data-layer-id="R01-2-1-L3" fill="#34404d" text-anchor="start"><text x="62" y="27" font-size="19">测试币</text><text x="62" y="50" font-size="19">×12</text></g><g data-layer="frame" data-layer-id="R01-2-1-L4"><rect width="180" height="62" rx="6" fill="none" stroke="#937953" stroke-width="2"></rect></g></g><g data-reward="R01-3-1" transform="translate(650 490)"><g data-layer="background" data-layer-id="R01-3-1-L1"><rect width="180" height="62" rx="6" fill="#eef3f7"></rect></g><g data-layer="icon" data-layer-id="R01-3-1-L2"><rect x="9" y="9" width="44" height="44" fill="#dde6ef" stroke="#54758a" stroke-dasharray="4 3"></rect><path d="M31 15 L47 31 L31 47 L15 31 Z" fill="none" stroke="#54758a"></path></g><g data-layer="text" data-layer-id="R01-3-1-L3" fill="#34404d" text-anchor="start"><text x="62" y="27" font-size="19">测试石</text><text x="62" y="50" font-size="19">×12</text></g><g data-layer="frame" data-layer-id="R01-3-1-L4"><rect width="180" height="62" rx="6" fill="none" stroke="#937953" stroke-width="2"></rect></g></g><g data-reward="R01-4-1" transform="translate(870 490)"><g data-layer="background" data-layer-id="R01-4-1-L1"><rect width="180" height="62" rx="6" fill="#eef3f7"></rect></g><g data-layer="icon" data-layer-id="R01-4-1-L2"><rect x="9" y="9" width="44" height="44" fill="#dde6ef" stroke="#54758a" stroke-dasharray="4 3"></rect><path d="M31 15 L47 31 L31 47 L15 31 Z" fill="none" stroke="#54758a"></path></g><g data-layer="text" data-layer-id="R01-4-1-L3" fill="#34404d" text-anchor="start"><text x="62" y="27" font-size="19">测试币</text><text x="62" y="50" font-size="19">×18</text></g><g data-layer="frame" data-layer-id="R01-4-1-L4"><rect width="180" height="62" rx="6" fill="none" stroke="#937953" stroke-width="2"></rect></g></g><g data-reward="R01-5-1" transform="translate(1090 490)"><g data-layer="background" data-layer-id="R01-5-1-L1"><rect width="180" height="62" rx="6" fill="#eef3f7"></rect></g><g data-layer="icon" data-layer-id="R01-5-1-L2"><rect x="9" y="9" width="44" height="44" fill="#dde6ef" stroke="#54758a" stroke-dasharray="4 3"></rect><path d="M31 15 L47 31 L31 47 L15 31 Z" fill="none" stroke="#54758a"></path></g><g data-layer="text" data-layer-id="R01-5-1-L3" fill="#34404d" text-anchor="start"><text x="62" y="27" font-size="19">测试石</text><text x="62" y="50" font-size="19">×16</text></g><g data-layer="frame" data-layer-id="R01-5-1-L4"><rect width="180" height="62" rx="6" fill="none" stroke="#937953" stroke-width="2"></rect></g></g><g data-reward="R01-6-1" transform="translate(1310 490)"><g data-layer="background" data-layer-id="R01-6-1-L1"><rect width="180" height="62" rx="6" fill="#eef3f7"></rect></g><g data-layer="icon" data-layer-id="R01-6-1-L2"><rect x="9" y="9" width="44" height="44" fill="#dde6ef" stroke="#54758a" stroke-dasharray="4 3"></rect><path d="M31 15 L47 31 L31 47 L15 31 Z" fill="none" stroke="#54758a"></path></g><g data-layer="text" data-layer-id="R01-6-1-L3" fill="#34404d" text-anchor="start"><text x="62" y="27" font-size="19">测试币</text><text x="62" y="50" font-size="19">×24</text></g><g data-layer="frame" data-layer-id="R01-6-1-L4"><rect width="180" height="62" rx="6" fill="none" stroke="#937953" stroke-width="2"></rect></g></g><g data-reward="R01-7-1" transform="translate(1530 490)"><g data-layer="background" data-layer-id="R01-7-1-L1"><rect width="180" height="62" rx="6" fill="#eef3f7"></rect></g><g data-layer="icon" data-layer-id="R01-7-1-L2"><rect x="9" y="9" width="44" height="44" fill="#dde6ef" stroke="#54758a" stroke-dasharray="4 3"></rect><path d="M31 15 L47 31 L31 47 L15 31 Z" fill="none" stroke="#54758a"></path></g><g data-layer="text" data-layer-id="R01-7-1-L3" fill="#34404d" text-anchor="start"><text x="62" y="27" font-size="19">测试石</text><text x="62" y="50" font-size="19">×20</text></g><g data-layer="frame" data-layer-id="R01-7-1-L4"><rect width="180" height="62" rx="6" fill="none" stroke="#937953" stroke-width="2"></rect></g></g><g data-reward="R01-7-2" transform="translate(1530 562)"><g data-layer="background" data-layer-id="R01-7-2-L1"><rect width="180" height="62" rx="6" fill="#eef3f7"></rect></g><g data-layer="icon" data-layer-id="R01-7-2-L2"><rect x="9" y="9" width="44" height="44" fill="#dde6ef" stroke="#54758a" stroke-dasharray="4 3"></rect><path d="M31 15 L47 31 L31 47 L15 31 Z" fill="none" stroke="#54758a"></path></g><g data-layer="text" data-layer-id="R01-7-2-L3" fill="#34404d" text-anchor="start"><text x="62" y="27" font-size="19">测试币</text><text x="62" y="50" font-size="19">×30</text></g><g data-layer="frame" data-layer-id="R01-7-2-L4"><rect width="180" height="62" rx="6" fill="none" stroke="#937953" stroke-width="2"></rect></g></g></svg></svg><figcaption class="rule">一次处理一个手动领取请求，期间其他领取按钮临时置灰；C04记录入口仍保留原位置和功能，图中省略其重复标签。网络结果未知时原档按钮改为“确认中…”并保持禁止发奖提交，不新增页面或恢复按钮。</figcaption><p class="layer-note rule">R01 道具框：L1背景（浅底）→ L2图标（虚线占位）→ L3文本（名称／数量）→ L4框体（透明描边）。层号仅用于交付标注，不进入游戏界面。</p></figure>
+<figure class="wire-step"><h3>视图四 · P03领取成功层 · 与失败反馈互斥</h3><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2000 1160" role="img" aria-label="领取成功窗口线框"><title>领取成功窗口，无确定按钮</title><rect x="4" y="4" width="1992" height="1152" rx="110" fill="#20252c"></rect><svg x="40" y="40" width="1920" height="1080" viewBox="0 0 1920 1080"><rect width="1920" height="1080" rx="80" fill="#cfd5dd"></rect><rect x="130" y="65" width="1660" height="905" rx="16" fill="none" stroke="#8793a1" stroke-width="3" stroke-dasharray="10 12"></rect><rect x="150" y="90" width="1620" height="850" rx="24" fill="#dce1e7" stroke="#7d8794"></rect><rect x="330" y="190" width="1260" height="660" rx="22" fill="white" stroke="#34404d" stroke-width="4"></rect><g font-family="Microsoft YaHei,Arial,sans-serif" fill="#34404d" text-anchor="middle"><text x="960" y="302" font-size="58">领取成功</text><text x="960" y="375" font-size="28">I05 实际发放的道具列表</text><text x="960" y="670" font-size="29">示例：第2档奖励已记入账号测试账本</text><text x="960" y="785" font-size="28">点击任意地方退出</text></g><path d="M0 335 H38 Q80 335 80 380 V700 Q80 745 38 745 H0 Z" fill="#20252c"></path><rect x="700" y="1020" width="520" height="12" rx="6" fill="#333b46"></rect><g data-reward="R02-1" transform="translate(620 430)"><g data-layer="background" data-layer-id="R02-1-L1"><rect width="680" height="150" rx="6" fill="#eef3f7"></rect></g><g data-layer="icon" data-layer-id="R02-1-L2"><rect x="9" y="9" width="58" height="58" fill="#dde6ef" stroke="#54758a" stroke-dasharray="4 3"></rect><path d="M38 15 L61 38 L38 61 L15 38 Z" fill="none" stroke="#54758a"></path></g><g data-layer="text" data-layer-id="R02-1-L3" fill="#34404d" text-anchor="start"><text x="76" y="67" font-size="31">测试币</text><text x="76" y="106" font-size="31">×12</text></g><g data-layer="frame" data-layer-id="R02-1-L4"><rect width="680" height="150" rx="6" fill="none" stroke="#937953" stroke-width="2"></rect></g></g></svg></svg><figcaption class="rule">P03仅在手动领取成功或权威查询确认该手动领取已发放后显示。C05为覆盖整个奖励层的点击关闭区域；点击道具、标题或遮罩均返回P02且不穿透。无确定按钮；列表按实际发放项目显示，超出可见范围时在列表区域触屏滚动。</figcaption><p class="layer-note rule">R02 道具框：L1背景（浅底）→ L2图标（虚线占位）→ L3文本（名称／数量）→ L4框体（透明描边）。层号仅用于交付标注，不进入游戏界面。</p></figure>
+<figure class="wire-step"><h3>视图五 · P02内的F01原因提示条 · 与成功层互斥</h3><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2000 1160" role="img" aria-label="失败及网络异常共用原因提示条线框"><title>无按钮原因提示条，从屏幕中央向上漂浮消失</title><rect x="4" y="4" width="1992" height="1152" rx="110" fill="#20252c"></rect><svg x="40" y="40" width="1920" height="1080" viewBox="0 0 1920 1080"><rect width="1920" height="1080" rx="80" fill="#eef0f3"></rect><rect x="130" y="65" width="1660" height="905" rx="16" fill="none" stroke="#a3adba" stroke-width="3" stroke-dasharray="10 12"></rect><rect x="150" y="90" width="1620" height="850" rx="24" fill="white" stroke="#34404d" stroke-width="4"></rect><g font-family="Microsoft YaHei,Arial,sans-serif" fill="#34404d"><text x="210" y="170" font-size="44">P02 七日累计登录</text><rect x="1570" y="120" width="150" height="72" rx="8" fill="#f0f2f4" stroke="#34404d"></rect><text x="1645" y="167" font-size="30" text-anchor="middle">C02 关闭</text><text x="210" y="270" font-size="32" class="rule">累计进度及七档状态按权威结果更新</text><g fill="#f0f2f4" stroke="#8793a1"><rect x="200" y="630" width="200" height="215"></rect><rect x="420" y="630" width="200" height="215"></rect><rect x="640" y="630" width="200" height="215"></rect><rect x="860" y="630" width="200" height="215"></rect><rect x="1080" y="630" width="200" height="215"></rect><rect x="1300" y="630" width="200" height="215"></rect><rect x="1520" y="630" width="200" height="215"></rect></g><g text-anchor="middle" font-size="29"><text x="300" y="674">第1档</text><text x="520" y="674">第2档</text><text x="740" y="674">第3档</text><text x="960" y="674">第4档</text><text x="1180" y="674">第5档</text><text x="1400" y="674">第6档</text><text x="1620" y="674">第7档</text></g><rect x="360" y="480" width="1200" height="120" rx="12" fill="#485461"></rect><text x="960" y="555" text-anchor="middle" font-size="38" fill="white">该档奖励尚未解锁</text><path d="M960 458 V375 M940 402 L960 375 L980 402" fill="none" stroke="#748497" stroke-width="5"></path><text x="1010" y="416" font-size="27">向上漂浮后消失</text><text x="210" y="906" font-size="28" class="rule">提示条无按钮、不接收点击、不阻塞关闭及查看</text></g><path d="M0 335 H38 Q80 335 80 380 V700 Q80 745 38 745 H0 Z" fill="#20252c"></path><rect x="700" y="1020" width="520" height="12" rx="6" fill="#333b46"></rect><g data-reward="R01-1-1" transform="translate(210 690)"><g data-layer="background" data-layer-id="R01-1-1-L1"><rect width="180" height="62" rx="6" fill="#eef3f7"></rect></g><g data-layer="icon" data-layer-id="R01-1-1-L2"><rect x="9" y="9" width="44" height="44" fill="#dde6ef" stroke="#54758a" stroke-dasharray="4 3"></rect><path d="M31 15 L47 31 L31 47 L15 31 Z" fill="none" stroke="#54758a"></path></g><g data-layer="text" data-layer-id="R01-1-1-L3" fill="#34404d" text-anchor="start"><text x="62" y="27" font-size="19">测试石</text><text x="62" y="50" font-size="19">×8</text></g><g data-layer="frame" data-layer-id="R01-1-1-L4"><rect width="180" height="62" rx="6" fill="none" stroke="#937953" stroke-width="2"></rect></g></g><g data-reward="R01-1-2" transform="translate(210 762)"><g data-layer="background" data-layer-id="R01-1-2-L1"><rect width="180" height="62" rx="6" fill="#eef3f7"></rect></g><g data-layer="icon" data-layer-id="R01-1-2-L2"><rect x="9" y="9" width="44" height="44" fill="#dde6ef" stroke="#54758a" stroke-dasharray="4 3"></rect><path d="M31 15 L47 31 L31 47 L15 31 Z" fill="none" stroke="#54758a"></path></g><g data-layer="text" data-layer-id="R01-1-2-L3" fill="#34404d" text-anchor="start"><text x="62" y="27" font-size="19">测试币</text><text x="62" y="50" font-size="19">×6</text></g><g data-layer="frame" data-layer-id="R01-1-2-L4"><rect width="180" height="62" rx="6" fill="none" stroke="#937953" stroke-width="2"></rect></g></g><g data-reward="R01-2-1" transform="translate(430 690)"><g data-layer="background" data-layer-id="R01-2-1-L1"><rect width="180" height="62" rx="6" fill="#eef3f7"></rect></g><g data-layer="icon" data-layer-id="R01-2-1-L2"><rect x="9" y="9" width="44" height="44" fill="#dde6ef" stroke="#54758a" stroke-dasharray="4 3"></rect><path d="M31 15 L47 31 L31 47 L15 31 Z" fill="none" stroke="#54758a"></path></g><g data-layer="text" data-layer-id="R01-2-1-L3" fill="#34404d" text-anchor="start"><text x="62" y="27" font-size="19">测试币</text><text x="62" y="50" font-size="19">×12</text></g><g data-layer="frame" data-layer-id="R01-2-1-L4"><rect width="180" height="62" rx="6" fill="none" stroke="#937953" stroke-width="2"></rect></g></g><g data-reward="R01-3-1" transform="translate(650 690)"><g data-layer="background" data-layer-id="R01-3-1-L1"><rect width="180" height="62" rx="6" fill="#eef3f7"></rect></g><g data-layer="icon" data-layer-id="R01-3-1-L2"><rect x="9" y="9" width="44" height="44" fill="#dde6ef" stroke="#54758a" stroke-dasharray="4 3"></rect><path d="M31 15 L47 31 L31 47 L15 31 Z" fill="none" stroke="#54758a"></path></g><g data-layer="text" data-layer-id="R01-3-1-L3" fill="#34404d" text-anchor="start"><text x="62" y="27" font-size="19">测试石</text><text x="62" y="50" font-size="19">×12</text></g><g data-layer="frame" data-layer-id="R01-3-1-L4"><rect width="180" height="62" rx="6" fill="none" stroke="#937953" stroke-width="2"></rect></g></g><g data-reward="R01-4-1" transform="translate(870 690)"><g data-layer="background" data-layer-id="R01-4-1-L1"><rect width="180" height="62" rx="6" fill="#eef3f7"></rect></g><g data-layer="icon" data-layer-id="R01-4-1-L2"><rect x="9" y="9" width="44" height="44" fill="#dde6ef" stroke="#54758a" stroke-dasharray="4 3"></rect><path d="M31 15 L47 31 L31 47 L15 31 Z" fill="none" stroke="#54758a"></path></g><g data-layer="text" data-layer-id="R01-4-1-L3" fill="#34404d" text-anchor="start"><text x="62" y="27" font-size="19">测试币</text><text x="62" y="50" font-size="19">×18</text></g><g data-layer="frame" data-layer-id="R01-4-1-L4"><rect width="180" height="62" rx="6" fill="none" stroke="#937953" stroke-width="2"></rect></g></g><g data-reward="R01-5-1" transform="translate(1090 690)"><g data-layer="background" data-layer-id="R01-5-1-L1"><rect width="180" height="62" rx="6" fill="#eef3f7"></rect></g><g data-layer="icon" data-layer-id="R01-5-1-L2"><rect x="9" y="9" width="44" height="44" fill="#dde6ef" stroke="#54758a" stroke-dasharray="4 3"></rect><path d="M31 15 L47 31 L31 47 L15 31 Z" fill="none" stroke="#54758a"></path></g><g data-layer="text" data-layer-id="R01-5-1-L3" fill="#34404d" text-anchor="start"><text x="62" y="27" font-size="19">测试石</text><text x="62" y="50" font-size="19">×16</text></g><g data-layer="frame" data-layer-id="R01-5-1-L4"><rect width="180" height="62" rx="6" fill="none" stroke="#937953" stroke-width="2"></rect></g></g><g data-reward="R01-6-1" transform="translate(1310 690)"><g data-layer="background" data-layer-id="R01-6-1-L1"><rect width="180" height="62" rx="6" fill="#eef3f7"></rect></g><g data-layer="icon" data-layer-id="R01-6-1-L2"><rect x="9" y="9" width="44" height="44" fill="#dde6ef" stroke="#54758a" stroke-dasharray="4 3"></rect><path d="M31 15 L47 31 L31 47 L15 31 Z" fill="none" stroke="#54758a"></path></g><g data-layer="text" data-layer-id="R01-6-1-L3" fill="#34404d" text-anchor="start"><text x="62" y="27" font-size="19">测试币</text><text x="62" y="50" font-size="19">×24</text></g><g data-layer="frame" data-layer-id="R01-6-1-L4"><rect width="180" height="62" rx="6" fill="none" stroke="#937953" stroke-width="2"></rect></g></g><g data-reward="R01-7-1" transform="translate(1530 690)"><g data-layer="background" data-layer-id="R01-7-1-L1"><rect width="180" height="62" rx="6" fill="#eef3f7"></rect></g><g data-layer="icon" data-layer-id="R01-7-1-L2"><rect x="9" y="9" width="44" height="44" fill="#dde6ef" stroke="#54758a" stroke-dasharray="4 3"></rect><path d="M31 15 L47 31 L31 47 L15 31 Z" fill="none" stroke="#54758a"></path></g><g data-layer="text" data-layer-id="R01-7-1-L3" fill="#34404d" text-anchor="start"><text x="62" y="27" font-size="19">测试石</text><text x="62" y="50" font-size="19">×20</text></g><g data-layer="frame" data-layer-id="R01-7-1-L4"><rect width="180" height="62" rx="6" fill="none" stroke="#937953" stroke-width="2"></rect></g></g><g data-reward="R01-7-2" transform="translate(1530 762)"><g data-layer="background" data-layer-id="R01-7-2-L1"><rect width="180" height="62" rx="6" fill="#eef3f7"></rect></g><g data-layer="icon" data-layer-id="R01-7-2-L2"><rect x="9" y="9" width="44" height="44" fill="#dde6ef" stroke="#54758a" stroke-dasharray="4 3"></rect><path d="M31 15 L47 31 L31 47 L15 31 Z" fill="none" stroke="#54758a"></path></g><g data-layer="text" data-layer-id="R01-7-2-L3" fill="#34404d" text-anchor="start"><text x="62" y="27" font-size="19">测试币</text><text x="62" y="50" font-size="19">×30</text></g><g data-layer="frame" data-layer-id="R01-7-2-L4"><rect width="180" height="62" rx="6" fill="none" stroke="#937953" stroke-width="2"></rect></g></g></svg></svg><figcaption class="rule">此图为P02上的反馈覆盖层，原奖励内容保持显示。明确失败显示实际原因；网络异常使用同一F01，文案可为“网络异常，领取结果确认中”。箭头是线框说明，不是游戏控件。系统恢复网络后自动查询，不出现独立网络页面或重试按钮。</figcaption><p class="layer-note rule">R01 道具框：L1背景（浅底）→ L2图标（虚线占位）→ L3文本（名称／数量）→ L4框体（透明描边）。层号仅用于交付标注，不进入游戏界面。</p></figure>
+<figure class="wire-step layer-spec"><h3 id="DEV-004-reward-layers">奖励道具框 · 四层结构与编号</h3><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 720" role="img" aria-label="奖励道具框四层纵向拆解"><title>从底到顶，四层独立交付</title><text x="25" y="65" font-size="24" fill="#b42318">L1 背景层：底色／底图</text><g data-layer="background" transform="translate(520 30)"><rect width="440" height="110" fill="#eef3f7" stroke="#a3adba" stroke-dasharray="6 4" stroke-width="2"></rect></g><path d="M740 152 V185 M730 174 L740 185 L750 174" fill="none" stroke="#687887" stroke-width="3"></path><text x="25" y="230" font-size="24" fill="#b42318">L2 图标层：道具图标／占位图</text><g data-layer="icon" transform="translate(520 195)"><rect width="440" height="110" fill="none" stroke="#a3adba" stroke-dasharray="6 4" stroke-width="2"></rect><rect x="20" y="24" width="62" height="62" fill="#dde6ef" stroke="#54758a"></rect></g><path d="M740 317 V350 M730 339 L740 350 L750 339" fill="none" stroke="#687887" stroke-width="3"></path><text x="25" y="395" font-size="24" fill="#b42318">L3 文本层：名称、数量</text><g data-layer="text" transform="translate(520 360)"><rect width="440" height="110" fill="none" stroke="#a3adba" stroke-dasharray="6 4" stroke-width="2"></rect><text x="110" y="65" font-size="26" fill="#34404d">测试币 ×12</text></g><path d="M740 482 V515 M730 504 L740 515 L750 504" fill="none" stroke="#687887" stroke-width="3"></path><text x="25" y="560" font-size="24" fill="#b42318">L4 框体层：透明内部的边框</text><g data-layer="frame" transform="translate(520 525)"><rect width="440" height="110" fill="none" stroke="#937953" stroke-dasharray="none" stroke-width="2"></rect></g></svg><figcaption class="rule">本图为纵向图层拆解，虚线界限是标注，不是最终素材。实际叠放顺序从背景到框体；框体内部透明。所有单道具实例保留四层，不合并为单张图。</figcaption><table><thead><tr><th>组件</th><th>复用页面</th><th>层编号</th><th>交付映射</th></tr></thead><tbody><tr><td>R01 奖励档位内道具</td><td>活动弹窗、处理中、失败反馈背景</td><td>R01-档位-道具序号-L1～L4</td><td class="rule">复用四层样式；更新名称数量，档位状态与领取按钮独立。</td></tr><tr><td>R02 成功奖励道具</td><td>领取成功列表</td><td>R02-道具序号-L1～L4</td><td class="rule">展示实际发放列表；多道具逐项复用，不改变领奖关闭交互。</td></tr><tr><td>R03 补发记录道具</td><td>测试邮件查看</td><td>R03-档位-道具序号-L1～L4</td><td class="rule">仅展示已补发奖励，不新增领取按钮。</td></tr></tbody></table></figure></section><section id="delivery"><h1>3. 范围、交付与验收</h1><article><h2>3.1 任务约定</h2><div class="rule task-standard">角色：Development。
+来源：v1.1源HTML的2.2、O03、O04、附录三；DS-02、DS-05。
+范围：统一档位发放原语、测试账本、手动请求裁定、原结果重放及权威查询；到期批次与邮件由DEV-005负责。
+前置产物：DEV-001发放契约、DEV-002快照、DEV-003活动和截止结果。
+交付物：建议 deliveries/LOGIN-7-REDRAFT/logic/rewards/，包含发放、账本、查询代码与并发中断验证报告，待实施时映射。
+启动条件：共同门禁及所有前置完成。
+完成门禁：完整提交、唯一发放及原结果恢复有证据，自有C#符合编码规范；不接正式经济。</div></article><article><h2>3.2 手动领取与重复请求验收用例｜尚未执行</h2><div class="rule task-standard">前置条件：准备未解锁、可领、已领及快照损坏档位。
+操作与处理中：非顺序领取、多会话并发、重放原请求，使用多奖励和重复道具列表。
+成功结果：全部条目完整记账，单档只有一种发放归属；原请求返回原成功列表，独立重复请求不发奖；列表顺序和账本汇总准确。
+失败反馈：返回未解锁、已领取、到期或快照不可用的准确原因，无部分奖励提交。
+异常恢复：响应未知只查询原请求及档位；确认未发放且有效才允许恢复普通领取，查询失败保持未知，已补发不能伪装为手动成功。
+测试用例：T08、T09、T11、T16、T19、T20；T12、T15的跨结算部分由QA-004联合验证。</div></article></section><section id="gate"><h1>4. 完成门禁</h1><p class="rule">本单据中的实现与测试均尚未执行。正式派工须核对本版审批、工程映射、前置任务完成及产物版本。奖励框的四层不得合并为不可拆的单图；层编号与交付清单须一致。代理交付不替代人工最终验收。</p></section>
+<footer class="footer">DEV-004 · 未上传、未发布</footer>
+</main>
+</body>
+</html>

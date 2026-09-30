@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>交付活动入口与七档弹窗占位布局</title>
+<style>
+  :root {
+    --bg: #ffffff;
+    --fg: #1f2328;
+    --muted: #57606a;
+    --border: #d0d7de;
+    --code-bg: #f6f8fa;
+    --accent: #0969da;
+    --accent-soft: #ddf4ff;
+    --warn: #bf8700;
+    --warn-soft: #fff8c5;
+    --ok: #1a7f37;
+    --ok-soft: #dafbe1;
+    --err: #cf222e;
+    --err-soft: #ffebe9;
+    --rule-color: #b42318;
+  }
+
+  * { box-sizing: border-box; }
+
+  .rule, .rule * { color: var(--rule-color) !important; }
+  svg .rule, svg .rule * { fill: var(--rule-color); }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: #f6f8fa;
+    color: var(--fg);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+                 "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue",
+                 Arial, sans-serif;
+    font-size: 14px;
+    line-height: 1.7;
+  }
+
+  .page {
+    max-width: 900px;
+    margin: 0 auto;
+    background: var(--bg);
+    padding: 60px 70px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+  }
+
+  /* 封面 */
+  .cover {
+    text-align: center;
+    padding: 80px 0 60px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 48px;
+  }
+  .cover h1 {
+    font-size: 34px;
+    margin: 0 0 16px;
+    letter-spacing: 1px;
+  }
+  .cover .subtitle {
+    font-size: 16px;
+    color: var(--muted);
+    margin-bottom: 30px;
+  }
+  .cover .meta {
+    display: inline-block;
+    text-align: left;
+    font-size: 13px;
+    color: var(--muted);
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    padding: 12px 30px;
+  }
+  .cover .meta span { display: inline-block; min-width: 90px; color: var(--fg); }
+
+  /* 标题 */
+  h1 { font-size: 26px; margin: 48px 0 16px; padding-bottom: 8px; border-bottom: 2px solid var(--fg); }
+  h2 { font-size: 20px; margin: 36px 0 12px; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
+  h3 { font-size: 16px; margin: 24px 0 8px; color: #24292f; }
+  h4 { font-size: 14px; margin: 16px 0 6px; color: var(--muted); }
+
+  p { margin: 8px 0; }
+
+  /* 代码 */
+  code {
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    background: var(--code-bg);
+    padding: 2px 5px;
+    border-radius: 4px;
+    font-size: 12.5px;
+  }
+  pre {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 14px 16px;
+    overflow-x: auto;
+    font-size: 12px;
+    line-height: 1.6;
+    margin: 12px 0;
+  }
+  pre code {
+    background: none;
+    padding: 0;
+    font-size: 12px;
+  }
+
+  /* 表格 */
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 14px 0;
+    font-size: 13px;
+  }
+  th, td {
+    border: 1px solid var(--border);
+    padding: 8px 10px;
+    text-align: left;
+    vertical-align: top;
+  }
+  th { background: #f6f8fa; font-weight: 600; }
+  tr:nth-child(even) td { background: #fafbfc; }
+
+  /* 引用 */
+  blockquote {
+    border-left: 4px solid var(--accent);
+    margin: 12px 0;
+    padding: 6px 14px;
+    background: var(--accent-soft);
+    border-radius: 0 6px 6px 0;
+    color: #0a3069;
+    font-size: 13.5px;
+  }
+
+  /* 提示框 */
+  .callout {
+    padding: 12px 16px;
+    border-radius: 6px;
+    margin: 14px 0;
+    font-size: 13.5px;
+    border-left: 4px solid;
+  }
+  .callout.info { background: var(--accent-soft); border-color: var(--accent); }
+  .callout.warn { background: var(--warn-soft); border-color: var(--warn); }
+  .callout.ok   { background: var(--ok-soft);   border-color: var(--ok); }
+  .callout.err  { background: var(--err-soft);  border-color: var(--err); }
+
+  /* 列表 */
+  ul, ol { padding-left: 24px; margin: 8px 0; }
+  li { margin: 4px 0; }
+
+  /* 图表容器 */
+  .diagram {
+    margin: 24px 0;
+    padding: 20px;
+    background: #fafbfc;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow-x: auto;
+    text-align: center;
+  }
+  .diagram svg { max-width: 100%; height: auto; }
+  .diagram .caption {
+    font-size: 12.5px;
+    color: var(--muted);
+    margin-top: 10px;
+    font-style: italic;
+  }
+
+  /* 目录 */
+  .toc {
+    background: #fafbfc;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px 28px;
+    margin: 24px 0 40px;
+  }
+  .toc h3 { margin-top: 0; }
+  .toc ol { margin: 0; padding-left: 20px; }
+  .toc a { color: var(--accent); text-decoration: none; }
+  .toc a:hover { text-decoration: underline; }
+
+  /* 打印 */
+  @page {
+    size: A4;
+    margin: 18mm 16mm;
+  }
+  @media print {
+    html, body { background: #fff; font-size: 11.5pt; }
+    .page { box-shadow: none; padding: 0; max-width: 100%; }
+    h1 { page-break-before: auto; }
+    h2 { page-break-after: avoid; }
+    pre, table, .diagram { page-break-inside: avoid; }
+    .cover { page-break-after: always; }
+    .no-print { display: none; }
+    a { color: var(--fg); text-decoration: none; }
+  }
+
+  /* 页脚 */
+  .footer {
+    margin-top: 60px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border);
+    text-align: center;
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  .print-btn {
+    position: fixed;
+    right: 24px;
+    bottom: 24px;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 999px;
+    padding: 12px 22px;
+    font-size: 14px;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(9,105,218,0.35);
+    z-index: 100;
+  }
+  .print-btn:hover { background: #0860ca; }
+
+.page { overflow-wrap: anywhere; }
+@media screen and (max-width: 700px) { .page { padding: 24px 18px; } .cover { padding: 30px 0; } .cover h1 { font-size: 26px; } .toc { padding: 16px; } }
+.wire-gallery { display: flex; flex-direction: column; gap: 24px; }
+.wire-step { width: 100%; }
+</style>
+<style>.wire-step{margin:24px 0;padding:12px;border:1px solid #d0d7de;break-inside:avoid}.wire-step>svg{display:block;width:100%;height:auto}.wire-step figcaption,.layer-note{margin:10px 0}.layer-note{padding:12px;background:#f6f8fa}.task-standard{white-space:pre-wrap;overflow-wrap:anywhere}svg .rule,svg .rule *{fill:var(--rule-color)}@media print{.wire-step{break-inside:auto}}</style></head>
+<body>
+<button class="print-btn no-print" onclick="window.print()">打印 / 导出文档</button>
+<main class="page">
+<header class="cover">
+<h1>交付活动入口与七档弹窗占位布局</h1>
+<div class="subtitle">ART-002 · 美术任务单据</div>
+<div class="meta">来源：七日登录活动 v1.1<br>状态：只读拆分预演<br>日期：2026年9月30日</div>
+</header>
+<nav class="toc" aria-label="目录"><h3>目录</h3><ol><li><a href="#scope">任务与来源</a></li><li><a href="#wireframes">线框与分层</a></li><li><a href="#delivery">交付与验收</a></li><li><a href="#gate">完成门禁</a></li></ol></nav>
+<section id="scope"><h1>1. 任务与来源</h1><table><tbody><tr><th>临时编号</th><td>ART-002</td></tr><tr><th>负责角色</th><td>美术</td></tr><tr><th>源需求</th><td>LOGIN-7-REDRAFT · v1.1<br><a href="../../七日累计登录活动需求案-分层审阅版.html">查看原始需求 HTML</a></td></tr><tr><th>原始文件 SHA-256</th><td><code>60ae816171888547a08b219267eeefecd30e07bb8da47c34ef883fad6e3c64b4</code></td></tr><tr><th>状态</th><td>拆分预演 · 未审批 · 未发布</td></tr><tr><th>前置依赖</th><td class="rule"><a href="ART-001.html">ART-001</a></td></tr></tbody></table><p class="rule">本单据是宿主将固定 PM Agent 已返回的拆分草案排版为 HTML，并复用原需求线框；没有改动任务范围和依赖，未创建平台任务。</p><p><a href="../../七日累计登录活动-PM任务拆分预演.html#task-ART-002">返回 PM 拆分总览</a></p></section><section id="wireframes"><h1>2. 对应线框与分层</h1><p class="rule">以下线框是本任务所涉及页面／组件／反馈的视觉依据。整页包含其他任务负责的区域时，只交付第三节明确的范围。图示复用源需求，设备、安全区和图层标注不是运行界面资产。多个视图按原操作顺序单列排列。</p><figure class="wire-step"><h3>视图一 · P01主界面 → C01活动入口 → P02活动弹窗</h3><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2000 1160" role="img" aria-label="主界面活动入口线框"><title>主界面活动入口，1920×1080横屏画布</title><rect x="4" y="4" width="1992" height="1152" rx="110" fill="#20252c"></rect><svg x="40" y="40" width="1920" height="1080" viewBox="0 0 1920 1080"><rect width="1920" height="1080" rx="80" fill="#eef0f3"></rect><rect x="130" y="65" width="1660" height="905" rx="16" fill="none" stroke="#a3adba" stroke-width="3" stroke-dasharray="10 12"></rect><g font-family="Microsoft YaHei,Arial,sans-serif" fill="#34404d"><text x="170" y="145" font-size="44">P01 主界面</text><rect x="170" y="220" width="1120" height="620" rx="20" fill="#e0e4e9" stroke="#84909f"></rect><text x="730" y="535" text-anchor="middle" font-size="42">现有游戏内容区域</text><rect x="1370" y="225" width="340" height="170" rx="18" fill="white" stroke="#34404d" stroke-width="4"></rect><text x="1540" y="290" text-anchor="middle" font-size="34">C01</text><text x="1540" y="350" text-anchor="middle" font-size="36">七日累计登录</text><circle cx="1690" cy="240" r="19" fill="#687887"></circle><text x="1360" y="470" font-size="28">圆点：存在可领取奖励</text><text x="170" y="925" font-size="28" class="rule">未开启时点击进入才开启个人活动；入口不自动弹窗</text></g><path d="M0 335 H38 Q80 335 80 380 V700 Q80 745 38 745 H0 Z" fill="#20252c"></path><rect x="700" y="1020" width="520" height="12" rx="6" fill="#333b46"></rect></svg></svg><figcaption class="rule">点击C01进入P02；已开启账号只查询原活动。红点仅示意其位置，未开启、无可领取奖励及到期时隐藏。</figcaption></figure>
+<figure class="wire-step"><h3>视图二 · P02活动弹窗 → C02关闭返回P01</h3><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2000 1160" role="img" aria-label="七档完整活动弹窗线框"><title>七档奖励完整显示，1920×1080横屏画布</title><rect x="4" y="4" width="1992" height="1152" rx="110" fill="#20252c"></rect><svg x="40" y="40" width="1920" height="1080" viewBox="0 0 1920 1080"><rect width="1920" height="1080" rx="80" fill="#eef0f3"></rect><rect x="130" y="65" width="1660" height="905" rx="16" fill="none" stroke="#a3adba" stroke-width="3" stroke-dasharray="10 12"></rect><rect x="150" y="90" width="1620" height="850" rx="24" fill="white" stroke="#34404d" stroke-width="4"></rect><g font-family="Microsoft YaHei,Arial,sans-serif" fill="#34404d"><text x="210" y="170" font-size="44">P02 七日累计登录</text><rect x="1570" y="120" width="150" height="72" rx="8" fill="#f0f2f4" stroke="#34404d"></rect><text x="1645" y="167" font-size="30" text-anchor="middle">C02 关闭</text><text x="210" y="247" font-size="32">I01 累计登录 3/7天　｜　I02 第4/14个活动日</text><text x="210" y="303" font-size="29" class="rule">I03 到期时间：按锁定时区显示服务器确认的日期与00:00</text><text x="210" y="355" font-size="29" class="rule">14个活动日内累计登录；漏登保留；到期补发已解锁未领奖励</text><g fill="#f5f6f8" stroke="#8793a1" stroke-width="2"><rect x="200" y="410" width="200" height="330" rx="10"></rect><rect x="420" y="410" width="200" height="330" rx="10"></rect><rect x="640" y="410" width="200" height="330" rx="10"></rect><rect x="860" y="410" width="200" height="330" rx="10"></rect><rect x="1080" y="410" width="200" height="330" rx="10"></rect><rect x="1300" y="410" width="200" height="330" rx="10"></rect><rect x="1520" y="410" width="200" height="330" rx="10"></rect></g><g text-anchor="middle" font-size="27"><text x="300" y="460">第1档</text><text x="520" y="460">第2档</text><text x="740" y="460">第3档</text><text x="960" y="460">第4档</text><text x="1180" y="460">第5档</text><text x="1400" y="460">第6档</text><text x="1620" y="460">第7档</text><text x="300" y="698">已领取</text><text x="520" y="643">C03-2</text><text x="740" y="643">C03-3</text><text x="960" y="698">未解锁</text><text x="1180" y="698">未解锁</text><text x="1400" y="698">未解锁</text><text x="1620" y="698">未解锁</text></g><rect x="440" y="660" width="160" height="57" rx="8" fill="#e0e6ec" stroke="#34404d"></rect><rect x="660" y="660" width="160" height="57" rx="8" fill="#e0e6ec" stroke="#34404d"></rect><text x="520" y="698" font-size="28" text-anchor="middle">领取</text><text x="740" y="698" font-size="28" text-anchor="middle">领取</text><text x="210" y="850" font-size="28">I04 当前状态：活动进行中</text><rect x="1320" y="800" width="400" height="80" rx="8" fill="#f0f2f4" stroke="#34404d"></rect><text x="1520" y="851" text-anchor="middle" font-size="29">C04 测试邮件记录</text></g><path d="M0 335 H38 Q80 335 80 380 V700 Q80 745 38 745 H0 Z" fill="#20252c"></path><rect x="700" y="1020" width="520" height="12" rx="6" fill="#333b46"></rect><g data-reward="R01-1-1" transform="translate(210 490)"><g data-layer="background" data-layer-id="R01-1-1-L1"><rect width="180" height="62" rx="6" fill="#eef3f7"></rect></g><g data-layer="icon" data-layer-id="R01-1-1-L2"><rect x="9" y="9" width="44" height="44" fill="#dde6ef" stroke="#54758a" stroke-dasharray="4 3"></rect><path d="M31 15 L47 31 L31 47 L15 31 Z" fill="none" stroke="#54758a"></path></g><g data-layer="text" data-layer-id="R01-1-1-L3" fill="#34404d" text-anchor="start"><text x="62" y="27" font-size="19">测试石</text><text x="62" y="50" font-size="19">×8</text></g><g data-layer="frame" data-layer-id="R01-1-1-L4"><rect width="180" height="62" rx="6" fill="none" stroke="#937953" stroke-width="2"></rect></g></g><g data-reward="R01-1-2" transform="translate(210 562)"><g data-layer="background" data-layer-id="R01-1-2-L1"><rect width="180" height="62" rx="6" fill="#eef3f7"></rect></g><g data-layer="icon" data-layer-id="R01-1-2-L2"><rect x="9" y="9" width="44" height="44" fill="#dde6ef" stroke="#54758a" stroke-dasharray="4 3"></rect><path d="M31 15 L47 31 L31 47 L15 31 Z" fill="none" stroke="#54758a"></path></g><g data-layer="text" data-layer-id="R01-1-2-L3" fill="#34404d" text-anchor="start"><text x="62" y="27" font-size="19">测试币</text><text x="62" y="50" font-size="19">×6</text></g><g data-layer="frame" data-layer-id="R01-1-2-L4"><rect width="180" height="62" rx="6" fill="none" stroke="#937953" stroke-width="2"></rect></g></g><g data-reward="R01-2-1" transform="translate(430 490)"><g data-layer="background" data-layer-id="R01-2-1-L1"><rect width="180" height="62" rx="6" fill="#eef3f7"></rect></g><g data-layer="icon" data-layer-id="R01-2-1-L2"><rect x="9" y="9" width="44" height="44" fill="#dde6ef" stroke="#54758a" stroke-dasharray="4 3"></rect><path d="M31 15 L47 31 L31 47 L15 31 Z" fill="none" stroke="#54758a"></path></g><g data-layer="text" data-layer-id="R01-2-1-L3" fill="#34404d" text-anchor="start"><text x="62" y="27" font-size="19">测试币</text><text x="62" y="50" font-size="19">×12</text></g><g data-layer="frame" data-layer-id="R01-2-1-L4"><rect width="180" height="62" rx="6" fill="none" stroke="#937953" stroke-width="2"></rect></g></g><g data-reward="R01-3-1" transform="translate(650 490)"><g data-layer="background" data-layer-id="R01-3-1-L1"><rect width="180" height="62" rx="6" fill="#eef3f7"></rect></g><g data-layer="icon" data-layer-id="R01-3-1-L2"><rect x="9" y="9" width="44" height="44" fill="#dde6ef" stroke="#54758a" stroke-dasharray="4 3"></rect><path d="M31 15 L47 31 L31 47 L15 31 Z" fill="none" stroke="#54758a"></path></g><g data-layer="text" data-layer-id="R01-3-1-L3" fill="#34404d" text-anchor="start"><text x="62" y="27" font-size="19">测试石</text><text x="62" y="50" font-size="19">×12</text></g><g data-layer="frame" data-layer-id="R01-3-1-L4"><rect width="180" height="62" rx="6" fill="none" stroke="#937953" stroke-width="2"></rect></g></g><g data-reward="R01-4-1" transform="translate(870 490)"><g data-layer="background" data-layer-id="R01-4-1-L1"><rect width="180" height="62" rx="6" fill="#eef3f7"></rect></g><g data-layer="icon" data-layer-id="R01-4-1-L2"><rect x="9" y="9" width="44" height="44" fill="#dde6ef" stroke="#54758a" stroke-dasharray="4 3"></rect><path d="M31 15 L47 31 L31 47 L15 31 Z" fill="none" stroke="#54758a"></path></g><g data-layer="text" data-layer-id="R01-4-1-L3" fill="#34404d" text-anchor="start"><text x="62" y="27" font-size="19">测试币</text><text x="62" y="50" font-size="19">×18</text></g><g data-layer="frame" data-layer-id="R01-4-1-L4"><rect width="180" height="62" rx="6" fill="none" stroke="#937953" stroke-width="2"></rect></g></g><g data-reward="R01-5-1" transform="translate(1090 490)"><g data-layer="background" data-layer-id="R01-5-1-L1"><rect width="180" height="62" rx="6" fill="#eef3f7"></rect></g><g data-layer="icon" data-layer-id="R01-5-1-L2"><rect x="9" y="9" width="44" height="44" fill="#dde6ef" stroke="#54758a" stroke-dasharray="4 3"></rect><path d="M31 15 L47 31 L31 47 L15 31 Z" fill="none" stroke="#54758a"></path></g><g data-layer="text" data-layer-id="R01-5-1-L3" fill="#34404d" text-anchor="start"><text x="62" y="27" font-size="19">测试石</text><text x="62" y="50" font-size="19">×16</text></g><g data-layer="frame" data-layer-id="R01-5-1-L4"><rect width="180" height="62" rx="6" fill="none" stroke="#937953" stroke-width="2"></rect></g></g><g data-reward="R01-6-1" transform="translate(1310 490)"><g data-layer="background" data-layer-id="R01-6-1-L1"><rect width="180" height="62" rx="6" fill="#eef3f7"></rect></g><g data-layer="icon" data-layer-id="R01-6-1-L2"><rect x="9" y="9" width="44" height="44" fill="#dde6ef" stroke="#54758a" stroke-dasharray="4 3"></rect><path d="M31 15 L47 31 L31 47 L15 31 Z" fill="none" stroke="#54758a"></path></g><g data-layer="text" data-layer-id="R01-6-1-L3" fill="#34404d" text-anchor="start"><text x="62" y="27" font-size="19">测试币</text><text x="62" y="50" font-size="19">×24</text></g><g data-layer="frame" data-layer-id="R01-6-1-L4"><rect width="180" height="62" rx="6" fill="none" stroke="#937953" stroke-width="2"></rect></g></g><g data-reward="R01-7-1" transform="translate(1530 490)"><g data-layer="background" data-layer-id="R01-7-1-L1"><rect width="180" height="62" rx="6" fill="#eef3f7"></rect></g><g data-layer="icon" data-layer-id="R01-7-1-L2"><rect x="9" y="9" width="44" height="44" fill="#dde6ef" stroke="#54758a" stroke-dasharray="4 3"></rect><path d="M31 15 L47 31 L31 47 L15 31 Z" fill="none" stroke="#54758a"></path></g><g data-layer="text" data-layer-id="R01-7-1-L3" fill="#34404d" text-anchor="start"><text x="62" y="27" font-size="19">测试石</text><text x="62" y="50" font-size="19">×20</text></g><g data-layer="frame" data-layer-id="R01-7-1-L4"><rect width="180" height="62" rx="6" fill="none" stroke="#937953" stroke-width="2"></rect></g></g><g data-reward="R01-7-2" transform="translate(1530 562)"><g data-layer="background" data-layer-id="R01-7-2-L1"><rect width="180" height="62" rx="6" fill="#eef3f7"></rect></g><g data-layer="icon" data-layer-id="R01-7-2-L2"><rect x="9" y="9" width="44" height="44" fill="#dde6ef" stroke="#54758a" stroke-dasharray="4 3"></rect><path d="M31 15 L47 31 L31 47 L15 31 Z" fill="none" stroke="#54758a"></path></g><g data-layer="text" data-layer-id="R01-7-2-L3" fill="#34404d" text-anchor="start"><text x="62" y="27" font-size="19">测试币</text><text x="62" y="50" font-size="19">×30</text></g><g data-layer="frame" data-layer-id="R01-7-2-L4"><rect width="180" height="62" rx="6" fill="none" stroke="#937953" stroke-width="2"></rect></g></g></svg></svg><figcaption class="rule">示例为第4活动日累计登录3天，第1档已领取，第2、3档可分别领取。七档完整呈现，不增加横向翻页或一键领取。C03-1至C03-7对应各档领取位置，状态文字按服务器结果替换。C04进入记录查看分支。</figcaption><p class="layer-note rule">R01 道具框：L1背景（浅底）→ L2图标（虚线占位）→ L3文本（名称／数量）→ L4框体（透明描边）。层号仅用于交付标注，不进入游戏界面。</p></figure>
+<figure class="wire-step layer-spec"><h3 id="ART-002-reward-layers">奖励道具框 · 四层结构与编号</h3><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 720" role="img" aria-label="奖励道具框四层纵向拆解"><title>从底到顶，四层独立交付</title><text x="25" y="65" font-size="24" fill="#b42318">L1 背景层：底色／底图</text><g data-layer="background" transform="translate(520 30)"><rect width="440" height="110" fill="#eef3f7" stroke="#a3adba" stroke-dasharray="6 4" stroke-width="2"></rect></g><path d="M740 152 V185 M730 174 L740 185 L750 174" fill="none" stroke="#687887" stroke-width="3"></path><text x="25" y="230" font-size="24" fill="#b42318">L2 图标层：道具图标／占位图</text><g data-layer="icon" transform="translate(520 195)"><rect width="440" height="110" fill="none" stroke="#a3adba" stroke-dasharray="6 4" stroke-width="2"></rect><rect x="20" y="24" width="62" height="62" fill="#dde6ef" stroke="#54758a"></rect></g><path d="M740 317 V350 M730 339 L740 350 L750 339" fill="none" stroke="#687887" stroke-width="3"></path><text x="25" y="395" font-size="24" fill="#b42318">L3 文本层：名称、数量</text><g data-layer="text" transform="translate(520 360)"><rect width="440" height="110" fill="none" stroke="#a3adba" stroke-dasharray="6 4" stroke-width="2"></rect><text x="110" y="65" font-size="26" fill="#34404d">测试币 ×12</text></g><path d="M740 482 V515 M730 504 L740 515 L750 504" fill="none" stroke="#687887" stroke-width="3"></path><text x="25" y="560" font-size="24" fill="#b42318">L4 框体层：透明内部的边框</text><g data-layer="frame" transform="translate(520 525)"><rect width="440" height="110" fill="none" stroke="#937953" stroke-dasharray="none" stroke-width="2"></rect></g></svg><figcaption class="rule">本图为纵向图层拆解，虚线界限是标注，不是最终素材。实际叠放顺序从背景到框体；框体内部透明。所有单道具实例保留四层，不合并为单张图。</figcaption><table><thead><tr><th>组件</th><th>复用页面</th><th>层编号</th><th>交付映射</th></tr></thead><tbody><tr><td>R01 奖励档位内道具</td><td>活动弹窗、处理中、失败反馈背景</td><td>R01-档位-道具序号-L1～L4</td><td class="rule">复用四层样式；更新名称数量，档位状态与领取按钮独立。</td></tr><tr><td>R02 成功奖励道具</td><td>领取成功列表</td><td>R02-道具序号-L1～L4</td><td class="rule">展示实际发放列表；多道具逐项复用，不改变领奖关闭交互。</td></tr><tr><td>R03 补发记录道具</td><td>测试邮件查看</td><td>R03-档位-道具序号-L1～L4</td><td class="rule">仅展示已补发奖励，不新增领取按钮。</td></tr></tbody></table></figure></section><section id="delivery"><h1>3. 范围、交付与验收</h1><article><h2>3.1 任务约定</h2><div class="rule task-standard">角色：Art。
+来源：v1.1源HTML的3.1视图一、二、三、五，3.3，O01—O05，V01、V02、V05、V06；DS-03—DS-07、DS-09、DS-10、DS-12。
+范围：P01入口、P02七档布局及状态样式；F01动画和P03由ART-003负责。
+前置产物：ART-001四层组件有效版本。
+交付物：建议 deliveries/LOGIN-7-REDRAFT/art/activity-layout/，包含布局、状态图、触屏区域与安全区说明，待实施时映射。
+启动条件：共同门禁及ART-001交付满足。
+完成门禁：布局与控件编号一致、七档完整、美术抽检完成。</div></article><article><h2>3.2 活动布局验收用例｜尚未执行</h2><div class="rule task-standard">前置条件：具备R01组件和需求七档示例。
+操作与处理中：查看加载、可领、未解锁、已领取、领取中、确认中、结算中及结束状态。
+成功结果：C01—C04及I01—I04可读可用，七档保持完整，所有道具四层保留；长中文与数量不裁切，适配真实安全区。
+失败反馈：缺状态、遮挡及触屏命中问题形成缺陷清单。
+异常恢复：返修后复核所有受影响状态。
+测试用例：T21布局前置检查；不增加翻页、一键领取、设备底框资产、页面动画或音效。</div></article></section><section id="gate"><h1>4. 完成门禁</h1><p class="rule">本单据中的实现与测试均尚未执行。正式派工须核对本版审批、工程映射、前置任务完成及产物版本。奖励框的四层不得合并为不可拆的单图；层编号与交付清单须一致。代理交付不替代人工最终验收。</p></section>
+<footer class="footer">ART-002 · 未上传、未发布</footer>
+</main>
+</body>
+</html>

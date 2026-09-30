@@ -13,6 +13,7 @@ export async function qaScenarios({c,p,w,user,projectKey,servicePool,rows,child,
 {
     const qa=rows.find(t=>t.role_code==='QA');
     const qaAgent=(await c.query("INSERT INTO gameai.agents(project_id,agent_key,role_code,worker_id,enabled,display_name,capacity) VALUES($1,'qa-01','QA',$2,true,'测试 QA',1) RETURNING id",[p,w])).rows[0].id;
+    await c.query('UPDATE gameai.agents SET auto_execute=true WHERE id=$1',[qaAgent]);
     await c.query("INSERT INTO gameai.fixed_agents VALUES($1,'QA',$2)",[p,qaAgent]);
     await c.query("INSERT INTO gameai.agent_grants(project_id,agent_id,permission_code) VALUES($1,$2,'task.write_assigned')",[p,qaAgent]);
     await c.query("INSERT INTO gameai.agent_skills(project_id,agent_id,skill_key,is_primary,content_hash) SELECT $1,$2,skill_key,true,content_hash FROM gameai.skills WHERE skill_key='gameai-qa'",[p,qaAgent]);

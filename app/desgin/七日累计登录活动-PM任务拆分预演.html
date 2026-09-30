@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>七日累计登录活动 · PM任务拆分预演</title>
+<style>
+  :root {
+    --bg: #ffffff;
+    --fg: #1f2328;
+    --muted: #57606a;
+    --border: #d0d7de;
+    --code-bg: #f6f8fa;
+    --accent: #0969da;
+    --accent-soft: #ddf4ff;
+    --warn: #bf8700;
+    --warn-soft: #fff8c5;
+    --ok: #1a7f37;
+    --ok-soft: #dafbe1;
+    --err: #cf222e;
+    --err-soft: #ffebe9;
+    --rule-color: #b42318;
+  }
+
+  * { box-sizing: border-box; }
+
+  .rule, .rule * { color: var(--rule-color) !important; }
+  svg .rule, svg .rule * { fill: var(--rule-color); }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: #f6f8fa;
+    color: var(--fg);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+                 "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue",
+                 Arial, sans-serif;
+    font-size: 14px;
+    line-height: 1.7;
+  }
+
+  .page {
+    max-width: 900px;
+    margin: 0 auto;
+    background: var(--bg);
+    padding: 60px 70px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+  }
+
+  /* 封面 */
+  .cover {
+    text-align: center;
+    padding: 80px 0 60px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 48px;
+  }
+  .cover h1 {
+    font-size: 34px;
+    margin: 0 0 16px;
+    letter-spacing: 1px;
+  }
+  .cover .subtitle {
+    font-size: 16px;
+    color: var(--muted);
+    margin-bottom: 30px;
+  }
+  .cover .meta {
+    display: inline-block;
+    text-align: left;
+    font-size: 13px;
+    color: var(--muted);
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    padding: 12px 30px;
+  }
+  .cover .meta span { display: inline-block; min-width: 90px; color: var(--fg); }
+
+  /* 标题 */
+  h1 { font-size: 26px; margin: 48px 0 16px; padding-bottom: 8px; border-bottom: 2px solid var(--fg); }
+  h2 { font-size: 20px; margin: 36px 0 12px; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
+  h3 { font-size: 16px; margin: 24px 0 8px; color: #24292f; }
+  h4 { font-size: 14px; margin: 16px 0 6px; color: var(--muted); }
+
+  p { margin: 8px 0; }
+
+  /* 代码 */
+  code {
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    background: var(--code-bg);
+    padding: 2px 5px;
+    border-radius: 4px;
+    font-size: 12.5px;
+  }
+  pre {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 14px 16px;
+    overflow-x: auto;
+    font-size: 12px;
+    line-height: 1.6;
+    margin: 12px 0;
+  }
+  pre code {
+    background: none;
+    padding: 0;
+    font-size: 12px;
+  }
+
+  /* 表格 */
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 14px 0;
+    font-size: 13px;
+  }
+  th, td {
+    border: 1px solid var(--border);
+    padding: 8px 10px;
+    text-align: left;
+    vertical-align: top;
+  }
+  th { background: #f6f8fa; font-weight: 600; }
+  tr:nth-child(even) td { background: #fafbfc; }
+
+  /* 引用 */
+  blockquote {
+    border-left: 4px solid var(--accent);
+    margin: 12px 0;
+    padding: 6px 14px;
+    background: var(--accent-soft);
+    border-radius: 0 6px 6px 0;
+    color: #0a3069;
+    font-size: 13.5px;
+  }
+
+  /* 提示框 */
+  .callout {
+    padding: 12px 16px;
+    border-radius: 6px;
+    margin: 14px 0;
+    font-size: 13.5px;
+    border-left: 4px solid;
+  }
+  .callout.info { background: var(--accent-soft); border-color: var(--accent); }
+  .callout.warn { background: var(--warn-soft); border-color: var(--warn); }
+  .callout.ok   { background: var(--ok-soft);   border-color: var(--ok); }
+  .callout.err  { background: var(--err-soft);  border-color: var(--err); }
+
+  /* 列表 */
+  ul, ol { padding-left: 24px; margin: 8px 0; }
+  li { margin: 4px 0; }
+
+  /* 图表容器 */
+  .diagram {
+    margin: 24px 0;
+    padding: 20px;
+    background: #fafbfc;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow-x: auto;
+    text-align: center;
+  }
+  .diagram svg { max-width: 100%; height: auto; }
+  .diagram .caption {
+    font-size: 12.5px;
+    color: var(--muted);
+    margin-top: 10px;
+    font-style: italic;
+  }
+
+  /* 目录 */
+  .toc {
+    background: #fafbfc;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px 28px;
+    margin: 24px 0 40px;
+  }
+  .toc h3 { margin-top: 0; }
+  .toc ol { margin: 0; padding-left: 20px; }
+  .toc a { color: var(--accent); text-decoration: none; }
+  .toc a:hover { text-decoration: underline; }
+
+  /* 打印 */
+  @page {
+    size: A4;
+    margin: 18mm 16mm;
+  }
+  @media print {
+    html, body { background: #fff; font-size: 11.5pt; }
+    .page { box-shadow: none; padding: 0; max-width: 100%; }
+    h1 { page-break-before: auto; }
+    h2 { page-break-after: avoid; }
+    pre, table, .diagram { page-break-inside: avoid; }
+    .cover { page-break-after: always; }
+    .no-print { display: none; }
+    a { color: var(--fg); text-decoration: none; }
+  }
+
+  /* 页脚 */
+  .footer {
+    margin-top: 60px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border);
+    text-align: center;
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  .print-btn {
+    position: fixed;
+    right: 24px;
+    bottom: 24px;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 999px;
+    padding: 12px 22px;
+    font-size: 14px;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(9,105,218,0.35);
+    z-index: 100;
+  }
+  .print-btn:hover { background: #0860ca; }
+
+.page { overflow-wrap: anywhere; }
+@media screen and (max-width: 700px) { .page { padding: 24px 18px; } .cover { padding: 30px 0; } .cover h1 { font-size: 26px; } .toc { padding: 16px; } }
+.wire-gallery { display: flex; flex-direction: column; gap: 24px; }
+.wire-step { width: 100%; }
+</style>
+<style>.wire-step{margin:24px 0;padding:12px;border:1px solid #d0d7de;break-inside:avoid}.wire-step>svg{display:block;width:100%;height:auto}.wire-step figcaption,.layer-note{margin:10px 0}.layer-note{padding:12px;background:#f6f8fa}.task-standard{white-space:pre-wrap;overflow-wrap:anywhere}svg .rule,svg .rule *{fill:var(--rule-color)}@media print{.wire-step{break-inside:auto}}</style></head>
+<body>
+<button class="print-btn no-print" onclick="window.print()">打印 / 导出文档</button>
+<main class="page">
+<header class="cover">
+<h1>七日累计登录活动 · PM任务拆分预演</h1>
+<div class="subtitle">当前技能拆分结果 · 待人工审阅</div>
+<div class="meta">日期：2026年9月30日<br>来源版本：v1.1<br>状态：只读草案<br>子任务数量：19</div>
+</header>
+<nav class="toc" aria-label="目录"><h3>目录</h3><ol><li><a href="#scope">拆分范围</a></li><li><a href="#tasks">任务与依赖</a></li><li><a href="#detail">子任务交付标准</a></li><li><a href="#coverage">覆盖与整体交付</a></li><li><a href="#questions">发布前核对</a></li></ol></nav>
+<section id="scope"><h1>1. 拆分预演范围</h1><p class="rule">本次使用当前 PM SKILL，通过 GameCLI 只读分析入口调用固定 PM Agent。源文档未上传、未审批；仅生成拆分草案，没有创建任务、批准计划或启动执行。任务使用临时编号，正式编号由平台发布时分配。</p><p>源文档：<a href="七日累计登录活动需求案-分层审阅版.html">七日累计登录活动分层审阅版 · v1.1</a></p><p>分析状态：success；独立会话：<code>01a0f0a4-c074-7de1-85a1-ba0db0af9fda</code></p></section><section id="tasks"><h1>2. 任务目录与依赖</h1><table><thead><tr><th>临时编号</th><th>角色</th><th>交付结果</th><th>依赖</th></tr></thead><tbody><tr><td><a href="#task-ART-001">ART-001</a></td><td>美术</td><td>交付可复用四层奖励道具占位组件</td><td>无</td></tr><tr><td><a href="#task-ART-002">ART-002</a></td><td>美术</td><td>交付活动入口与七档弹窗占位布局</td><td><a href="#task-ART-001">ART-001</a></td></tr><tr><td><a href="#task-ART-003">ART-003</a></td><td>美术</td><td>交付领取成功层与原因提示条基础表现</td><td><a href="#task-ART-001">ART-001</a></td></tr><tr><td><a href="#task-ART-004">ART-004</a></td><td>美术</td><td>交付测试邮件记录只读页面占位布局</td><td><a href="#task-ART-001">ART-001</a></td></tr><tr><td><a href="#task-DEV-001">DEV-001</a></td><td>程序</td><td>交付账号活动与发放查询的公共接口契约</td><td>无</td></tr><tr><td><a href="#task-DEV-002">DEV-002</a></td><td>程序</td><td>交付七档配置整批校验与不可变快照数据</td><td><a href="#task-DEV-001">DEV-001</a></td></tr><tr><td><a href="#task-DEV-003">DEV-003</a></td><td>程序</td><td>交付账号唯一活动与自然日累计进度</td><td><a href="#task-DEV-001">DEV-001</a>、<a href="#task-DEV-002">DEV-002</a></td></tr><tr><td><a href="#task-DEV-004">DEV-004</a></td><td>程序</td><td>交付完整奖励原子记账与手动领取幂等恢复</td><td><a href="#task-DEV-001">DEV-001</a>、<a href="#task-DEV-002">DEV-002</a>、<a href="#task-DEV-003">DEV-003</a></td></tr><tr><td><a href="#task-DEV-005">DEV-005</a></td><td>程序</td><td>交付可恢复到期补发与账号只读测试记录</td><td><a href="#task-DEV-001">DEV-001</a>、<a href="#task-DEV-002">DEV-002</a>、<a href="#task-DEV-003">DEV-003</a>、<a href="#task-DEV-004">DEV-004</a></td></tr><tr><td><a href="#task-DEV-006">DEV-006</a></td><td>程序</td><td>交付成功奖励层与不阻塞交互的原因提示条组件</td><td><a href="#task-ART-001">ART-001</a>、<a href="#task-ART-003">ART-003</a>、<a href="#task-DEV-001">DEV-001</a></td></tr><tr><td><a href="#task-DEV-007">DEV-007</a></td><td>程序</td><td>交付活动触屏页面与领取状态恢复</td><td><a href="#task-ART-001">ART-001</a>、<a href="#task-ART-002">ART-002</a>、<a href="#task-DEV-001">DEV-001</a>、<a href="#task-DEV-003">DEV-003</a>、<a href="#task-DEV-004">DEV-004</a>、<a href="#task-DEV-005">DEV-005</a>、<a href="#task-DEV-006">DEV-006</a></td></tr><tr><td><a href="#task-DEV-008">DEV-008</a></td><td>程序</td><td>交付测试补发记录查看与触屏返回闭环</td><td><a href="#task-ART-001">ART-001</a>、<a href="#task-ART-004">ART-004</a>、<a href="#task-DEV-001">DEV-001</a>、<a href="#task-DEV-005">DEV-005</a>、<a href="#task-DEV-006">DEV-006</a>、<a href="#task-DEV-007">DEV-007</a></td></tr><tr><td><a href="#task-QA-001">QA-001</a></td><td>验收</td><td>验收配置整批校验与快照数据保护</td><td><a href="#task-DEV-001">DEV-001</a>、<a href="#task-DEV-002">DEV-002</a></td></tr><tr><td><a href="#task-QA-002">QA-002</a></td><td>验收</td><td>验收账号活动唯一性与自然日边界</td><td><a href="#task-DEV-002">DEV-002</a>、<a href="#task-DEV-003">DEV-003</a></td></tr><tr><td><a href="#task-QA-003">QA-003</a></td><td>验收</td><td>验收手动领取完整记账与未知结果核对</td><td><a href="#task-DEV-003">DEV-003</a>、<a href="#task-DEV-004">DEV-004</a></td></tr><tr><td><a href="#task-QA-004">QA-004</a></td><td>验收</td><td>验收到期竞争与测试补发中断恢复</td><td><a href="#task-DEV-003">DEV-003</a>、<a href="#task-DEV-004">DEV-004</a>、<a href="#task-DEV-005">DEV-005</a></td></tr><tr><td><a href="#task-QA-005">QA-005</a></td><td>验收</td><td>验收活动触屏状态与成功失败反馈闭环</td><td><a href="#task-ART-001">ART-001</a>、<a href="#task-ART-002">ART-002</a>、<a href="#task-ART-003">ART-003</a>、<a href="#task-DEV-006">DEV-006</a>、<a href="#task-DEV-007">DEV-007</a></td></tr><tr><td><a href="#task-QA-006">QA-006</a></td><td>验收</td><td>验收测试记录状态与只读返回交互</td><td><a href="#task-ART-001">ART-001</a>、<a href="#task-ART-003">ART-003</a>、<a href="#task-ART-004">ART-004</a>、<a href="#task-DEV-005">DEV-005</a>、<a href="#task-DEV-006">DEV-006</a>、<a href="#task-DEV-007">DEV-007</a>、<a href="#task-DEV-008">DEV-008</a></td></tr><tr><td><a href="#task-QA-007">QA-007</a></td><td>验收</td><td>验收账号全链路与交付标准完整覆盖</td><td><a href="#task-ART-001">ART-001</a>、<a href="#task-ART-002">ART-002</a>、<a href="#task-ART-003">ART-003</a>、<a href="#task-ART-004">ART-004</a>、<a href="#task-DEV-001">DEV-001</a>、<a href="#task-DEV-002">DEV-002</a>、<a href="#task-DEV-003">DEV-003</a>、<a href="#task-DEV-004">DEV-004</a>、<a href="#task-DEV-005">DEV-005</a>、<a href="#task-DEV-006">DEV-006</a>、<a href="#task-DEV-007">DEV-007</a>、<a href="#task-DEV-008">DEV-008</a>、<a href="#task-QA-001">QA-001</a>、<a href="#task-QA-002">QA-002</a>、<a href="#task-QA-003">QA-003</a>、<a href="#task-QA-004">QA-004</a>、<a href="#task-QA-005">QA-005</a>、<a href="#task-QA-006">QA-006</a></td></tr></tbody></table></section><section id="detail"><h1>3. 子任务交付标准</h1><article id="task-ART-001"><h2>ART-001 · 交付可复用四层奖励道具占位组件</h2><p class="task-html-link"><a href="LOGIN-7-REDRAFT-PM/tasks/ART-001.html">打开独立任务 HTML：ART-001</a></p><p class="rule">角色：美术；前置依赖：无</p><ul><li class="rule" style="white-space:pre-wrap">任务约定
+角色：Art。
+来源：v1.1源HTML的3.1四层映射、第四节L1—L4、V02；DS-09。
+范围：统一交付R01、R02、R03使用的四层组件及实例编号规范，不按图层或档位拆单，不制作正式图标。
+前置产物：无。
+交付物：建议 deliveries/LOGIN-7-REDRAFT/art/reward-component/，包含分层源文件、预览、文本布局及导入说明，待实施时映射。
+启动条件：共同正式执行门禁满足。
+完成门禁：四层可独立核验、预览与编号一致，记录版本及实际文件哈希，完成美术抽检。</li><li class="rule" style="white-space:pre-wrap">四层组件验收用例｜尚未执行
+前置条件：使用短名、长中文名、单项和多项示例。
+操作与处理中：按L1背景、L2占位图标、L3名称数量、L4透明框体叠放，实例化R01、R02、R03。
+成功结果：各单道具均保留四层，框体不遮挡文本图标；档位按钮独立于道具框。
+失败反馈：层丢失、合图、文字遮挡或编号不符作为交付缺陷记录，不新增玩家反馈。
+异常恢复：返修组件后重新检查使用页面的实例。
+测试用例：分层源文件检查及T10、T21视觉前置检查；覆盖R01正常、处理中、失败背景和R02、R03复用。</li></ul><div class="task-wireframes"><h3>本任务对应线框与分层</h3><p class="rule">只交付本任务范围；周边区域作为来源上下文。</p><figure class="wire-step"><h3>视图二 · P02活动弹窗 → C02关闭返回P01</h3><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2000 1160" role="img" aria-label="七档完整活动弹窗线框"><title>七档奖励完整显示，1920×1080横屏画布</title><rect x="4" y="4" width="1992" height="1152" rx="110" fill="#20252c"></rect><svg x="40" y="40" width="1920" height="1080" viewBox="0 0 1920 1080"><rect width="1920" height="1080" rx="80" fill="#eef0f3"></rect><rect x="130" y="65" width="1660" height="905" rx="16" fill="none" stroke="#a3adba" stroke-width="3" stroke-dasharray="10 12"></rect><rect x="150" y="90" width="1620" height="850" rx="24" fill="white" stroke="#34404d" stroke-width="4"></rect><g font-family="Microsoft YaHei,Arial,sans-serif" fill="#34404d"><text x="210" y="170" font-size="44">P02 七日累计登录</text><rect x="1570" y="120" width="150" height="72" rx="8" fill="#f0f2f4" stroke="#34404d"></rect><text x="1645" y="167" font-size="30" text-anchor="middle">C02 关闭</text><text x="210" y="247" font-size="32">I01 累计登录 3/7天　｜　I02 第4/14个活动日</text><text x="210" y="303" font-size="29" class="rule">I03 到期时间：按锁定时区显示服务器确认的日期与00:00</text><text x="210" y="355" font-size="29" class="rule">14个活动日内累计登录；漏登保留；到期补发已解锁未领奖励</text><g fill="#f5f6f8" stroke="#8793a1" stroke-width="2"><rect x="200" y="410" width="200" height="330" rx="10"></rect><rect x="420" y="410" width="200" height="330" rx="10"></rect><rect x="640" y="410" width="200" height="330" rx="10"></rect><rect x="860" y="410" width="200" height="330" rx="10"></rect><rect x="1080" y="410" width="200" height="330" rx="10"></rect><rect x="1300" y="410" width="200" height="330" rx="10"></rect><rect x="1520" y="410" width="200" height="330" rx="10"></rect></g><g text-anchor="middle" font-size="27"><text x="300" y="460">第1档</text><text x="520" y="460">第2档</text><text x="740" y="460">第3档</text><text x="960" y="460">第4档</text><text x="1180" y="460">第5档</text><text x="1400" y="460">第6档</text><text x="1620" y="460">第7档</text><text x="300" y="698">已领取</text><text x="520" y="643">C03-2</text><text x="740" y="643">C03-3</text><text x="960" y="698">未解锁</text><text x="1180" y="698">未解锁</text><text x="1400" y="698">未解锁</text><text x="1620" y="698">未解锁</text></g><rect x="440" y="660" width="160" height="57" rx="8" fill="#e0e6ec" stroke="#34404d"></rect><rect x="660" y="660" width="160" height="57" rx="8" fill="#e0e6ec" stroke="#34404d"></rect><text x="520" y="698" font-size="28" text-anchor="middle">领取</text><text x="740" y="698" font-size="28" text-anchor="middle">领取</text><text x="210" y="850" font-size="28">I04 当前状态：活动进行中</text><rect x="1320" y="800" width="400" height="80" rx="8" fill="#f0f2f4" stroke="#34404d"></rect><text x="1520" y="851" text-anchor="middle" font-size="29">C04 测试邮件记录</text></g><path d="M0 335 H38 Q80 335 80 380 V700 Q80 745 38 745 H0 Z" fill="#20252c"></path><rect x="700" y="1020" width="520" height="12" rx="6" fill="#333b46"></rect><g data-reward="R01-1-1" transform="translate(210 490)"><g data-layer="background" data-layer-id="R01-1-1-L1"><rect width="180" height="62" rx="6" fill="#eef3f7"></rect></g><g data-layer="icon" data-layer-id="R01-1-1-L2"><rect x="9" y="9" width="44" height="44" fill="#dde6ef" stroke="#54758a" stroke-dasharray="4 3"></rect><path d="M31 15 L47 31 L31 47 L15 31 Z" fill="none" stroke="#54758a"></path></g><g data-layer="text" data-layer-id="R01-1-1-L3" fill="#34404d" text-anchor="start"><text x="62" y="27" font-size="19">测试石</text><text x="62" y="50" font-size="19">×8</text></g><g data-layer="frame" data-layer-id="R01-1-1-L4"><rect width="180" height="62" rx="6" fill="none" stroke="#937953" stroke-width="2"></rect></g></g><g data-reward="R01-1-2" transform="translate(210 562)"><g data-layer="background" data-layer-id="R01-1-2-L1"><rect width="180" height="62" rx="6" fill="#eef3f7"></rect></g><g data-layer="icon" data-layer-id="R01-1-2-L2"><rect x="9" y="9" width="44" height="44" fill="#dde6ef" stroke="#54758a" stroke-dasharray="4 3"></rect><path d="M31 15 L47 31 L31 47 L15 31 Z" fill="none" stroke="#54758a"></path></g><g data-layer="text" data-layer-id="R01-1-2-L3" fill="#34404d" text-anchor="start"><text x="62" y="27" font-size="19">测试币</text><text x="62" y="50" font-size="19">×6</text></g><g data-layer="frame" data-layer-id="R01-1-2-L4"><rect width="180" height="62" rx="6" fill="none" stroke="#937953" stroke-width="2"></rect></g></g><g data-reward="R01-2-1" transform="translate(430 490)"><g data-layer="background" data-layer-id="R01-2-1-L1"><rect width="180" height="62" rx="6" fill="#eef3f7"></rect></g><g data-layer="icon" data-layer-id="R01-2-1-L2"><rect x="9" y="9" width="44" height="44" fill="#dde6ef" stroke="#54758a" stroke-dasharray="4 3"></rect><path d="M31 15 L47 31 L31 47 L15 31 Z" fill="none" stroke="#54758a"></path></g><g data-layer="text" data-layer-id="R01-2-1-L3" fill="#34404d" text-anchor="start"><text x="62" y="27" font-size="19">测试币</text><text x="62" y="50" font-size="19">×12</text></g><g data-layer="frame" data-layer-id="R01-2-1-L4"><rect width="180" height="62" rx="6" fill="none" stroke="#937953" stroke-width="2"></rect></g></g><g data-reward="R01-3-1" transform="translate(650 490)"><g data-layer="background" data-layer-id="R01-3-1-L1"><rect width="180" height="62" rx="6" fill="#eef3f7"></rect></g><g data-layer="icon" data-layer-id="R01-3-1-L2"><rect x="9" y="9" width="44" height="44" fill="#dde6ef" stroke="#54758a" stroke-dasharray="4 3"></rect><path d="M31 15 L47 31 L31 47 L15 31 Z" fill="none" stroke="#54758a"></path></g><g data-layer="text" data-layer-id="R01-3-1-L3" fill="#34404d" text-anchor="start"><text x="62" y="27" font-size="19">测试石</text><text x="62" y="50" font-size="19">×12</text></g><g data-layer="frame" data-layer-id="R01-3-1-L4"><rect width="180" height="62" rx="6" fill="none" stroke="#937953" stroke-width="2"></rect></g></g><g data-reward="R01-4-1" transform="translate(870 490)"><g data-layer="background" data-layer-id="R01-4-1-L1"><rect width="180" height="62" rx="6" fill="#eef3f7"></rect></g><g data-layer="icon" data-layer-id="R01-4-1-L2"><rect x="9" y="9" width="44" height="44" fill="#dde6ef" stroke="#54758a" stroke-dasharray="4 3"></rect><path d="M31 15 L47 31 L31 47 L15 31 Z" fill="none" stroke="#54758a"></path></g><g data-layer="text" data-layer-id="R01-4-1-L3" fill="#34404d" text-anchor="start"><text x="62" y="27" font-size="19">测试币</text><text x="62" y="50" font-size="19">×18</text></g><g data-layer="frame" data-layer-id="R01-4-1-L4"><rect width="180" height="62" rx="6" fill="none" stroke="#937953" stroke-width="2"></rect></g></g><g data-reward="R01-5-1" transform="translate(1090 490)"><g data-layer="background" data-layer-id="R01-5-1-L1"><rect width="180" height="62" rx="6" fill="#eef3f7"></rect></g><g data-layer="icon" data-layer-id="R01-5-1-L2"><rect x="9" y="9" width="44" height="44" fill="#dde6ef" stroke="#54758a" stroke-dasharray="4 3"></rect><path d="M31 15 L47 31 L31 47 L15 31 Z" fill="none" stroke="#54758a"></path></g><g data-layer="text" data-layer-id="R01-5-1-L3" fill="#34404d" text-anchor="start"><text x="62" y="27" font-size="19">测试石</text><text x="62" y="50" font-size="19">×16</text></g><g data-layer="frame" data-layer-id="R01-5-1-L4"><rect width="180" height="62" rx="6" fill="none" stroke="#937953" stroke-width="2"></rect></g></g><g data-reward="R01-6-1" transform="translate(1310 490)"><g data-layer="background" data-layer-id="R01-6-1-L1"><rect width="180" height="62" rx="6" fill="#eef3f7"></rect></g><g data-layer="icon" data-layer-id="R01-6-1-L2"><rect x="9" y="9" width="44" height="44" fill="#dde6ef" stroke="#54758a" stroke-dasharray="4 3"></rect><path d="M31 15 L47 31 L31 47 L15 31 Z" fill="none" stroke="#54758a"></path></g><g data-layer="text" data-layer-id="R01-6-1-L3" fill="#34404d" text-anchor="start"><text x="62" y="27" font-size="19">测试币</text><text x="62" y="50" font-size="19">×24</text></g><g data-layer="frame" data-layer-id="R01-6-1-L4"><rect width="180" height="62" rx="6" fill="none" stroke="#937953" stroke-width="2"></rect></g></g><g data-reward="R01-7-1" transform="translate(1530 490)"><g data-layer="background" data-layer-id="R01-7-1-L1"><rect width="180" height="62" rx="6" fill="#eef3f7"></rect></g><g data-layer="icon" data-layer-id="R01-7-1-L2"><rect x="9" y="9" width="44" height="44" fill="#dde6ef" stroke="#54758a" stroke-dasharray="4 3"></rect><path d="M31 15 L47 31 L31 47 L15 31 Z" fill="none" stroke="#54758a"></path></g><g data-layer="text" data-layer-id="R01-7-1-L3" fill="#34404d" text-anchor="start"><text x="62" y="27" font-size="19">测试石</text><text x="62" y="50" font-size="19">×20</text></g><g data-layer="frame" data-layer-id="R01-7-1-L4"><rect width="180" height="62" rx="6" fill="none" stroke="#937953" stroke-width="2"></rect></g></g><g data-reward="R01-7-2" transform="translate(1530 562)"><g data-layer="background" data-layer-id="R01-7-2-L1"><rect width="180" height="62" rx="6" fill="#eef3f7"></rect></g><g data-layer="icon" data-layer-id="R01-7-2-L2"><rect x="9" y="9" width="44" height="44" fill="#dde6ef" stroke="#54758a" stroke-dasharray="4 3"></rect><path d="M31 15 L47 31 L31 47 L15 31 Z" fill="none" stroke="#54758a"></path></g><g data-layer="text" data-layer-id="R01-7-2-L3" fill="#34404d" text-anchor="start"><text x="62" y="27" font-size="19">测试币</text><text x="62" y="50" font-size="19">×30</text></g><g data-layer="frame" data-layer-id="R01-7-2-L4"><rect width="180" height="62" rx="6" fill="none" stroke="#937953" stroke-width="2"></rect></g></g></svg></svg><figcaption class="rule">示例为第4活动日累计登录3天，第1档已领取，第2、3档可分别领取。七档完整呈现，不增加横向翻页或一键领取。C03-1至C03-7对应各档领取位置，状态文字按服务器结果替换。C04进入记录查看分支。</figcaption><p class="layer-note rule">R01 道具框：L1背景（浅底）→ L2图标（虚线占位）→ L3文本（名称／数量）→ L4框体（透明描边）。层号仅用于交付标注，不进入游戏界面。</p></figure>
+<figure class="wire-step"><h3>视图四 · P03领取成功层 · 与失败反馈互斥</h3><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2000 1160" role="img" aria-label="领取成功窗口线框"><title>领取成功窗口，无确定按钮</title><rect x="4" y="4" width="1992" height="1152" rx="110" fill="#20252c"></rect><svg x="40" y="40" width="1920" height="1080" viewBox="0 0 1920 1080"><rect width="1920" height="1080" rx="80" fill="#cfd5dd"></rect><rect x="130" y="65" width="1660" height="905" rx="16" fill="none" stroke="#8793a1" stroke-width="3" stroke-dasharray="10 12"></rect><rect x="150" y="90" width="1620" height="850" rx="24" fill="#dce1e7" stroke="#7d8794"></rect><rect x="330" y="190" width="1260" height="660" rx="22" fill="white" stroke="#34404d" stroke-width="4"></rect><g font-family="Microsoft YaHei,Arial,sans-serif" fill="#34404d" text-anchor="middle"><text x="960" y="302" font-size="58">领取成功</text><text x="960" y="375" font-size="28">I05 实际发放的道具列表</text><text x="960" y="670" font-size="29">示例：第2档奖励已记入账号测试账本</text><text x="960" y="785" font-size="28">点击任意地方退出</text></g><path d="M0 335 H38 Q80 335 80 380 V700 Q80 745 38 745 H0 Z" fill="#20252c"></path><rect x="700" y="1020" width="520" height="12" rx="6" fill="#333b46"></rect><g data-reward="R02-1" transform="translate(620 430)"><g data-layer="background" data-layer-id="R02-1-L1"><rect width="680" height="150" rx="6" fill="#eef3f7"></rect></g><g data-layer="icon" data-layer-id="R02-1-L2"><rect x="9" y="9" width="58" height="58" fill="#dde6ef" stroke="#54758a" stroke-dasharray="4 3"></rect><path d="M38 15 L61 38 L38 61 L15 38 Z" fill="none" stroke="#54758a"></path></g><g data-layer="text" data-layer-id="R02-1-L3" fill="#34404d" text-anchor="start"><text x="76" y="67" font-size="31">测试币</text><text x="76" y="106" font-size="31">×12</text></g><g data-layer="frame" data-layer-id="R02-1-L4"><rect width="680" height="150" rx="6" fill="none" stroke="#937953" stroke-width="2"></rect></g></g></svg></svg><figcaption class="rule">P03仅在手动领取成功或权威查询确认该手动领取已发放后显示。C05为覆盖整个奖励层的点击关闭区域；点击道具、标题或遮罩均返回P02且不穿透。无确定按钮；列表按实际发放项目显示，超出可见范围时在列表区域触屏滚动。</figcaption><p class="layer-note rule">R02 道具框：L1背景（浅底）→ L2图标（虚线占位）→ L3文本（名称／数量）→ L4框体（透明描边）。层号仅用于交付标注，不进入游戏界面。</p></figure>
+<figure class="wire-step"><h3>视图六 · P04测试邮件记录 · 从C04进入，C06返回P02</h3><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2000 1160" role="img" aria-label="测试邮件记录查看线框"><title>到期测试邮件记录，仅查看，不再次发奖</title><rect x="4" y="4" width="1992" height="1152" rx="110" fill="#20252c"></rect><svg x="40" y="40" width="1920" height="1080" viewBox="0 0 1920 1080"><rect width="1920" height="1080" rx="80" fill="#eef0f3"></rect><rect x="130" y="65" width="1660" height="905" rx="16" fill="none" stroke="#a3adba" stroke-width="3" stroke-dasharray="10 12"></rect><rect x="150" y="90" width="1620" height="850" rx="24" fill="white" stroke="#34404d" stroke-width="4"></rect><g font-family="Microsoft YaHei,Arial,sans-serif" fill="#34404d"><text x="210" y="170" font-size="44">P04 测试邮件记录</text><rect x="1570" y="120" width="150" height="72" rx="8" fill="#f0f2f4" stroke="#34404d"></rect><text x="1645" y="167" font-size="30" text-anchor="middle">C06 返回</text><text x="210" y="270" font-size="34">七日累计登录到期补发 · 已补发</text><text x="210" y="330" font-size="28">I06 记录编号、结算时间及锁定时区由服务器返回</text><rect x="210" y="385" width="1500" height="360" rx="12" fill="#f5f6f8" stroke="#8793a1"></rect><text x="260" y="447" font-size="31">I07 实际补发内容（示例）</text><text x="260" y="692" font-size="27">更多内容在此区域触屏滚动</text><text x="210" y="825" font-size="29" class="rule">奖励已记入测试账本；本页仅查看，没有领取按钮</text><text x="210" y="880" font-size="27" class="rule">独立查看分支，不要求先经过领取成功或失败</text></g><path d="M0 335 H38 Q80 335 80 380 V700 Q80 745 38 745 H0 Z" fill="#20252c"></path><rect x="700" y="1020" width="520" height="12" rx="6" fill="#333b46"></rect><g data-reward="R03-2" transform="translate(260 472)"><g data-layer="background" data-layer-id="R03-2-L1"><rect width="650" height="72" rx="6" fill="#eef3f7"></rect></g><g data-layer="icon" data-layer-id="R03-2-L2"><rect x="9" y="9" width="54" height="54" fill="#dde6ef" stroke="#54758a" stroke-dasharray="4 3"></rect><path d="M36 15 L57 36 L36 57 L15 36 Z" fill="none" stroke="#54758a"></path></g><g data-layer="text" data-layer-id="R03-2-L3" fill="#34404d" text-anchor="start"><text x="72" y="27" font-size="31">第2档 · 测试币</text><text x="72" y="50" font-size="31">×12</text></g><g data-layer="frame" data-layer-id="R03-2-L4"><rect width="650" height="72" rx="6" fill="none" stroke="#937953" stroke-width="2"></rect></g></g><g data-reward="R03-3" transform="translate(260 568)"><g data-layer="background" data-layer-id="R03-3-L1"><rect width="650" height="72" rx="6" fill="#eef3f7"></rect></g><g data-layer="icon" data-layer-id="R03-3-L2"><rect x="9" y="9" width="54" height="54" fill="#dde6ef" stroke="#54758a" stroke-dasharray="4 3"></rect><path d="M36 15 L57 36 L36 57 L15 36 Z" fill="none" stroke="#54758a"></path></g><g data-layer="text" data-layer-id="R03-3-L3" fill="#34404d" text-anchor="start"><text x="72" y="27" font-size="31">第3档 · 测试石</text><text x="72" y="50" font-size="31">×12</text></g><g data-layer="frame" data-layer-id="R03-3-L4"><rect width="650" height="72" rx="6" fill="none" stroke="#937953" stroke-width="2"></rect></g></g></svg></svg><figcaption class="rule">示例为到期累计3天、第1档已手动领取，第2、3档由结算补发。加载、空记录、结算中、成功及查询异常状态见3.3节；异常仍使用F01，不增设操作。返回P02时查询最新活动状态。</figcaption><p class="layer-note rule">R03 道具框：L1背景（浅底）→ L2图标（虚线占位）→ L3文本（名称／数量）→ L4框体（透明描边）。层号仅用于交付标注，不进入游戏界面。</p></figure>
+<figure class="wire-step layer-spec"><h3 id="report-ART-001-reward-layers">奖励道具框 · 四层结构与编号</h3><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 720" role="img" aria-label="奖励道具框四层纵向拆解"><title>从底到顶，四层独立交付</title><text x="25" y="65" font-size="24" fill="#b42318">L1 背景层：底色／底图</text><g data-layer="background" transform="translate(520 30)"><rect width="440" height="110" fill="#eef3f7" stroke="#a3adba" stroke-dasharray="6 4" stroke-width="2"></rect></g><path d="M740 152 V185 M730 174 L740 185 L750 174" fill="none" stroke="#687887" stroke-width="3"></path><text x="25" y="230" font-size="24" fill="#b42318">L2 图标层：道具图标／占位图</text><g data-layer="icon" transform="translate(520 195)"><rect width="440" height="110" fill="none" stroke="#a3adba" stroke-dasharray="6 4" stroke-width="2"></rect><rect x="20" y="24" width="62" height="62" fill="#dde6ef" stroke="#54758a"></rect></g><path d="M740 317 V350 M730 339 L740 350 L750 339" fill="none" stroke="#687887" stroke-width="3"></path><text x="25" y="395" font-size="24" fill="#b42318">L3 文本层：名称、数量</text><g data-layer="text" transform="translate(520 360)"><rect width="440" height="110" fill="none" stroke="#a3adba" stroke-dasharray="6 4" stroke-width="2"></rect><text x="110" y="65" font-size="26" fill="#34404d">测试币 ×12</text></g><path d="M740 482 V515 M730 504 L740 515 L750 504" fill="none" stroke="#687887" stroke-width="3"></path><text x="25" y="560" font-size="24" fill="#b42318">L4 框体层：透明内部的边框</text><g data-layer="frame" transform="translate(520 525)"><rect width="440" height="110" fill="none" stroke="#937953" stroke-dasharray="none" stroke-width="2"></rect></g></svg><figcaption class="rule">本图为纵向图层拆解，虚线界限是标注，不是最终素材。实际叠放顺序从背景到框体；框体内部透明。所有单道具实例保留四层，不合并为单张图。</figcaption><table><thead><tr><th>组件</th><th>复用页面</th><th>层编号</th><th>交付映射</th></tr></thead><tbody><tr><td>R01 奖励档位内道具</td><td>活动弹窗、处理中、失败反馈背景</td><td>R01-档位-道具序号-L1～L4</td><td class="rule">复用四层样式；更新名称数量，档位状态与领取按钮独立。</td></tr><tr><td>R02 成功奖励道具</td><td>领取成功列表</td><td>R02-道具序号-L1～L4</td><td class="rule">展示实际发放列表；多道具逐项复用，不改变领奖关闭交互。</td></tr><tr><td>R03 补发记录道具</td><td>测试邮件查看</td><td>R03-档位-道具序号-L1～L4</td><td class="rule">仅展示已补发奖励，不新增领取按钮。</td></tr></tbody></table></figure></div></article><article id="task-ART-002"><h2>ART-002 · 交付活动入口与七档弹窗占位布局</h2><p class="task-html-link"><a href="LOGIN-7-REDRAFT-PM/tasks/ART-002.html">打开独立任务 HTML：ART-002</a></p><p class="rule">角色：美术；前置依赖：<a href="#task-ART-001">ART-001</a></p><ul><li class="rule" style="white-space:pre-wrap">任务约定
+角色：Art。
+来源：v1.1源HTML的3.1视图一、二、三、五，3.3，O01—O05，V01、V02、V05、V06；DS-03—DS-07、DS-09、DS-10、DS-12。
+范围：P01入口、P02七档布局及状态样式；F01动画和P03由ART-003负责。
+前置产物：ART-001四层组件有效版本。
+交付物：建议 deliveries/LOGIN-7-REDRAFT/art/activity-layout/，包含布局、状态图、触屏区域与安全区说明，待实施时映射。
+启动条件：共同门禁及ART-001交付满足。
+完成门禁：布局与控件编号一致、七档完整、美术抽检完成。</li><li class="rule" style="white-space:pre-wrap">活动布局验收用例｜尚未执行
+前置条件：具备R01组件和需求七档示例。
+操作与处理中：查看加载、可领、未解锁、已领取、领取中、确认中、结算中及结束状态。
+成功结果：C01—C04及I01—I04可读可用，七档保持完整，所有道具四层保留；长中文与数量不裁切，适配真实安全区。
+失败反馈：缺状态、遮挡及触屏命中问题形成缺陷清单。
+异常恢复：返修后复核所有受影响状态。
+测试用例：T21布局前置检查；不增加翻页、一键领取、设备底框资产、页面动画或音效。</li></ul><div class="task-wireframes"><h3>本任务对应线框与分层</h3><p class="rule">只交付本任务范围；周边区域作为来源上下文。</p><figure class="wire-step"><h3>视图一 · P01主界面 → C01活动入口 → P02活动弹窗</h3><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2000 1160" role="img" aria-label="主界面活动入口线框"><title>主界面活动入口，1920×1080横屏画布</title><rect x="4" y="4" width="1992" height="1152" rx="110" fill="#20252c"></rect><svg x="40" y="40" width="1920" height="1080" viewBox="0 0 1920 1080"><rect width="1920" height="1080" rx="80" fill="#eef0f3"></rect><rect x="130" y="65" width="1660" height="905" rx="16" fill="none" stroke="#a3adba" stroke-width="3" stroke-dasharray="10 12"></rect><g font-family="Microsoft YaHei,Arial,sans-serif" fill="#34404d"><text x="170" y="145" font-size="44">P01 主界面</text><rect x="170" y="220" width="1120" height="620" rx="20" fill="#e0e4e9" stroke="#84909f"></rect><text x="730" y="535" text-anchor="middle" font-size="42">现有游戏内容区域</text><rect x="1370" y="225" width="340" height="170" rx="18" fill="white" stroke="#34404d" stroke-width="4"></rect><text x="1540" y="290" text-anchor="middle" font-size="34">C01</text><text x="1540" y="350" text-anchor="middle" font-size="36">七日累计登录</text><circle cx="1690" cy="240" r="19" fill="#687887"></circle><text x="1360" y="470" font-size="28">圆点：存在可领取奖励</text><text x="170" y="925" font-size="28" class="rule">未开启时点击进入才开启个人活动；入口不自动弹窗</text></g><path d="M0 335 H38 Q80 335 80 380 V700 Q80 745 38 745 H0 Z" fill="#20252c"></path><rect x="700" y="1020" width="520" height="12" rx="6" fill="#333b46"></rect></svg></svg><figcaption class="rule">点击C01进入P02；已开启账号只查询原活动。红点仅示意其位置，未开启、无可领取奖励及到期时隐藏。</figcaption></figure>
+<figure class="wire-step"><h3>视图二 · P02活动弹窗 → C02关闭返回P01</h3><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2000 1160" role="img" aria-label="七档完整活动弹窗线框"><title>七档奖励完整显示，1920×1080横屏画布</title><rect x="4" y="4" width="1992" height="1152" rx="110" fill="#20252c"></rect><svg x="40" y="40" width="1920" height="1080" viewBox="0 0 1920 1080"><rect width="1920" height="1080" rx="80" fill="#eef0f3"></rect><rect x="130" y="65" width="1660" height="905" rx="16" fill="none" stroke="#a3adba" stroke-width="3" stroke-dasharray="10 12"></rect><rect x="150" y="90" width="1620" height="850" rx="24" fill="white" stroke="#34404d" stroke-width="4"></rect><g font-family="Microsoft YaHei,Arial,sans-serif" fill="#34404d"><text x="210" y="170" font-size="44">P02 七日累计登录</text><rect x="1570" y="120" width="150" height="72" rx="8" fill="#f0f2f4" stroke="#34404d"></rect><text x="1645" y="167" font-size="30" text-anchor="middle">C02 关闭</text><text x="210" y="247" font-size="32">I01 累计登录 3/7天　｜　I02 第4/14个活动日</text><text x="210" y="303" font-size="29" class="rule">I03 到期时间：按锁定时区显示服务器确认的日期与00:00</text><text x="210" y="355" font-size="29" class="rule">14个活动日内累计登录；漏登保留；到期补发已解锁未领奖励</text><g fill="#f5f6f8" stroke="#8793a1" stroke-width="2"><rect x="200" y="410" width="200" height="330" rx="10"></rect><rect x="420" y="410" width="200" height="330" rx="10"></rect><rect x="640" y="410" width="200" height="330" rx="10"></rect><rect x="860" y="410" width="200" height="330" rx="10"></rect><rect x="1080" y="410" width="200" height="330" rx="10"></rect><rect x="1300" y="410" width="200" height="330" rx="10"></rect><rect x="1520" y="410" width="200" height="330" rx="10"></rect></g><g text-anchor="middle" font-size="27"><text x="300" y="460">第1档</text><text x="520" y="460">第2档</text><text x="740" y="460">第3档</text><text x="960" y="460">第4档</text><text x="1180" y="460">第5档</text><text x="1400" y="460">第6档</text><text x="1620" y="460">第7档</text><text x="300" y="698">已领取</text><text x="520" y="643">C03-2</text><text x="740" y="643">C03-3</text><text x="960" y="698">未解锁</text><text x="1180" y="698">未解锁</text><text x="1400" y="698">未解锁</text><text x="1620" y="698">未解锁</text></g><rect x="440" y="660" width="160" height="57" rx="8" fill="#e0e6ec" stroke="#34404d"></rect><rect x="660" y="660" width="160" height="57" rx="8" fill="#e0e6ec" stroke="#34404d"></rect><text x="520" y="698" font-size="28" text-anchor="middle">领取</text><text x="740" y="698" font-size="28" text-anchor="middle">领取</text><text x="210" y="850" font-size="28">I04 当前状态：活动进行中</text><rect x="1320" y="800" width="400" height="80" rx="8" fill="#f0f2f4" stroke="#34404d"></rect><text x="1520" y="851" text-anchor="middle" font-size="29">C04 测试邮件记录</text></g><path d="M0 335 H38 Q80 335 80 380 V700 Q80 745 38 745 H0 Z" fill="#20252c"></path><rect x="700" y="1020" width="520" height="12" rx="6" fill="#333b46"></rect><g data-reward="R01-1-1" transform="translate(210 490)"><g data-layer="background" data-layer-id="R01-1-1-L1"><rect width="180" height="62" rx="6" fill="#eef3f7"></rect></g><g data-layer="icon" data-layer-id="R01-1-1-L2"><rect x="9" y="9" width="44" height="44" fill="#dde6ef" stroke="#54758a" stroke-dasharray="4 3"></rect><path d="M31 15 L47 31 L31 47 L15 31 Z" fill="none" stroke="#54758a"></path></g><g data-layer="text" data-layer-id="R01-1-1-L3" fill="#34404d" text-anchor="start"><text x="62" y="27" font-size="19">测试石</text><text x="62" y="50" font-size="19">×8</text></g><g data-layer="frame" data-layer-id="R01-1-1-L4"><rect width="180" height="62" rx="6" fill="none" stroke="#937953" stroke-width="2"></rect></g></g><g data-reward="R01-1-2" transform="translate(210 562)"><g data-layer="background" data-layer-id="R01-1-2-L1"><rect width="180" height="62" rx="6" fill="#eef3f7"></rect></g><g data-layer="icon" data-layer-id="R01-1-2-L2"><rect x="9" y="9" width="44" height="44" fill="#dde6ef" stroke="#54758a" stroke-dasharray="4 3"></rect><path d="M31 15 L47 31 L31 47 L15 31 Z" fill="none" stroke="#54758a"></path></g><g data-layer="text" data-layer-id="R01-1-2-L3" fill="#34404d" text-anchor="start"><text x="62" y="27" font-size="19">测试币</text><text x="62" y="50" font-size="19">×6</text></g><g data-layer="frame" data-layer-id="R01-1-2-L4"><rect width="180" height="62" rx="6" fill="none" stroke="#937953" stroke-width="2"></rect></g></g><g data-reward="R01-2-1" transform="translate(430 490)"><g data-layer="background" data-layer-id="R01-2-1-L1"><rect width="180" height="62" rx="6" fill="#eef3f7"></rect></g><g data-layer="icon" data-layer-id="R01-2-1-L2"><rect x="9" y="9" width="44" height="44" fill="#dde6ef" stroke="#54758a" stroke-dasharray="4 3"></rect><path d="M31 15 L47 31 L31 47 L15 31 Z" fill="none" stroke="#54758a"></path></g><g data-layer="text" data-layer-id="R01-2-1-L3" fill="#34404d" text-anchor="start"><text x="62" y="27" font-size="19">测试币</text><text x="62" y="50" font-size="19">×12</text></g><g data-layer="frame" data-layer-id="R01-2-1-L4"><rect width="180" height="62" rx="6" fill="none" stroke="#937953" stroke-width="2"></rect></g></g><g data-reward="R01-3-1" transform="translate(650 490)"><g data-layer="background" data-layer-id="R01-3-1-L1"><rect width="180" height="62" rx="6" fill="#eef3f7"></rect></g><g data-layer="icon" data-layer-id="R01-3-1-L2"><rect x="9" y="9" width="44" height="44" fill="#dde6ef" stroke="#54758a" stroke-dasharray="4 3"></rect><path d="M31 15 L47 31 L31 47 L15 31 Z" fill="none" stroke="#54758a"></path></g><g data-layer="text" data-layer-id="R01-3-1-L3" fill="#34404d" text-anchor="start"><text x="62" y="27" font-size="19">测试石</text><text x="62" y="50" font-size="19">×12</text></g><g data-layer="frame" data-layer-id="R01-3-1-L4"><rect width="180" height="62" rx="6" fill="none" stroke="#937953" stroke-width="2"></rect></g></g><g data-reward="R01-4-1" transform="translate(870 490)"><g data-layer="background" data-layer-id="R01-4-1-L1"><rect width="180" height="62" rx="6" fill="#eef3f7"></rect></g><g data-layer="icon" data-layer-id="R01-4-1-L2"><rect x="9" y="9" width="44" height="44" fill="#dde6ef" stroke="#54758a" stroke-dasharray="4 3"></rect><path d="M31 15 L47 31 L31 47 L15 31 Z" fill="none" stroke="#54758a"></path></g><g data-layer="text" data-layer-id="R01-4-1-L3" fill="#34404d" text-anchor="start"><text x="62" y="27" font-size="19">测试币</text><text x="62" y="50" font-size="19">×18</text></g><g data-layer="frame" data-layer-id="R01-4-1-L4"><rect width="180" height="62" rx="6" fill="none" stroke="#937953" stroke-width="2"></rect></g></g><g data-reward="R01-5-1" transform="translate(1090 490)"><g data-layer="background" data-layer-id="R01-5-1-L1"><rect width="180" height="62" rx="6" fill="#eef3f7"></rect></g><g data-layer="icon" data-layer-id="R01-5-1-L2"><rect x="9" y="9" width="44" height="44" fill="#dde6ef" stroke="#54758a" stroke-dasharray="4 3"></rect><path d="M31 15 L47 31 L31 47 L15 31 Z" fill="none" stroke="#54758a"></path></g><g data-layer="text" data-layer-id="R01-5-1-L3" fill="#34404d" text-anchor="start"><text x="62" y="27" font-size="19">测试石</text><text x="62" y="50" font-size="19">×16</text></g><g data-layer="frame" data-layer-id="R01-5-1-L4"><rect width="180" height="62" rx="6" fill="none" stroke="#937953" stroke-width="2"></rect></g></g><g data-reward="R01-6-1" transform="translate(1310 490)"><g data-layer="background" data-layer-id="R01-6-1-L1"><rect width="180" height="62" rx="6" fill="#eef3f7"></rect></g><g data-layer="icon" data-layer-id="R01-6-1-L2"><rect x="9" y="9" width="44" height="44" fill="#dde6ef" stroke="#54758a" stroke-dasharray="4 3"></rect><path d="M31 15 L47 31 L31 47 L15 31 Z" fill="none" stroke="#54758a"></path></g><g data-layer="text" data-layer-id="R01-6-1-L3" fill="#34404d" text-anchor="start"><text x="62" y="27" font-size="19">测试币</text><text x="62" y="50" font-size="19">×24</text></g><g data-layer="frame" data-layer-id="R01-6-1-L4"><rect width="180" height="62" rx="6" fill="none" stroke="#937953" stroke-width="2"></rect></g></g><g data-reward="R01-7-1" transform="translate(1530 490)"><g data-layer="background" data-layer-id="R01-7-1-L1"><rect width="180" height="62" rx="6" fill="#eef3f7"></rect></g><g data-layer="icon" data-layer-id="R01-7-1-L2"><rect x="9" y="9" width="44" height="44" fill="#dde6ef" stroke="#54758a" stroke-dasharray="4 3"></rect><path d="M31 15 L47 31 L31 47 L15 31 Z" fill="none" stroke="#54758a"></path></g><g data-layer="text" data-layer-id="R01-7-1-L3" fill="#34404d" text-anchor="start"><text x="62" y="27" font-size="19">测试石</text><text x="62" y="50" font-size="19">×20</text></g><g data-layer="frame" data-layer-id="R01-7-1-L4"><rect width="180" height="62" rx="6" fill="none" stroke="#937953" stroke-width="2"></rect></g></g><g data-reward="R01-7-2" transform="translate(1530 562)"><g data-layer="background" data-layer-id="R01-7-2-L1"><rect width="180" height="62" rx="6" fill="#eef3f7"></rect></g><g data-layer="icon" data-layer-id="R01-7-2-L2"><rect x="9" y="9" width="44" height="44" fill="#dde6ef" stroke="#54758a" stroke-dasharray="4 3"></rect><path d="M31 15 L47 31 L31 47 L15 31 Z" fill="none" stroke="#54758a"></path></g><g data-layer="text" data-layer-id="R01-7-2-L3" fill="#34404d" text-anchor="start"><text x="62" y="27" font-size="19">测试币</text><text x="62" y="50" font-size="19">×30</text></g><g data-layer="frame" data-layer-id="R01-7-2-L4"><rect width="180" height="62" rx="6" fill="none" stroke="#937953" stroke-width="2"></rect></g></g></svg></svg><figcaption class="rule">示例为第4活动日累计登录3天，第1档已领取，第2、3档可分别领取。七档完整呈现，不增加横向翻页或一键领取。C03-1至C03-7对应各档领取位置，状态文字按服务器结果替换。C04进入记录查看分支。</figcaption><p class="layer-note rule">R01 道具框：L1背景（浅底）→ L2图标（虚线占位）→ L3文本（名称／数量）→ L4框体（透明描边）。层号仅用于交付标注，不进入游戏界面。</p></figure>
+<figure class="wire-step layer-spec"><h3 id="report-ART-002-reward-layers">奖励道具框 · 四层结构与编号</h3><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 720" role="img" aria-label="奖励道具框四层纵向拆解"><title>从底到顶，四层独立交付</title><text x="25" y="65" font-size="24" fill="#b42318">L1 背景层：底色／底图</text><g data-layer="background" transform="translate(520 30)"><rect width="440" height="110" fill="#eef3f7" stroke="#a3adba" stroke-dasharray="6 4" stroke-width="2"></rect></g><path d="M740 152 V185 M730 174 L740 185 L750 174" fill="none" stroke="#687887" stroke-width="3"></path><text x="25" y="230" font-size="24" fill="#b42318">L2 图标层：道具图标／占位图</text><g data-layer="icon" transform="translate(520 195)"><rect width="440" height="110" fill="none" stroke="#a3adba" stroke-dasharray="6 4" stroke-width="2"></rect><rect x="20" y="24" width="62" height="62" fill="#dde6ef" stroke="#54758a"></rect></g><path d="M740 317 V350 M730 339 L740 350 L750 339" fill="none" stroke="#687887" stroke-width="3"></path><text x="25" y="395" font-size="24" fill="#b42318">L3 文本层：名称、数量</text><g data-layer="text" transform="translate(520 360)"><rect width="440" height="110" fill="none" stroke="#a3adba" stroke-dasharray="6 4" stroke-width="2"></rect><text x="110" y="65" font-size="26" fill="#34404d">测试币 ×12</text></g><path d="M740 482 V515 M730 504 L740 515 L750 504" fill="none" stroke="#687887" stroke-width="3"></path><text x="25" y="560" font-size="24" fill="#b42318">L4 框体层：透明内部的边框</text><g data-layer="frame" transform="translate(520 525)"><rect width="440" height="110" fill="none" stroke="#937953" stroke-dasharray="none" stroke-width="2"></rect></g></svg><figcaption class="rule">本图为纵向图层拆解，虚线界限是标注，不是最终素材。实际叠放顺序从背景到框体；框体内部透明。所有单道具实例保留四层，不合并为单张图。</figcaption><table><thead><tr><th>组件</th><th>复用页面</th><th>层编号</th><th>交付映射</th></tr></thead><tbody><tr><td>R01 奖励档位内道具</td><td>活动弹窗、处理中、失败反馈背景</td><td>R01-档位-道具序号-L1～L4</td><td class="rule">复用四层样式；更新名称数量，档位状态与领取按钮独立。</td></tr><tr><td>R02 成功奖励道具</td><td>领取成功列表</td><td>R02-道具序号-L1～L4</td><td class="rule">展示实际发放列表；多道具逐项复用，不改变领奖关闭交互。</td></tr><tr><td>R03 补发记录道具</td><td>测试邮件查看</td><td>R03-档位-道具序号-L1～L4</td><td class="rule">仅展示已补发奖励，不新增领取按钮。</td></tr></tbody></table></figure></div></article><article id="task-ART-003"><h2>ART-003 · 交付领取成功层与原因提示条基础表现</h2><p class="task-html-link"><a href="LOGIN-7-REDRAFT-PM/tasks/ART-003.html">打开独立任务 HTML：ART-003</a></p><p class="rule">角色：美术；前置依赖：<a href="#task-ART-001">ART-001</a></p><ul><li class="rule" style="white-space:pre-wrap">任务约定
+角色：Art。
+来源：v1.1源HTML的3.1视图四、五，O03、O04及各操作失败反馈，V01、V04—V06；DS-06、DS-09、DS-11、DS-12。
+范围：P03、R02列表及F01表现规范，不承担业务状态判断。
+前置产物：ART-001四层组件有效版本。
+交付物：建议 deliveries/LOGIN-7-REDRAFT/art/feedback/，包含成功层布局、长列表触屏说明、F01上浮消失预览和实现参数说明，待实施时映射。
+启动条件：共同门禁及ART-001交付满足。
+完成门禁：表现与操作标准一致，参数不冒充已批准固定数值，完成美术抽检。</li><li class="rule" style="white-space:pre-wrap">成功与失败互斥表现验收用例｜尚未执行
+前置条件：短列表、长列表及业务失败、结果未知文案齐备。
+操作与处理中：分别预览P03及F01，检查点击关闭区域和列表滚动区域。
+成功结果：P03包含规定标题、实际列表及退出小字，无确定按钮；F01为中央横向提示条，上浮后消失，不接收点击或阻塞界面。
+失败反馈：错误按钮、遮挡或遗漏动画作为缺陷反馈。
+异常恢复：修改后复核成功和失败互斥状态，不能增加恢复按钮。
+测试用例：T10、T17、T21表现前置检查；不制作成功特效、开关动画和音效。</li></ul><div class="task-wireframes"><h3>本任务对应线框与分层</h3><p class="rule">只交付本任务范围；周边区域作为来源上下文。</p><figure class="wire-step"><h3>视图四 · P03领取成功层 · 与失败反馈互斥</h3><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2000 1160" role="img" aria-label="领取成功窗口线框"><title>领取成功窗口，无确定按钮</title><rect x="4" y="4" width="1992" height="1152" rx="110" fill="#20252c"></rect><svg x="40" y="40" width="1920" height="1080" viewBox="0 0 1920 1080"><rect width="1920" height="1080" rx="80" fill="#cfd5dd"></rect><rect x="130" y="65" width="1660" height="905" rx="16" fill="none" stroke="#8793a1" stroke-width="3" stroke-dasharray="10 12"></rect><rect x="150" y="90" width="1620" height="850" rx="24" fill="#dce1e7" stroke="#7d8794"></rect><rect x="330" y="190" width="1260" height="660" rx="22" fill="white" stroke="#34404d" stroke-width="4"></rect><g font-family="Microsoft YaHei,Arial,sans-serif" fill="#34404d" text-anchor="middle"><text x="960" y="302" font-size="58">领取成功</text><text x="960" y="375" font-size="28">I05 实际发放的道具列表</text><text x="960" y="670" font-size="29">示例：第2档奖励已记入账号测试账本</text><text x="960" y="785" font-size="28">点击任意地方退出</text></g><path d="M0 335 H38 Q80 335 80 380 V700 Q80 745 38 745 H0 Z" fill="#20252c"></path><rect x="700" y="1020" width="520" height="12" rx="6" fill="#333b46"></rect><g data-reward="R02-1" transform="translate(620 430)"><g data-layer="background" data-layer-id="R02-1-L1"><rect width="680" height="150" rx="6" fill="#eef3f7"></rect></g><g data-layer="icon" data-layer-id="R02-1-L2"><rect x="9" y="9" width="58" height="58" fill="#dde6ef" stroke="#54758a" stroke-dasharray="4 3"></rect><path d="M38 15 L61 38 L38 61 L15 38 Z" fill="none" stroke="#54758a"></path></g><g data-layer="text" data-layer-id="R02-1-L3" fill="#34404d" text-anchor="start"><text x="76" y="67" font-size="31">测试币</text><text x="76" y="106" font-size="31">×12</text></g><g data-layer="frame" data-layer-id="R02-1-L4"><rect width="680" height="150" rx="6" fill="none" stroke="#937953" stroke-width="2"></rect></g></g></svg></svg><figcaption class="rule">P03仅在手动领取成功或权威查询确认该手动领取已发放后显示。C05为覆盖整个奖励层的点击关闭区域；点击道具、标题或遮罩均返回P02且不穿透。无确定按钮；列表按实际发放项目显示，超出可见范围时在列表区域触屏滚动。</figcaption><p class="layer-note rule">R02 道具框：L1背景（浅底）→ L2图标（虚线占位）→ L3文本（名称／数量）→ L4框体（透明描边）。层号仅用于交付标注，不进入游戏界面。</p></figure>
+<figure class="wire-step"><h3>视图五 · P02内的F01原因提示条 · 与成功层互斥</h3><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2000 1160" role="img" aria-label="失败及网络异常共用原因提示条线框"><title>无按钮原因提示条，从屏幕中央向上漂浮消失</title><rect x="4" y="4" width="1992" height="1152" rx="110" fill="#20252c"></rect><svg x="40" y="40" width="1920" height="1080" viewBox="0 0 1920 1080"><rect width="1920" height="1080" rx="80" fill="#eef0f3"></rect><rect x="130" y="65" width="1660" height="905" rx="16" fill="none" stroke="#a3adba" stroke-width="3" stroke-dasharray="10 12"></rect><rect x="150" y="90" width="1620" height="850" rx="24" fill="white" stroke="#34404d" stroke-width="4"></rect><g font-family="Microsoft YaHei,Arial,sans-serif" fill="#34404d"><text x="210" y="170" font-size="44">P02 七日累计登录</text><rect x="1570" y="120" width="150" height="72" rx="8" fill="#f0f2f4" stroke="#34404d"></rect><text x="1645" y="167" font-size="30" text-anchor="middle">C02 关闭</text><text x="210" y="270" font-size="32" class="rule">累计进度及七档状态按权威结果更新</text><g fill="#f0f2f4" stroke="#8793a1"><rect x="200" y="630" width="200" height="215"></rect><rect x="420" y="630" width="200" height="215"></rect><rect x="640" y="630" width="200" height="215"></rect><rect x="860" y="630" width="200" height="215"></rect><rect x="1080" y="630" width="200" height="215"></rect><rect x="1300" y="630" width="200" height="215"></rect><rect x="1520" y="630" width="200" height="215"></rect></g><g text-anchor="middle" font-size="29"><text x="300" y="674">第1档</text><text x="520" y="674">第2档</text><text x="740" y="674">第3档</text><text x="960" y="674">第4档</text><text x="1180" y="674">第5档</text><text x="1400" y="674">第6档</text><text x="1620" y="674">第7档</text></g><rect x="360" y="480" width="1200" height="120" rx="12" fill="#485461"></rect><text x="960" y="555" text-anchor="middle" font-size="38" fill="white">该档奖励尚未解锁</text><path d="M960 458 V375 M940 402 L960 375 L980 402" fill="none" stroke="#748497" stroke-width="5"></path><text x="1010" y="416" font-size="27">向上漂浮后消失</text><text x="210" y="906" font-size="28" class="rule">提示条无按钮、不接收点击、不阻塞关闭及查看</text></g><path d="M0 335 H38 Q80 335 80 380 V700 Q80 745 38 745 H0 Z" fill="#20252c"></path><rect x="700" y="1020" width="520" height="12" rx="6" fill="#333b46"></rect><g data-reward="R01-1-1" transform="translate(210 690)"><g data-layer="background" data-layer-id="R01-1-1-L1"><rect width="180" height="62" rx="6" fill="#eef3f7"></rect></g><g data-layer="icon" data-layer-id="R01-1-1-L2"><rect x="9" y="9" width="44" height="44" fill="#dde6ef" stroke="#54758a" stroke-dasharray="4 3"></rect><path d="M31 15 L47 31 L31 47 L15 31 Z" fill="none" stroke="#54758a"></path></g><g data-layer="text" data-layer-id="R01-1-1-L3" fill="#34404d" text-anchor="start"><text x="62" y="27" font-size="19">测试石</text><text x="62" y="50" font-size="19">×8</text></g><g data-layer="frame" data-layer-id="R01-1-1-L4"><rect width="180" height="62" rx="6" fill="none" stroke="#937953" stroke-width="2"></rect></g></g><g data-reward="R01-1-2" transform="translate(210 762)"><g data-layer="background" data-layer-id="R01-1-2-L1"><rect width="180" height="62" rx="6" fill="#eef3f7"></rect></g><g data-layer="icon" data-layer-id="R01-1-2-L2"><rect x="9" y="9" width="44" height="44" fill="#dde6ef" stroke="#54758a" stroke-dasharray="4 3"></rect><path d="M31 15 L47 31 L31 47 L15 31 Z" fill="none" stroke="#54758a"></path></g><g data-layer="text" data-layer-id="R01-1-2-L3" fill="#34404d" text-anchor="start"><text x="62" y="27" font-size="19">测试币</text><text x="62" y="50" font-size="19">×6</text></g><g data-layer="frame" data-layer-id="R01-1-2-L4"><rect width="180" height="62" rx="6" fill="none" stroke="#937953" stroke-width="2"></rect></g></g><g data-reward="R01-2-1" transform="translate(430 690)"><g data-layer="background" data-layer-id="R01-2-1-L1"><rect width="180" height="62" rx="6" fill="#eef3f7"></rect></g><g data-layer="icon" data-layer-id="R01-2-1-L2"><rect x="9" y="9" width="44" height="44" fill="#dde6ef" stroke="#54758a" stroke-dasharray="4 3"></rect><path d="M31 15 L47 31 L31 47 L15 31 Z" fill="none" stroke="#54758a"></path></g><g data-layer="text" data-layer-id="R01-2-1-L3" fill="#34404d" text-anchor="start"><text x="62" y="27" font-size="19">测试币</text><text x="62" y="50" font-size="19">×12</text></g><g data-layer="frame" data-layer-id="R01-2-1-L4"><rect width="180" height="62" rx="6" fill="none" stroke="#937953" stroke-width="2"></rect></g></g><g data-reward="R01-3-1" transform="translate(650 690)"><g data-layer="background" data-layer-id="R01-3-1-L1"><rect width="180" height="62" rx="6" fill="#eef3f7"></rect></g><g data-layer="icon" data-layer-id="R01-3-1-L2"><rect x="9" y="9" width="44" height="44" fill="#dde6ef" stroke="#54758a" stroke-dasharray="4 3"></rect><path d="M31 15 L47 31 L31 47 L15 31 Z" fill="none" stroke="#54758a"></path></g><g data-layer="text" data-layer-id="R01-3-1-L3" fill="#34404d" text-anchor="start"><text x="62" y="27" font-size="19">测试石</text><text x="62" y="50" font-size="19">×12</text></g><g data-layer="frame" data-layer-id="R01-3-1-L4"><rect width="180" height="62" rx="6" fill="none" stroke="#937953" stroke-width="2"></rect></g></g><g data-reward="R01-4-1" transform="translate(870 690)"><g data-layer="background" data-layer-id="R01-4-1-L1"><rect width="180" height="62" rx="6" fill="#eef3f7"></rect></g><g data-layer="icon" data-layer-id="R01-4-1-L2"><rect x="9" y="9" width="44" height="44" fill="#dde6ef" stroke="#54758a" stroke-dasharray="4 3"></rect><path d="M31 15 L47 31 L31 47 L15 31 Z" fill="none" stroke="#54758a"></path></g><g data-layer="text" data-layer-id="R01-4-1-L3" fill="#34404d" text-anchor="start"><text x="62" y="27" font-size="19">测试币</text><text x="62" y="50" font-size="19">×18</text></g><g data-layer="frame" data-layer-id="R01-4-1-L4"><rect width="180" height="62" rx="6" fill="none" stroke="#937953" stroke-width="2"></rect></g></g><g data-reward="R01-5-1" transform="translate(1090 690)"><g data-layer="background" data-layer-id="R01-5-1-L1"><rect width="180" height="62" rx="6" fill="#eef3f7"></rect></g><g data-layer="icon" data-layer-id="R01-5-1-L2"><rect x="9" y="9" width="44" height="44" fill="#dde6ef" stroke="#54758a" stroke-dasharray="4 3"></rect><path d="M31 15 L47 31 L31 47 L15 31 Z" fill="none" stroke="#54758a"></path></g><g data-layer="text" data-layer-id="R01-5-1-L3" fill="#34404d" text-anchor="start"><text x="62" y="27" font-size="19">测试石</text><text x="62" y="50" font-size="19">×16</text></g><g data-layer="frame" data-layer-id="R01-5-1-L4"><rect width="180" height="62" rx="6" fill="none" stroke="#937953" stroke-width="2"></rect></g></g><g data-reward="R01-6-1" transform="translate(1310 690)"><g data-layer="background" data-layer-id="R01-6-1-L1"><rect width="180" height="62" rx="6" fill="#eef3f7"></rect></g><g data-layer="icon" data-layer-id="R01-6-1-L2"><rect x="9" y="9" width="44" height="44" fill="#dde6ef" stroke="#54758a" stroke-dasharray="4 3"></rect><path d="M31 15 L47 31 L31 47 L15 31 Z" fill="none" stroke="#54758a"></path></g><g data-layer="text" data-layer-id="R01-6-1-L3" fill="#34404d" text-anchor="start"><text x="62" y="27" font-size="19">测试币</text><text x="62" y="50" font-size="19">×24</text></g><g data-layer="frame" data-layer-id="R01-6-1-L4"><rect width="180" height="62" rx="6" fill="none" stroke="#937953" stroke-width="2"></rect></g></g><g data-reward="R01-7-1" transform="translate(1530 690)"><g data-layer="background" data-layer-id="R01-7-1-L1"><rect width="180" height="62" rx="6" fill="#eef3f7"></rect></g><g data-layer="icon" data-layer-id="R01-7-1-L2"><rect x="9" y="9" width="44" height="44" fill="#dde6ef" stroke="#54758a" stroke-dasharray="4 3"></rect><path d="M31 15 L47 31 L31 47 L15 31 Z" fill="none" stroke="#54758a"></path></g><g data-layer="text" data-layer-id="R01-7-1-L3" fill="#34404d" text-anchor="start"><text x="62" y="27" font-size="19">测试石</text><text x="62" y="50" font-size="19">×20</text></g><g data-layer="frame" data-layer-id="R01-7-1-L4"><rect width="180" height="62" rx="6" fill="none" stroke="#937953" stroke-width="2"></rect></g></g><g data-reward="R01-7-2" transform="translate(1530 762)"><g data-layer="background" data-layer-id="R01-7-2-L1"><rect width="180" height="62" rx="6" fill="#eef3f7"></rect></g><g data-layer="icon" data-layer-id="R01-7-2-L2"><rect x="9" y="9" width="44" height="44" fill="#dde6ef" stroke="#54758a" stroke-dasharray="4 3"></rect><path d="M31 15 L47 31 L31 47 L15 31 Z" fill="none" stroke="#54758a"></path></g><g data-layer="text" data-layer-id="R01-7-2-L3" fill="#34404d" text-anchor="start"><text x="62" y="27" font-size="19">测试币</text><text x="62" y="50" font-size="19">×30</text></g><g data-layer="frame" data-layer-id="R01-7-2-L4"><rect width="180" height="62" rx="6" fill="none" stroke="#937953" stroke-width="2"></rect></g></g></svg></svg><figcaption class="rule">此图为P02上的反馈覆盖层，原奖励内容保持显示。明确失败显示实际原因；网络异常使用同一F01，文案可为“网络异常，领取结果确认中”。箭头是线框说明，不是游戏控件。系统恢复网络后自动查询，不出现独立网络页面或重试按钮。</figcaption><p class="layer-note rule">R01 道具框：L1背景（浅底）→ L2图标（虚线占位）→ L3文本（名称／数量）→ L4框体（透明描边）。层号仅用于交付标注，不进入游戏界面。</p></figure>
+<figure class="wire-step layer-spec"><h3 id="report-ART-003-reward-layers">奖励道具框 · 四层结构与编号</h3><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 720" role="img" aria-label="奖励道具框四层纵向拆解"><title>从底到顶，四层独立交付</title><text x="25" y="65" font-size="24" fill="#b42318">L1 背景层：底色／底图</text><g data-layer="background" transform="translate(520 30)"><rect width="440" height="110" fill="#eef3f7" stroke="#a3adba" stroke-dasharray="6 4" stroke-width="2"></rect></g><path d="M740 152 V185 M730 174 L740 185 L750 174" fill="none" stroke="#687887" stroke-width="3"></path><text x="25" y="230" font-size="24" fill="#b42318">L2 图标层：道具图标／占位图</text><g data-layer="icon" transform="translate(520 195)"><rect width="440" height="110" fill="none" stroke="#a3adba" stroke-dasharray="6 4" stroke-width="2"></rect><rect x="20" y="24" width="62" height="62" fill="#dde6ef" stroke="#54758a"></rect></g><path d="M740 317 V350 M730 339 L740 350 L750 339" fill="none" stroke="#687887" stroke-width="3"></path><text x="25" y="395" font-size="24" fill="#b42318">L3 文本层：名称、数量</text><g data-layer="text" transform="translate(520 360)"><rect width="440" height="110" fill="none" stroke="#a3adba" stroke-dasharray="6 4" stroke-width="2"></rect><text x="110" y="65" font-size="26" fill="#34404d">测试币 ×12</text></g><path d="M740 482 V515 M730 504 L740 515 L750 504" fill="none" stroke="#687887" stroke-width="3"></path><text x="25" y="560" font-size="24" fill="#b42318">L4 框体层：透明内部的边框</text><g data-layer="frame" transform="translate(520 525)"><rect width="440" height="110" fill="none" stroke="#937953" stroke-dasharray="none" stroke-width="2"></rect></g></svg><figcaption class="rule">本图为纵向图层拆解，虚线界限是标注，不是最终素材。实际叠放顺序从背景到框体；框体内部透明。所有单道具实例保留四层，不合并为单张图。</figcaption><table><thead><tr><th>组件</th><th>复用页面</th><th>层编号</th><th>交付映射</th></tr></thead><tbody><tr><td>R01 奖励档位内道具</td><td>活动弹窗、处理中、失败反馈背景</td><td>R01-档位-道具序号-L1～L4</td><td class="rule">复用四层样式；更新名称数量，档位状态与领取按钮独立。</td></tr><tr><td>R02 成功奖励道具</td><td>领取成功列表</td><td>R02-道具序号-L1～L4</td><td class="rule">展示实际发放列表；多道具逐项复用，不改变领奖关闭交互。</td></tr><tr><td>R03 补发记录道具</td><td>测试邮件查看</td><td>R03-档位-道具序号-L1～L4</td><td class="rule">仅展示已补发奖励，不新增领取按钮。</td></tr></tbody></table></figure></div></article><article id="task-ART-004"><h2>ART-004 · 交付测试邮件记录只读页面占位布局</h2><p class="task-html-link"><a href="LOGIN-7-REDRAFT-PM/tasks/ART-004.html">打开独立任务 HTML：ART-004</a></p><p class="rule">角色：美术；前置依赖：<a href="#task-ART-001">ART-001</a></p><ul><li class="rule" style="white-space:pre-wrap">任务约定
+角色：Art。
+来源：v1.1源HTML的3.1视图六、3.3、O06、V01、V02；DS-08—DS-10、DS-12。
+范围：P04、C06、I06/I07与R03，只提供查看与触屏滚动布局。
+前置产物：ART-001四层组件有效版本。
+交付物：建议 deliveries/LOGIN-7-REDRAFT/art/record-layout/，包含页面、各查询状态及长列表预览，待实施时映射。
+启动条件：共同门禁及ART-001交付满足。
+完成门禁：状态完整、无领取控件、完成美术抽检。</li><li class="rule" style="white-space:pre-wrap">记录布局验收用例｜尚未执行
+前置条件：具备多档多道具记录及无记录示例。
+操作与处理中：预览加载、有效期无记录、无需补发、结算中、就绪及保留旧查询结果状态。
+成功结果：记录编号、时间、时区、档位来源、数量可读；列表可触屏滚动，C06始终可用，R03各道具保持四层。
+失败反馈：查询异常采用共用F01位置，不增加异常页面、重试或领奖按钮。
+异常恢复：旧内容具有“上次查询结果”标记位置，恢复后能替换内容。
+测试用例：T13、T14、T17、T21布局前置检查。</li></ul><div class="task-wireframes"><h3>本任务对应线框与分层</h3><p class="rule">只交付本任务范围；周边区域作为来源上下文。</p><figure class="wire-step"><h3>视图六 · P04测试邮件记录 · 从C04进入，C06返回P02</h3><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2000 1160" role="img" aria-label="测试邮件记录查看线框"><title>到期测试邮件记录，仅查看，不再次发奖</title><rect x="4" y="4" width="1992" height="1152" rx="110" fill="#20252c"></rect><svg x="40" y="40" width="1920" height="1080" viewBox="0 0 1920 1080"><rect width="1920" height="1080" rx="80" fill="#eef0f3"></rect><rect x="130" y="65" width="1660" height="905" rx="16" fill="none" stroke="#a3adba" stroke-width="3" stroke-dasharray="10 12"></rect><rect x="150" y="90" width="1620" height="850" rx="24" fill="white" stroke="#34404d" stroke-width="4"></rect><g font-family="Microsoft YaHei,Arial,sans-serif" fill="#34404d"><text x="210" y="170" font-size="44">P04 测试邮件记录</text><rect x="1570" y="120" width="150" height="72" rx="8" fill="#f0f2f4" stroke="#34404d"></rect><text x="1645" y="167" font-size="30" text-anchor="middle">C06 返回</text><text x="210" y="270" font-size="34">七日累计登录到期补发 · 已补发</text><text x="210" y="330" font-size="28">I06 记录编号、结算时间及锁定时区由服务器返回</text><rect x="210" y="385" width="1500" height="360" rx="12" fill="#f5f6f8" stroke="#8793a1"></rect><text x="260" y="447" font-size="31">I07 实际补发内容（示例）</text><text x="260" y="692" font-size="27">更多内容在此区域触屏滚动</text><text x="210" y="825" font-size="29" class="rule">奖励已记入测试账本；本页仅查看，没有领取按钮</text><text x="210" y="880" font-size="27" class="rule">独立查看分支，不要求先经过领取成功或失败</text></g><path d="M0 335 H38 Q80 335 80 380 V700 Q80 745 38 745 H0 Z" fill="#20252c"></path><rect x="700" y="1020" width="520" height="12" rx="6" fill="#333b46"></rect><g data-reward="R03-2" transform="translate(260 472)"><g data-layer="background" data-layer-id="R03-2-L1"><rect width="650" height="72" rx="6" fill="#eef3f7"></rect></g><g data-layer="icon" data-layer-id="R03-2-L2"><rect x="9" y="9" width="54" height="54" fill="#dde6ef" stroke="#54758a" stroke-dasharray="4 3"></rect><path d="M36 15 L57 36 L36 57 L15 36 Z" fill="none" stroke="#54758a"></path></g><g data-layer="text" data-layer-id="R03-2-L3" fill="#34404d" text-anchor="start"><text x="72" y="27" font-size="31">第2档 · 测试币</text><text x="72" y="50" font-size="31">×12</text></g><g data-layer="frame" data-layer-id="R03-2-L4"><rect width="650" height="72" rx="6" fill="none" stroke="#937953" stroke-width="2"></rect></g></g><g data-reward="R03-3" transform="translate(260 568)"><g data-layer="background" data-layer-id="R03-3-L1"><rect width="650" height="72" rx="6" fill="#eef3f7"></rect></g><g data-layer="icon" data-layer-id="R03-3-L2"><rect x="9" y="9" width="54" height="54" fill="#dde6ef" stroke="#54758a" stroke-dasharray="4 3"></rect><path d="M36 15 L57 36 L36 57 L15 36 Z" fill="none" stroke="#54758a"></path></g><g data-layer="text" data-layer-id="R03-3-L3" fill="#34404d" text-anchor="start"><text x="72" y="27" font-size="31">第3档 · 测试石</text><text x="72" y="50" font-size="31">×12</text></g><g data-layer="frame" data-layer-id="R03-3-L4"><rect width="650" height="72" rx="6" fill="none" stroke="#937953" stroke-width="2"></rect></g></g></svg></svg><figcaption class="rule">示例为到期累计3天、第1档已手动领取，第2、3档由结算补发。加载、空记录、结算中、成功及查询异常状态见3.3节；异常仍使用F01，不增设操作。返回P02时查询最新活动状态。</figcaption><p class="layer-note rule">R03 道具框：L1背景（浅底）→ L2图标（虚线占位）→ L3文本（名称／数量）→ L4框体（透明描边）。层号仅用于交付标注，不进入游戏界面。</p></figure>
+<figure class="wire-step layer-spec"><h3 id="report-ART-004-reward-layers">奖励道具框 · 四层结构与编号</h3><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 720" role="img" aria-label="奖励道具框四层纵向拆解"><title>从底到顶，四层独立交付</title><text x="25" y="65" font-size="24" fill="#b42318">L1 背景层：底色／底图</text><g data-layer="background" transform="translate(520 30)"><rect width="440" height="110" fill="#eef3f7" stroke="#a3adba" stroke-dasharray="6 4" stroke-width="2"></rect></g><path d="M740 152 V185 M730 174 L740 185 L750 174" fill="none" stroke="#687887" stroke-width="3"></path><text x="25" y="230" font-size="24" fill="#b42318">L2 图标层：道具图标／占位图</text><g data-layer="icon" transform="translate(520 195)"><rect width="440" height="110" fill="none" stroke="#a3adba" stroke-dasharray="6 4" stroke-width="2"></rect><rect x="20" y="24" width="62" height="62" fill="#dde6ef" stroke="#54758a"></rect></g><path d="M740 317 V350 M730 339 L740 350 L750 339" fill="none" stroke="#687887" stroke-width="3"></path><text x="25" y="395" font-size="24" fill="#b42318">L3 文本层：名称、数量</text><g data-layer="text" transform="translate(520 360)"><rect width="440" height="110" fill="none" stroke="#a3adba" stroke-dasharray="6 4" stroke-width="2"></rect><text x="110" y="65" font-size="26" fill="#34404d">测试币 ×12</text></g><path d="M740 482 V515 M730 504 L740 515 L750 504" fill="none" stroke="#687887" stroke-width="3"></path><text x="25" y="560" font-size="24" fill="#b42318">L4 框体层：透明内部的边框</text><g data-layer="frame" transform="translate(520 525)"><rect width="440" height="110" fill="none" stroke="#937953" stroke-dasharray="none" stroke-width="2"></rect></g></svg><figcaption class="rule">本图为纵向图层拆解，虚线界限是标注，不是最终素材。实际叠放顺序从背景到框体；框体内部透明。所有单道具实例保留四层，不合并为单张图。</figcaption><table><thead><tr><th>组件</th><th>复用页面</th><th>层编号</th><th>交付映射</th></tr></thead><tbody><tr><td>R01 奖励档位内道具</td><td>活动弹窗、处理中、失败反馈背景</td><td>R01-档位-道具序号-L1～L4</td><td class="rule">复用四层样式；更新名称数量，档位状态与领取按钮独立。</td></tr><tr><td>R02 成功奖励道具</td><td>领取成功列表</td><td>R02-道具序号-L1～L4</td><td class="rule">展示实际发放列表；多道具逐项复用，不改变领奖关闭交互。</td></tr><tr><td>R03 补发记录道具</td><td>测试邮件查看</td><td>R03-档位-道具序号-L1～L4</td><td class="rule">仅展示已补发奖励，不新增领取按钮。</td></tr></tbody></table></figure></div></article><article id="task-DEV-001"><h2>DEV-001 · 交付账号活动与发放查询的公共接口契约</h2><p class="task-html-link"><a href="LOGIN-7-REDRAFT-PM/tasks/DEV-001.html">打开独立任务 HTML：DEV-001</a></p><p class="rule">角色：程序；前置依赖：无</p><ul><li class="rule" style="white-space:pre-wrap">任务约定
+角色：Development。
+来源：v1.1源HTML的3.2、3.3、O01—O06及附录三；DS-01、DS-13。
+范围：定义配置版本、账号活动、日期事实、快照、发放、结算、记录及查询结果契约，明确各实现任务的接口所有权；不选择技术栈或实现完整业务。
+前置产物：无。
+交付物：建议 deliveries/LOGIN-7-REDRAFT/contracts/，包含接口、数据模型、状态转换和事务边界说明，待实施时映射。
+启动条件：正式实施工程及接口边界已映射，共同门禁满足。
+完成门禁：契约可供下游直接使用，附录三各持久化数据有明确归属；涉及自有C#时遵守GameCLI编码规范。</li><li class="rule" style="white-space:pre-wrap">公共契约一致性验收用例｜尚未执行
+前置条件：对照O01—O06和附录三。
+操作与处理中：逐项推演开启、日期去重、手动发放、查询未知结果、到期竞争及记录查看。
+成功结果：明确当前账号权限、唯一实例、档位唯一归属、完整奖励原子提交、原结果重放和查询状态；能区分未建立、未发放、未知、失败、结算中与无记录。
+失败反馈：无法表达的来源规则必须报告契约缺陷，不能由使用方私下补约定。
+异常恢复：契约变更需版本化并重新检查所有消费者。
+测试用例：接口覆盖审查及T22契约检查，QA-007最终核验。</li></ul></article><article id="task-DEV-002"><h2>DEV-002 · 交付七档配置整批校验与不可变快照数据</h2><p class="task-html-link"><a href="LOGIN-7-REDRAFT-PM/tasks/DEV-002.html">打开独立任务 HTML：DEV-002</a></p><p class="rule">角色：程序；前置依赖：<a href="#task-DEV-001">DEV-001</a></p><ul><li class="rule" style="white-space:pre-wrap">任务约定
+角色：Development。
+来源：v1.1源HTML的3.2.1—3.2.3、附录三；DS-01、DS-02。
+范围：两表解析、校验、有效版本切换及快照生成读取能力；活动绑定事务由DEV-003负责。
+前置产物：DEV-001配置与快照契约。
+交付物：建议 deliveries/LOGIN-7-REDRAFT/config/，包含最小测试工作簿、错误样本、解析校验代码、版本及快照模块和检查报告，待实施时映射。
+启动条件：共同门禁及DEV-001完成。
+完成门禁：目标工程构建与配置检查完成，保留测试证据；自有C#符合编码规范。</li><li class="rule" style="white-space:pre-wrap">配置校验与版本保留验收用例｜尚未执行
+前置条件：准备3.2最小示例及错误变体。
+操作与处理中：加载或发布完整工作簿，校验两表、主键、七档集合、列表语法、两项int、外键、正数、非空名称和累计溢出。
+成功结果：整批通过才原子生效；重复道具保留条目顺序，快照含完整奖励及名称；不把运行数据写进配置。
+失败反馈：整批拒绝并报告表、行、字段、原因，保留上一有效版本；无有效版本明确返回不可开启原因。
+异常恢复：快照损坏停止提供可发放数据，恢复原快照后可核对，禁止替换为最新配置。
+测试用例：T18、T19及T20配置部分，包含配置类型标记与实际C#类型、单项列表和版本切换。</li></ul></article><article id="task-DEV-003"><h2>DEV-003 · 交付账号唯一活动与自然日累计进度</h2><p class="task-html-link"><a href="LOGIN-7-REDRAFT-PM/tasks/DEV-003.html">打开独立任务 HTML：DEV-003</a></p><p class="rule">角色：程序；前置依赖：<a href="#task-DEV-001">DEV-001</a>、<a href="#task-DEV-002">DEV-002</a></p><ul><li class="rule" style="white-space:pre-wrap">任务约定
+角色：Development。
+来源：v1.1源HTML的2.1、3.2.3、O01、O02、附录三；DS-02—DS-04。
+范围：首次进入原子建实例并绑定快照、共享查询、日期计数和截止冻结；不负责奖励记账或界面。
+前置产物：DEV-001活动契约、DEV-002有效配置与快照能力。
+交付物：建议 deliveries/LOGIN-7-REDRAFT/logic/activity/，包含活动、日期计算、在线跨日接入代码及验证报告，待实施时映射。
+启动条件：共同门禁、前置交付及实际账号和在线事件接口映射完成。
+完成门禁：构建、账号并发及可控时间验证有证据，自有C#符合编码规范。</li><li class="rule" style="white-space:pre-wrap">首次开启与未知结果恢复验收用例｜尚未执行
+前置条件：未开启账号、有效配置，并准备失效登录及无配置场景。
+操作与处理中：进入主界面、并发首次进入、切换角色设备、模拟开启响应丢失。
+成功结果：只有进入活动才原子建立唯一实例和快照，当日计1天；账号共享且不再开启第二轮。
+失败反馈：未建立不消耗机会，返回准确原因供F01展示。
+异常恢复：先查询是否建立，未建立才允许同一开启意图完成；快照损坏保留原状态并等待原快照恢复。
+测试用例：T01、T02、T03、T18、T20。</li><li class="rule" style="white-space:pre-wrap">自然日期计数与边界验收用例｜尚未执行
+前置条件：已开启活动，使用可控服务器时间及锁定地区时区。
+操作与处理中：登录、持续在线跨日、重复事件、漏登、设备改时及跨夏令时日期。
+成功结果：固定实例日界线及截止结果，按自然日期去重，漏登不追溯，最多7天；D至D+13有效，D+14的00:00到期冻结，不按336小时推算。
+失败反馈：同日、上限和到期为正常状态；真实同步错误返回准确原因。
+异常恢复：按权威在线与登录事实核对，不用客户端时钟补记离线日期。
+测试用例：T03—T07及附录三时区规则约束。</li></ul></article><article id="task-DEV-004"><h2>DEV-004 · 交付完整奖励原子记账与手动领取幂等恢复</h2><p class="task-html-link"><a href="LOGIN-7-REDRAFT-PM/tasks/DEV-004.html">打开独立任务 HTML：DEV-004</a></p><p class="rule">角色：程序；前置依赖：<a href="#task-DEV-001">DEV-001</a>、<a href="#task-DEV-002">DEV-002</a>、<a href="#task-DEV-003">DEV-003</a></p><ul><li class="rule" style="white-space:pre-wrap">任务约定
+角色：Development。
+来源：v1.1源HTML的2.2、O03、O04、附录三；DS-02、DS-05。
+范围：统一档位发放原语、测试账本、手动请求裁定、原结果重放及权威查询；到期批次与邮件由DEV-005负责。
+前置产物：DEV-001发放契约、DEV-002快照、DEV-003活动和截止结果。
+交付物：建议 deliveries/LOGIN-7-REDRAFT/logic/rewards/，包含发放、账本、查询代码与并发中断验证报告，待实施时映射。
+启动条件：共同门禁及所有前置完成。
+完成门禁：完整提交、唯一发放及原结果恢复有证据，自有C#符合编码规范；不接正式经济。</li><li class="rule" style="white-space:pre-wrap">手动领取与重复请求验收用例｜尚未执行
+前置条件：准备未解锁、可领、已领及快照损坏档位。
+操作与处理中：非顺序领取、多会话并发、重放原请求，使用多奖励和重复道具列表。
+成功结果：全部条目完整记账，单档只有一种发放归属；原请求返回原成功列表，独立重复请求不发奖；列表顺序和账本汇总准确。
+失败反馈：返回未解锁、已领取、到期或快照不可用的准确原因，无部分奖励提交。
+异常恢复：响应未知只查询原请求及档位；确认未发放且有效才允许恢复普通领取，查询失败保持未知，已补发不能伪装为手动成功。
+测试用例：T08、T09、T11、T16、T19、T20；T12、T15的跨结算部分由QA-004联合验证。</li></ul></article><article id="task-DEV-005"><h2>DEV-005 · 交付可恢复到期补发与账号只读测试记录</h2><p class="task-html-link"><a href="LOGIN-7-REDRAFT-PM/tasks/DEV-005.html">打开独立任务 HTML：DEV-005</a></p><p class="rule">角色：程序；前置依赖：<a href="#task-DEV-001">DEV-001</a>、<a href="#task-DEV-002">DEV-002</a>、<a href="#task-DEV-003">DEV-003</a>、<a href="#task-DEV-004">DEV-004</a></p><ul><li class="rule" style="white-space:pre-wrap">任务约定
+角色：Development。
+来源：v1.1源HTML的2.2、O05、O06、附录三；DS-02、DS-07、DS-08。
+范围：系统到期触发、结算恢复、唯一测试邮件及当前账号查询；使用DEV-004发放原语，不复制发奖实现。
+前置产物：DEV-001契约、DEV-002快照、DEV-003截止与进度、DEV-004统一发放及账本。
+交付物：建议 deliveries/LOGIN-7-REDRAFT/logic/settlement/，包含结算、测试记录查询代码和事务恢复报告，待实施时映射。
+启动条件：共同门禁、前置交付及系统到期触发接入明确。
+完成门禁：离线到期、竞争、中断恢复及账号权限均有证据，自有C#符合编码规范；不建设正式邮件系统。</li><li class="rule" style="white-space:pre-wrap">到期结算及竞争恢复验收用例｜尚未执行
+前置条件：可控时间，准备部分领取、全部领取及快照异常实例。
+操作与处理中：账号离线经过到期，领取与结算并发，模拟提交前中断及提交后结果丢失。
+成功结果：按服务器原子裁定确定归属；仅补已解锁未发放档，每实例最多一条记录，按档位及Rewards顺序显示，无空记录。
+失败反馈：未完成保持结算中，不提前标记补发；查看时返回供F01显示的准确原因。
+异常恢复：先核对持久结果，再恢复同一结算，账本、档位和记录一致；快照恢复后使用原版本，不重复发放。
+测试用例：T07、T12—T15、T20。</li><li class="rule" style="white-space:pre-wrap">只读记录权限验收用例｜尚未执行
+前置条件：当前账号分别有记录、无记录及结算中实例。
+操作与处理中：重复查询并尝试使用其他账号的记录编号。
+成功结果：准确区分无记录、结算中、就绪和查询异常，返回历史实际名称、数量和时区；查询不写奖励账本。
+失败反馈：越权或不可用返回明确拒绝或错误，不伪装为空记录。
+异常恢复：查询恢复读取同一权威记录，不新建记录或发奖。
+测试用例：T13、T14、T17、T20、T22记录接口部分及附录三账号隔离检查。</li></ul></article><article id="task-DEV-006"><h2>DEV-006 · 交付成功奖励层与不阻塞交互的原因提示条组件</h2><p class="task-html-link"><a href="LOGIN-7-REDRAFT-PM/tasks/DEV-006.html">打开独立任务 HTML：DEV-006</a></p><p class="rule">角色：程序；前置依赖：<a href="#task-ART-001">ART-001</a>、<a href="#task-ART-003">ART-003</a>、<a href="#task-DEV-001">DEV-001</a></p><ul><li class="rule" style="white-space:pre-wrap">任务约定
+角色：Development。
+来源：v1.1源HTML的P03、F01、R02、O03、O04、V04；DS-06、DS-09、DS-11、DS-12。
+范围：可复用反馈组件及触屏事件消费，不决定发奖或业务恢复结果。
+前置产物：ART-001四层组件、ART-003反馈表现、DEV-001反馈数据契约。
+交付物：建议 deliveries/LOGIN-7-REDRAFT/ui/feedback/，包含实际运行组件、资源及交互检查报告，待实施时映射。
+启动条件：共同门禁、美术抽检及前置交付完成。
+完成门禁：目标运行环境构建和真实触屏检查有证据，自有C#符合编码规范。</li><li class="rule" style="white-space:pre-wrap">成功层关闭与提示条表现验收用例｜尚未执行
+前置条件：使用契约样本驱动短长奖励列表和失败、未知文案。
+操作与处理中：打开P03，点击标题、道具和遮罩，拖动长列表；另触发F01。
+成功结果：R02逐项四层；规定文案完整，无确定按钮；点击关闭且不穿透，拖动只滚动；F01中央出现、上浮消失、无按钮且不接收点击。
+失败反馈：业务原因由调用方提供，组件不将未知改为失败，不自建网络弹窗。
+异常恢复：重复关闭合并，组件展示隐藏均不调用发奖；成功与失败反馈互斥。
+测试用例：T10、T17、T21组件部分；不新增开关、成功动画或音效。</li></ul></article><article id="task-DEV-007"><h2>DEV-007 · 交付活动触屏页面与领取状态恢复</h2><p class="task-html-link"><a href="LOGIN-7-REDRAFT-PM/tasks/DEV-007.html">打开独立任务 HTML：DEV-007</a></p><p class="rule">角色：程序；前置依赖：<a href="#task-ART-001">ART-001</a>、<a href="#task-ART-002">ART-002</a>、<a href="#task-DEV-001">DEV-001</a>、<a href="#task-DEV-003">DEV-003</a>、<a href="#task-DEV-004">DEV-004</a>、<a href="#task-DEV-005">DEV-005</a>、<a href="#task-DEV-006">DEV-006</a></p><ul><li class="rule" style="white-space:pre-wrap">任务约定
+角色：Development。
+来源：v1.1源HTML的P01、P02、R01、I01—I05、O01—O05；DS-03—DS-07、DS-09—DS-12。
+范围：活动入口、七档页面、领取与后台结果呈现、红点、C04导航事件；记录页面由DEV-008负责。
+前置产物：ART-001组件、ART-002布局，DEV-001契约、DEV-003活动、DEV-004领取、DEV-005结算状态、DEV-006反馈组件。
+交付物：建议 deliveries/LOGIN-7-REDRAFT/ui/activity/，包含页面、资源接入、状态控制代码及功能检查报告，待实施时映射。
+启动条件：共同门禁、前置有效交付及美术抽检完成。
+完成门禁：目标构建、移动触屏及恢复检查有证据，记录所用美术版本，自有C#符合编码规范。</li><li class="rule" style="white-space:pre-wrap">开启、进度与红点验收用例｜尚未执行
+前置条件：准备未开启、进行中、全部领取、结算中及已结束账号。
+操作与处理中：点击C01、重复进入、在线跨日及关闭重进。
+成功结果：初始只显示已定义加载信息；权威返回后完整七档和R01四层、时间时区及状态；仅确认可手动领取档贡献红点，不自动弹窗。
+失败反馈：登录、配置和查询异常经F01显示准确原因，未核实不猜测成功或日期。
+异常恢复：网络恢复及重进自动查询；结束仍可查看原实例，不启动第二轮。
+测试用例：T01—T07、T17、T18、T20、T21界面部分。</li><li class="rule" style="white-space:pre-wrap">领取、关闭与后台结果恢复验收用例｜尚未执行
+前置条件：存在可领取档及可延迟的请求响应。
+操作与处理中：点击C03后禁用所有领取按钮，目标显示领取中；C02、C04仍可用。关闭页面后让响应到达，再次进入。
+成功结果：显示实际成功列表并更新红点；P01不自动弹层，重进恢复尚未展示的原手动成功结果，关闭不撤销请求。
+失败反馈：准确业务原因用F01；未知显示确认中，不能宣称失败或新增重试入口。
+异常恢复：只查询原请求；未发放且有效才恢复领取，已补发显示补发归属，连续查询失败不放行。重复展示与关闭不发奖。
+测试用例：T08—T12、T15、T16、T17、T21；覆盖O04不穿透及本地关闭不依赖网络。</li></ul></article><article id="task-DEV-008"><h2>DEV-008 · 交付测试补发记录查看与触屏返回闭环</h2><p class="task-html-link"><a href="LOGIN-7-REDRAFT-PM/tasks/DEV-008.html">打开独立任务 HTML：DEV-008</a></p><p class="rule">角色：程序；前置依赖：<a href="#task-ART-001">ART-001</a>、<a href="#task-ART-004">ART-004</a>、<a href="#task-DEV-001">DEV-001</a>、<a href="#task-DEV-005">DEV-005</a>、<a href="#task-DEV-006">DEV-006</a>、<a href="#task-DEV-007">DEV-007</a></p><ul><li class="rule" style="white-space:pre-wrap">任务约定
+角色：Development。
+来源：v1.1源HTML的P04、R03、C04、C06、I06/I07、O06；DS-08—DS-12。
+范围：P04查询呈现、滚动、返回及活动状态同步，不实现发奖。
+前置产物：ART-001组件、ART-004记录布局，DEV-001契约、DEV-005记录查询、DEV-006原因提示条、DEV-007活动页面导航与刷新入口。
+交付物：建议 deliveries/LOGIN-7-REDRAFT/ui/records/，包含页面、资源及查看返回检查报告，待实施时映射。
+启动条件：共同门禁、前置有效交付及美术抽检完成。
+完成门禁：目标构建、移动运行及无发奖副作用检查有证据，记录美术版本，自有C#符合编码规范。</li><li class="rule" style="white-space:pre-wrap">记录查询、滚动和返回验收用例｜尚未执行
+前置条件：准备有效期无记录、到期无需补发、结算中及多档长记录账号。
+操作与处理中：从C04重复进入，加载时返回，滚动长列表，再通过C06返回P02。
+成功结果：I06/I07展示权威实际记录，R03逐项四层；不同无记录原因正确，返回同步最新活动状态；滚动不导航，全程无领奖按钮和发奖调用。
+失败反馈：查询失败由F01提示，不能变为空记录，C06始终可用。
+异常恢复：已加载内容保留并标记上次查询结果，恢复网络或重进自动查询；返回和滚动不依赖网络，重复导航合并。
+测试用例：T13、T14、T17、T21、T22记录界面部分。</li></ul></article><article id="task-QA-001"><h2>QA-001 · 验收配置整批校验与快照数据保护</h2><p class="task-html-link"><a href="LOGIN-7-REDRAFT-PM/tasks/QA-001.html">打开独立任务 HTML：QA-001</a></p><p class="rule">角色：验收；前置依赖：<a href="#task-DEV-001">DEV-001</a>、<a href="#task-DEV-002">DEV-002</a></p><ul><li class="rule" style="white-space:pre-wrap">任务约定
+角色：QA。
+来源：v1.1源HTML的3.2、T18—T20；DS-01、DS-02。
+范围：配置模块与快照数据能力，账号历史全链路由后续专项及集成补齐。
+前置产物：DEV-001契约、DEV-002实际代码、样本及构建报告。
+交付物：建议 deliveries/LOGIN-7-REDRAFT/qa/config/，包含输入样本、实际日志和逐例报告，待实施时映射。
+启动条件：共同门禁及前置完成，测试环境可加载实际模块。
+完成门禁：T18、T19及T20本专项部分有真实证据，检查自有C#规范；失败或未运行不能通过。</li><li class="rule" style="white-space:pre-wrap">配置专项验收用例｜尚未执行
+前置条件：合法七档与全部错误变体就绪。
+操作与处理中：逐项运行T18、T19，并测试有效版本切换、快照读取及损坏。
+成功结果：合法数据保留顺序，错误整批拒绝并定位，旧版本保留，损坏快照不返回可发放数据。
+失败反馈：缺少错误位置、溢出漏检或静默截断均记失败。
+异常恢复：恢复有效配置和原快照后重测，不覆盖失败证据。
+测试用例：T18、T19、T20配置部分；报告区分模块验证与尚待业务验证部分。</li></ul></article><article id="task-QA-002"><h2>QA-002 · 验收账号活动唯一性与自然日边界</h2><p class="task-html-link"><a href="LOGIN-7-REDRAFT-PM/tasks/QA-002.html">打开独立任务 HTML：QA-002</a></p><p class="rule">角色：验收；前置依赖：<a href="#task-DEV-002">DEV-002</a>、<a href="#task-DEV-003">DEV-003</a></p><ul><li class="rule" style="white-space:pre-wrap">任务约定
+角色：QA。
+来源：v1.1源HTML的O01、O02、T01—T07、T18、T20及附录三；DS-02—DS-04。
+范围：账号活动与计数逻辑，不以逻辑结果代替页面验收。
+前置产物：DEV-002配置、DEV-003活动实现及构建报告。
+交付物：建议 deliveries/LOGIN-7-REDRAFT/qa/activity/，包含时间场景、并发事件日志、实例和日期记录证据，待实施时映射。
+启动条件：前置完成，可控服务器时间、账号及在线事实测试能力可用。
+完成门禁：实例、日期和快照证据对应同一版本，自有C#规范核对完成。</li><li class="rule" style="white-space:pre-wrap">开启与日期专项验收用例｜尚未执行
+前置条件：多账号、多角色、多设备及锁定地区时区场景就绪。
+操作与处理中：执行并发开启、响应丢失、漏登、在线跨日、改时、夏令时及截止边界。
+成功结果：唯一实例、账号共享、首日计数、自然日去重、七天上限和截止冻结符合来源；绑定快照原子完成。
+失败反馈：失效账号、无有效配置和快照损坏不形成错误进度或新实例。
+异常恢复：核对原实例与原快照恢复，不补记离线日期。
+测试用例：T01—T07逻辑部分、T18无配置开启、T20实例快照部分。</li></ul></article><article id="task-QA-003"><h2>QA-003 · 验收手动领取完整记账与未知结果核对</h2><p class="task-html-link"><a href="LOGIN-7-REDRAFT-PM/tasks/QA-003.html">打开独立任务 HTML：QA-003</a></p><p class="rule">角色：验收；前置依赖：<a href="#task-DEV-003">DEV-003</a>、<a href="#task-DEV-004">DEV-004</a></p><ul><li class="rule" style="white-space:pre-wrap">任务约定
+角色：QA。
+来源：v1.1源HTML的O03、O04、T08—T12、T16、T19、T20；DS-02、DS-05。
+范围：手动领取及测试账本，竞争结算整例由QA-004负责。
+前置产物：DEV-003账号活动、DEV-004发放查询实现及构建证据。
+交付物：建议 deliveries/LOGIN-7-REDRAFT/qa/rewards/，包含并发请求、故障注入、发放归属和账本报告，待实施时映射。
+启动条件：前置完成，可延迟响应并检查实际持久化结果。
+完成门禁：请求结果、档位与完整账本一致，自有C#规范核对完成。</li><li class="rule" style="white-space:pre-wrap">手动发奖专项验收用例｜尚未执行
+前置条件：准备非顺序领取、多道具、重复道具及错误状态。
+操作与处理中：执行连点对应并发、双会话请求、原请求重放、响应丢失及连续查询失败。
+成功结果：每档一次完整发放，重放原结果，实际列表顺序及数量准确。
+失败反馈：独立重复、未解锁、损坏快照有准确原因，禁止半份奖励。
+异常恢复：核对成功恢复原结果，未发放且有效才可恢复领取，不自动重发；后台查询不增加账本。
+测试用例：T08、T09、T11、T16、T19、T20领取部分及T12截止裁定部分。</li></ul></article><article id="task-QA-004"><h2>QA-004 · 验收到期竞争与测试补发中断恢复</h2><p class="task-html-link"><a href="LOGIN-7-REDRAFT-PM/tasks/QA-004.html">打开独立任务 HTML：QA-004</a></p><p class="rule">角色：验收；前置依赖：<a href="#task-DEV-003">DEV-003</a>、<a href="#task-DEV-004">DEV-004</a>、<a href="#task-DEV-005">DEV-005</a></p><ul><li class="rule" style="white-space:pre-wrap">任务约定
+角色：QA。
+来源：v1.1源HTML的O05、O06、T06、T07、T12—T15、T20；DS-02、DS-07、DS-08。
+范围：结算、记录接口及与手动领取的原子一致性。
+前置产物：DEV-003活动、DEV-004统一发放、DEV-005结算记录实现。
+交付物：建议 deliveries/LOGIN-7-REDRAFT/qa/settlement/，包含受控时间、事务中断和账本记录对账证据，待实施时映射。
+启动条件：前置完成，能模拟离线到期和提交前后中断。
+完成门禁：每档一次、每实例最多一条记录及恢复一致性均可追溯，自有C#规范核对完成。</li><li class="rule" style="white-space:pre-wrap">结算专项验收用例｜尚未执行
+前置条件：部分领取、全部领取、未解锁、快照损坏及版本变化场景齐备。
+操作与处理中：跨截止竞争，延迟响应，离线结算并中断恢复，重复查询及结算。
+成功结果：原子裁定归属准确，无空邮件，按快照和既定顺序补发，历史名称可读，查询不发奖。
+失败反馈：未完成保持结算中，快照不可用不伪造已补发；其他账号记录不可读取。
+异常恢复：先核对持久结果再继续同一结算，无半份奖励、重复条目或新记录。
+测试用例：T06到期无空记录、T07、T12—T15、T20结算历史部分。</li></ul></article><article id="task-QA-005"><h2>QA-005 · 验收活动触屏状态与成功失败反馈闭环</h2><p class="task-html-link"><a href="LOGIN-7-REDRAFT-PM/tasks/QA-005.html">打开独立任务 HTML：QA-005</a></p><p class="rule">角色：验收；前置依赖：<a href="#task-ART-001">ART-001</a>、<a href="#task-ART-002">ART-002</a>、<a href="#task-ART-003">ART-003</a>、<a href="#task-DEV-006">DEV-006</a>、<a href="#task-DEV-007">DEV-007</a></p><ul><li class="rule" style="white-space:pre-wrap">任务约定
+角色：QA。
+来源：v1.1源HTML的O01—O05、R01/R02、F01、V01—V06；DS-03—DS-07、DS-09—DS-12。
+范围：P01、P02、P03及F01运行表现，不以资源预览代替实际运行验证。
+前置产物：ART-001、ART-002、ART-003对应版本，DEV-006反馈组件、DEV-007活动页面及检查报告。
+交付物：建议 deliveries/LOGIN-7-REDRAFT/qa/activity-ui/，包含移动截图或录像、交互日志、分层检查和逐例报告，待实施时映射。
+启动条件：前置完成、美术版本匹配，实际移动运行环境可用。
+完成门禁：行为与视觉证据齐全，规范和范围检查完成，未运行不能通过。</li><li class="rule" style="white-space:pre-wrap">活动与反馈专项验收用例｜尚未执行
+前置条件：不同安全区、长中文、短长列表及全部业务状态就绪。
+操作与处理中：开启、领取、连点、关闭、滚动、断线恢复及关闭期间接收后台响应。
+成功结果：七档完整，R01/R02四层独立；成功层任意有效点击关闭不穿透，拖动只滚动；后台不自动弹层，重进恢复原结果；红点仅代表权威可手动领取。
+失败反馈：F01中央上浮消失、无按钮、不接收点击；未知不显示成业务失败，无新增网络页面。
+异常恢复：查询失败持续禁止发奖提交，未发放且有效才放行；到期更新真实归属。
+测试用例：T01、T02、T05、T06、T10、T11、T16、T17、T21及O01—O05界面状态检查；核对无正式美术、额外入口、开关动画及新增音效。</li></ul></article><article id="task-QA-006"><h2>QA-006 · 验收测试记录状态与只读返回交互</h2><p class="task-html-link"><a href="LOGIN-7-REDRAFT-PM/tasks/QA-006.html">打开独立任务 HTML：QA-006</a></p><p class="rule">角色：验收；前置依赖：<a href="#task-ART-001">ART-001</a>、<a href="#task-ART-003">ART-003</a>、<a href="#task-ART-004">ART-004</a>、<a href="#task-DEV-005">DEV-005</a>、<a href="#task-DEV-006">DEV-006</a>、<a href="#task-DEV-007">DEV-007</a>、<a href="#task-DEV-008">DEV-008</a></p><ul><li class="rule" style="white-space:pre-wrap">任务约定
+角色：QA。
+来源：v1.1源HTML的O06、R03、I06/I07、T13、T14、T17、T21；DS-08—DS-12。
+范围：P04全部状态及C04/C06往返，不重复负责结算算法。
+前置产物：ART-001、ART-003、ART-004，DEV-005记录接口、DEV-006提示条、DEV-007活动页面、DEV-008记录页面。
+交付物：建议 deliveries/LOGIN-7-REDRAFT/qa/records-ui/，包含实际页面证据、导航日志及账本不变检查，待实施时映射。
+启动条件：所有前置完成，移动运行和记录故障模拟可用。
+完成门禁：布局、状态、查询异常与只读证据完整，核对实际使用资源版本。</li><li class="rule" style="white-space:pre-wrap">记录页面专项验收用例｜尚未执行
+前置条件：有效期无记录、无需补发、结算中、就绪和旧内容查询失败场景齐备。
+操作与处理中：从C04进入、重复进入、加载时返回、长列表滚动、断线恢复及重进。
+成功结果：R03四层正确，编号时间时区及实际列表完整；返回P02刷新状态，滚动不导航，账本不变，无领取按钮。
+失败反馈：F01准确上浮消失且不阻塞返回，查询失败不显示为空记录。
+异常恢复：旧内容标注上次查询结果，恢复网络自动核对；本地返回和滚动不依赖网络。
+测试用例：T13、T14、T17、T21及T22记录交互部分。</li></ul></article><article id="task-QA-007"><h2>QA-007 · 验收账号全链路与交付标准完整覆盖</h2><p class="task-html-link"><a href="LOGIN-7-REDRAFT-PM/tasks/QA-007.html">打开独立任务 HTML：QA-007</a></p><p class="rule">角色：验收；前置依赖：<a href="#task-ART-001">ART-001</a>、<a href="#task-ART-002">ART-002</a>、<a href="#task-ART-003">ART-003</a>、<a href="#task-ART-004">ART-004</a>、<a href="#task-DEV-001">DEV-001</a>、<a href="#task-DEV-002">DEV-002</a>、<a href="#task-DEV-003">DEV-003</a>、<a href="#task-DEV-004">DEV-004</a>、<a href="#task-DEV-005">DEV-005</a>、<a href="#task-DEV-006">DEV-006</a>、<a href="#task-DEV-007">DEV-007</a>、<a href="#task-DEV-008">DEV-008</a>、<a href="#task-QA-001">QA-001</a>、<a href="#task-QA-002">QA-002</a>、<a href="#task-QA-003">QA-003</a>、<a href="#task-QA-004">QA-004</a>、<a href="#task-QA-005">QA-005</a>、<a href="#task-QA-006">QA-006</a></p><ul><li class="rule" style="white-space:pre-wrap">任务约定
+角色：QA。
+来源：v1.1源HTML的O01—O06、3.2、第四节、附录二及附录三；DS-01—DS-13。
+范围：集成运行T22并汇总T01—T22、资源和契约证据，核对跨任务边界及账号隔离。
+前置产物：本计划全部美术、程序交付和QA-001至QA-006专项报告的匹配版本。
+交付物：建议 deliveries/LOGIN-7-REDRAFT/qa/integration/，包含全链路日志、覆盖矩阵、版本与哈希清单及缺陷报告，待实施时映射。
+启动条件：全部必需交付有效、专项验收完成且影响集成的缺陷已解决，具备实际移动环境与可控服务器时间。
+完成门禁：真实证据支持各项结论，未执行项明确列出；通过后交人工最终验收，不自行批准、合并或发布。</li><li class="rule" style="white-space:pre-wrap">账号全流程集成验收用例｜尚未执行
+前置条件：两个账号、多角色、多设备、配置A/B和可控服务器时间。
+操作与处理中：执行开启、漏登、跨日、非顺序部分领取、断线核对、配置切换、离线到期、重复记录查看和重新进入。
+成功结果：T22全链路一致；账号隔离、角色共享、日期、快照、归属、账本及唯一记录可追溯，红点与最终状态准确。
+失败反馈：核对业务失败、未知结果和结算中区别，检查F01与所有页面范围约束。
+异常恢复：跨模块故障后先核对权威结果，不重复开启、计数、发奖或建记录；上游版本变化则使相关旧证据失效并重验。
+测试用例：实际执行T22，逐项汇总T01—T21证据并补齐跨专项分段；检查R01/R02/R03四层、V04动画、接口权限、自有C#编码规范及不接正式经济邮件的边界。</li></ul></article></section><section id="coverage"><h1>4. 覆盖与整体交付</h1><div class="rule" style="white-space:pre-wrap">一、草案性质
+采用当前 gameai-pm 及已提供的公共技能，仅对 LOGIN-7-REDRAFT v1.1 做只读拆分预演。来源为宿主完整提取的未审批正文，不是平台审批快照。源路径：app/desgin/七日累计登录活动需求案-分层审阅版.html；宿主提供 SHA-256：60ae816171888547a08b219267eeefecd30e07bb8da47c34ef883fad6e3c64b4。本次未读取文件字节复算哈希。没有批准记录，不声称已批准、已上传、已建单或已派发。
+
+二、主任务概念与范围
+主需求概念为“七日累计登录活动测试闭环”，涵盖个人14个活动日、累计七天、账号共享、配置快照、手动领取、到期测试记账与记录查看。主任务不进入 tasks；其中仅列专业子任务，全部使用稳定临时标识。保持移动触屏及占位表现范围，不接正式经济、正式邮件，不制作正式美术，不增加业务入口。
+
+三、路径及执行门禁
+以下 deliveries/LOGIN-7-REDRAFT/ 下路径均为建议的工程相对交付位置，待实施时映射，不表示文件已存在；不指定引擎、服务器技术栈或实际代码工程。各任务读取同一来源版本。正式执行前由宿主映射目标工程、核验实际批准版本及文件哈希、发布计划并授权固定角色；前置任务完成、产物有效、版本匹配且证据齐全后才启动下游。美术交付还需相应质量抽检。所有计划测试均尚未执行；代理交付不替代人工最终验收。
+
+四、依赖设计
+DEV-001交付共同接口与持久化约束，DEV-002交付配置，DEV-003交付活动及日期进度，DEV-004交付统一发放与手动领取，DEV-005交付结算及记录。逻辑分支不依赖美术。ART-001交付可复用四层道具组件；ART-002、ART-003、ART-004分别交付活动布局、成功层与提示条表现、记录布局，均使用该组件。DEV-006交付成功层及原因提示条运行组件；DEV-007、DEV-008分别接入活动和记录业务。任务数组按拓扑排序，数组顺序不替代 depends_on，也不表示宿主已支持并行执行。
+
+五、交付标准覆盖映射
+DS-01：3.2.1—3.2.3配置结构、校验及发布 → DEV-001、DEV-002 → QA-001；T18、T19。
+DS-02：3.2.3及附录三快照绑定、历史兼容、损坏保护 → DEV-002、DEV-003、DEV-004、DEV-005 → QA-001、QA-002、QA-003、QA-004；T20。
+DS-03：O01／P01、P02／C01、C02／I01—I04开启和查询 → DEV-003、DEV-006、DEV-007 → QA-002、QA-005；T01、T02、T03、T17、T18、T20。
+DS-04：O02账号登录及在线跨日 → DEV-003、DEV-007 → QA-002、QA-005；T03—T07。
+DS-05：O03／C03-1至C03-7单档领取、原子记账及恢复 → DEV-004、DEV-006、DEV-007 → QA-003、QA-005；T08—T12、T15、T16、T19。
+DS-06：O04／C02、C05关闭、滚动区分与后台结果恢复 → DEV-006、DEV-007 → QA-005；T10、T11、T16、T21。
+DS-07：O05到期冻结、唯一补发及中断恢复 → DEV-003、DEV-004、DEV-005、DEV-007 → QA-004、QA-005；T07、T12—T15、T20。
+DS-08：O06／P04／C04、C06／I06、I07只读记录及返回 → DEV-005、DEV-008 → QA-006；T13、T14、T17、T21、T22。
+DS-09：3.1四层结构、第四节L1—L4／R01、R02、R03 → ART-001至ART-004、DEV-006至DEV-008 → QA-005、QA-006；T10、T21及分层结构检查。
+DS-10：3.3信息状态、V01、V02移动布局与红点 → ART-002至ART-004、DEV-007、DEV-008 → QA-005、QA-006；T01、T05、T06、T16、T21、T22。
+DS-11：F01／V04失败与网络原因提示条动画 → ART-003、DEV-006及DEV-007、DEV-008接入 → QA-005、QA-006；T17。
+DS-12：V03、V05、V06范围限制 → ART-002至ART-004、DEV-006至DEV-008 → QA-005、QA-006；T21。
+DS-13：附录三账号权限、统一契约与全链路一致性 → DEV-001至DEV-008 → QA-007；T22及账号越权检查。
+
+六、测试覆盖索引
+T01、T02 → QA-002、QA-005；T03—T05 → QA-002；T06 → QA-002、QA-004、QA-005；T07 → QA-002、QA-004；T08、T09 → QA-003；T10 → QA-005；T11 → QA-003、QA-005；T12 → QA-003、QA-004；T13、T14 → QA-004、QA-006；T15 → QA-004；T16 → QA-003、QA-005；T17 → QA-005、QA-006；T18 → QA-001、QA-002；T19 → QA-001、QA-003；T20 → QA-001至QA-004；T21 → QA-005、QA-006；T22 → QA-007。专项可按行为链分段验证同一用例，最终由QA-007汇总证据，不能把局部通过称为整例通过。
+
+七、草案结构核对
+所有依赖均引用本数组临时标识，无自依赖或环；各程序交付均有专项或集成验收覆盖。未获得已有平台计划清单，不推断不存在旧计划；正式发布前应核对并复用或映射已有成果。</div><h2>整体验收要求</h2><ul><li class="rule" style="white-space:pre-wrap">草案结构检查：任务仅使用ART/DEV/QA临时标识，主任务只作概念说明；依赖均存在、无自依赖或环，按拓扑顺序列出。未创建任何平台任务。</li><li class="rule" style="white-space:pre-wrap">范围覆盖检查：DS-01至DS-13关联源章节、实现和验收；O01至O06、配置、R01/R02/R03四层、F01动画及T01至T22均有映射。纯逻辑任务不等待美术，界面任务依赖实际使用资源。</li><li class="rule" style="white-space:pre-wrap">执行状态声明：所有测试均尚未执行；未制作资源、实现代码、运行构建或业务验证。建议路径不是现有成果，artifacts为空。</li><li class="rule" style="white-space:pre-wrap">人工门禁：当前仅供人工审阅拆分草案。正式执行仍需绑定具体完整需求版本与实际HTML哈希的人工审批、宿主计划核验及执行授权。</li></ul><h2>美术交付清单</h2><ul><li class="rule" style="white-space:pre-wrap">计划项，尚未制作：ART-001交付R01/R02/R03共用四层占位组件，L1背景、L2几何图标、L3文本、L4透明框体独立；建议路径 deliveries/LOGIN-7-REDRAFT/art/reward-component/，待实施时映射。</li><li class="rule" style="white-space:pre-wrap">计划项，尚未制作：ART-002交付P01入口、红点及P02七档和状态布局，使用R01；建议路径 deliveries/LOGIN-7-REDRAFT/art/activity-layout/，待实施时映射。</li><li class="rule" style="white-space:pre-wrap">计划项，尚未制作：ART-003交付P03及R02列表、F01横向提示条上浮消失基础表现；建议路径 deliveries/LOGIN-7-REDRAFT/art/feedback/，待实施时映射。</li><li class="rule" style="white-space:pre-wrap">计划项，尚未制作：ART-004交付P04、R03记录列表及查询状态布局；建议路径 deliveries/LOGIN-7-REDRAFT/art/record-layout/，待实施时映射。</li><li class="rule" style="white-space:pre-wrap">范围限定：不制作正式美术、粒子特效、奖励飞入、打开关闭动画或音效；线框设备底框、安全区辅助线、编号和箭头不作为游戏资产。</li></ul></section><section id="questions"><h1>5. 正式发布前需要核对的事项</h1><ul><li>正式派工前，请由宿主映射实际客户端引擎、运行工程、业务服务工程和代码资源目录，以及相应构建、移动运行和验证入口；本草案的建议交付路径应映射到哪些位置？</li><li>正式派工前，请明确可复用的账号鉴权、在线事件、服务器时间与时区、持久化事务、系统到期触发及测试故障注入入口，供DEV-001落实技术接入边界；不改变本文业务规则。</li><li>正式发布前，请由宿主提供绑定本版完整HTML及实际哈希的审批与需求版本信息，并核对LOGIN-7-REDRAFT是否已有计划、执行或成果；如有，应提供映射以复用，避免重复发布。</li></ul><p class="rule">所有测试为计划项，尚未执行。正式上传、审批、建单与派发须另行授权并核验平台版本。</p></section>
+<footer class="footer">固定 PM Agent 的真实分析结果；没有平台任务发布。</footer>
+</main>
+
+
+</body></html>

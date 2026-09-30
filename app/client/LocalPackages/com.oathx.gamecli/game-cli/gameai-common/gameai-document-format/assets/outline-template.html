@@ -19,9 +19,13 @@
     --ok-soft: #dafbe1;
     --err: #cf222e;
     --err-soft: #ffebe9;
+    --rule-color: #b42318;
   }
 
   * { box-sizing: border-box; }
+
+  .rule, .rule * { color: var(--rule-color) !important; }
+  svg .rule, svg .rule * { fill: var(--rule-color); }
 
   html, body {
     margin: 0;

@@ -158,8 +158,12 @@ test('manual PM gate, idempotency, fixed-run proof, atomic publication and retry
         await c.query("INSERT INTO gameai.plan_dispatch_flows(plan_version_id,project_id,requested_by,state,agent_policy) VALUES($1,$2,$3,'active',$4)",[artTask.plan_version_id,p,user,JSON.stringify([{id:artAgent,role_code:'Art'}])]);
         assert.match((await dispatchTasks(servicePool,projectKey,user,dispatchInput,false,true)).rows[0].reason,/未授权自动/);
         assert.equal((await dispatchTasks(servicePool,projectKey,user,dispatchInput,false,false)).rows[0].ready,true);
+        await c.query('UPDATE gameai.plan_dispatch_flows SET agent_policy=NULL WHERE plan_version_id=$1',[artTask.plan_version_id]);
+        assert.match((await dispatchTasks(servicePool,projectKey,user,dispatchInput,false,true)).rows[0].reason,/未授权自动/,'Full-plan continuation cannot override a disabled Agent automation switch');
         await c.query('UPDATE gameai.agents SET auto_execute=true WHERE id=$1',[artAgent]);
         assert.equal((await dispatchTasks(servicePool,projectKey,user,dispatchInput,false,true)).rows[0].ready,true);
+        await c.query('UPDATE gameai.agents SET auto_execute=false WHERE id=$1',[artAgent]);
+        assert.match((await dispatchTasks(servicePool,projectKey,user,dispatchInput,false,true)).rows[0].reason,/未授权自动/,'Revoking automation must stop subsequent automatic dispatch');
         await c.query('ROLLBACK TO SAVEPOINT auto_dispatch_policy');
 
         const preview=await dispatchTasks(servicePool,projectKey,user,dispatchInput);
@@ -190,6 +194,7 @@ test('manual PM gate, idempotency, fixed-run proof, atomic publication and retry
         assert.match((await dispatchTasks(servicePool,projectKey,user,{tasks:[{task_id:child.id,revision:3}]})).rows[0].reason,/依赖未完成/,'Submitted output is not accepted output');
         await c.query('SAVEPOINT automatic_scenario');
         const devAgent=(await c.query("INSERT INTO gameai.agents(project_id,agent_key,role_code,worker_id,enabled,display_name,capacity) VALUES($1,'dev-01','Development',$2,true,'测试开发',1) RETURNING id",[p,w])).rows[0].id;
+        await c.query('UPDATE gameai.agents SET auto_execute=true WHERE id=ANY($1::uuid[])',[[artAgent,devAgent]]);
         await c.query("INSERT INTO gameai.fixed_agents VALUES($1,'Development',$2)",[p,devAgent]);
         await c.query("INSERT INTO gameai.agent_grants(project_id,agent_id,permission_code) VALUES($1,$2,'task.write_assigned')",[p,devAgent]);
         await c.query("INSERT INTO gameai.agent_skills(project_id,agent_id,skill_key,is_primary,content_hash) SELECT $1,$2,skill_key,true,content_hash FROM gameai.skills WHERE skill_key='gameai-dev'",[p,devAgent]);

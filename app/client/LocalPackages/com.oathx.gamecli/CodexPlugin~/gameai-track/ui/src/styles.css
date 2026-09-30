@@ -53,3 +53,7 @@
 .task-row--completed>td .ant-tag{color:#929aa5!important}
 .task-row--completed>td .ant-tag{background:transparent;border-color:#535c68}
 .task-row--completed>td .ant-btn-link:not(:disabled):hover{text-decoration:underline;color:#c0c6cf!important}
+
+.task-detail-meta{display:flex;align-items:center;flex-wrap:wrap;gap:8px 14px;margin-bottom:10px;font-size:13px}.task-detail-meta .ant-tag{margin:0}.task-detail-deps{display:inline-flex;align-items:center;gap:4px;flex-wrap:wrap}.task-detail .ant-typography{overflow-wrap:anywhere}.task-detail>h5{margin-top:20px}.task-detail>h5:first-child{margin-top:0}.task-source,.task-result{margin:12px 0;overflow-wrap:anywhere;font-size:13px;color:#a8b2bf}.task-source summary,.task-result summary{cursor:pointer}.task-detail .ant-descriptions-item-content{color:#ff8585}
+
+.task-text-rows{margin:12px 0}.task-text-row{display:grid;grid-template-columns:5em minmax(0,1fr);align-items:start;margin-bottom:12px;line-height:1.7}.task-text-row dt{margin:0;white-space:nowrap}.task-text-row dd{margin:0;white-space:pre-wrap;overflow-wrap:anywhere}.task-text-plain{margin-bottom:12px;white-space:pre-wrap}.task-delivery-criteria .task-text-row dd{color:#ff8585}

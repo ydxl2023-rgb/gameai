@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>验收到期竞争与测试补发中断恢复</title>
+<style>
+  :root {
+    --bg: #ffffff;
+    --fg: #1f2328;
+    --muted: #57606a;
+    --border: #d0d7de;
+    --code-bg: #f6f8fa;
+    --accent: #0969da;
+    --accent-soft: #ddf4ff;
+    --warn: #bf8700;
+    --warn-soft: #fff8c5;
+    --ok: #1a7f37;
+    --ok-soft: #dafbe1;
+    --err: #cf222e;
+    --err-soft: #ffebe9;
+    --rule-color: #b42318;
+  }
+
+  * { box-sizing: border-box; }
+
+  .rule, .rule * { color: var(--rule-color) !important; }
+  svg .rule, svg .rule * { fill: var(--rule-color); }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: #f6f8fa;
+    color: var(--fg);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+                 "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue",
+                 Arial, sans-serif;
+    font-size: 14px;
+    line-height: 1.7;
+  }
+
+  .page {
+    max-width: 900px;
+    margin: 0 auto;
+    background: var(--bg);
+    padding: 60px 70px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+  }
+
+  /* 封面 */
+  .cover {
+    text-align: center;
+    padding: 80px 0 60px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 48px;
+  }
+  .cover h1 {
+    font-size: 34px;
+    margin: 0 0 16px;
+    letter-spacing: 1px;
+  }
+  .cover .subtitle {
+    font-size: 16px;
+    color: var(--muted);
+    margin-bottom: 30px;
+  }
+  .cover .meta {
+    display: inline-block;
+    text-align: left;
+    font-size: 13px;
+    color: var(--muted);
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    padding: 12px 30px;
+  }
+  .cover .meta span { display: inline-block; min-width: 90px; color: var(--fg); }
+
+  /* 标题 */
+  h1 { font-size: 26px; margin: 48px 0 16px; padding-bottom: 8px; border-bottom: 2px solid var(--fg); }
+  h2 { font-size: 20px; margin: 36px 0 12px; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
+  h3 { font-size: 16px; margin: 24px 0 8px; color: #24292f; }
+  h4 { font-size: 14px; margin: 16px 0 6px; color: var(--muted); }
+
+  p { margin: 8px 0; }
+
+  /* 代码 */
+  code {
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    background: var(--code-bg);
+    padding: 2px 5px;
+    border-radius: 4px;
+    font-size: 12.5px;
+  }
+  pre {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 14px 16px;
+    overflow-x: auto;
+    font-size: 12px;
+    line-height: 1.6;
+    margin: 12px 0;
+  }
+  pre code {
+    background: none;
+    padding: 0;
+    font-size: 12px;
+  }
+
+  /* 表格 */
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 14px 0;
+    font-size: 13px;
+  }
+  th, td {
+    border: 1px solid var(--border);
+    padding: 8px 10px;
+    text-align: left;
+    vertical-align: top;
+  }
+  th { background: #f6f8fa; font-weight: 600; }
+  tr:nth-child(even) td { background: #fafbfc; }
+
+  /* 引用 */
+  blockquote {
+    border-left: 4px solid var(--accent);
+    margin: 12px 0;
+    padding: 6px 14px;
+    background: var(--accent-soft);
+    border-radius: 0 6px 6px 0;
+    color: #0a3069;
+    font-size: 13.5px;
+  }
+
+  /* 提示框 */
+  .callout {
+    padding: 12px 16px;
+    border-radius: 6px;
+    margin: 14px 0;
+    font-size: 13.5px;
+    border-left: 4px solid;
+  }
+  .callout.info { background: var(--accent-soft); border-color: var(--accent); }
+  .callout.warn { background: var(--warn-soft); border-color: var(--warn); }
+  .callout.ok   { background: var(--ok-soft);   border-color: var(--ok); }
+  .callout.err  { background: var(--err-soft);  border-color: var(--err); }
+
+  /* 列表 */
+  ul, ol { padding-left: 24px; margin: 8px 0; }
+  li { margin: 4px 0; }
+
+  /* 图表容器 */
+  .diagram {
+    margin: 24px 0;
+    padding: 20px;
+    background: #fafbfc;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow-x: auto;
+    text-align: center;
+  }
+  .diagram svg { max-width: 100%; height: auto; }
+  .diagram .caption {
+    font-size: 12.5px;
+    color: var(--muted);
+    margin-top: 10px;
+    font-style: italic;
+  }
+
+  /* 目录 */
+  .toc {
+    background: #fafbfc;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px 28px;
+    margin: 24px 0 40px;
+  }
+  .toc h3 { margin-top: 0; }
+  .toc ol { margin: 0; padding-left: 20px; }
+  .toc a { color: var(--accent); text-decoration: none; }
+  .toc a:hover { text-decoration: underline; }
+
+  /* 打印 */
+  @page {
+    size: A4;
+    margin: 18mm 16mm;
+  }
+  @media print {
+    html, body { background: #fff; font-size: 11.5pt; }
+    .page { box-shadow: none; padding: 0; max-width: 100%; }
+    h1 { page-break-before: auto; }
+    h2 { page-break-after: avoid; }
+    pre, table, .diagram { page-break-inside: avoid; }
+    .cover { page-break-after: always; }
+    .no-print { display: none; }
+    a { color: var(--fg); text-decoration: none; }
+  }
+
+  /* 页脚 */
+  .footer {
+    margin-top: 60px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border);
+    text-align: center;
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  .print-btn {
+    position: fixed;
+    right: 24px;
+    bottom: 24px;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 999px;
+    padding: 12px 22px;
+    font-size: 14px;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(9,105,218,0.35);
+    z-index: 100;
+  }
+  .print-btn:hover { background: #0860ca; }
+
+.page { overflow-wrap: anywhere; }
+@media screen and (max-width: 700px) { .page { padding: 24px 18px; } .cover { padding: 30px 0; } .cover h1 { font-size: 26px; } .toc { padding: 16px; } }
+.wire-gallery { display: flex; flex-direction: column; gap: 24px; }
+.wire-step { width: 100%; }
+</style>
+<style>.wire-step{margin:24px 0;padding:12px;border:1px solid #d0d7de;break-inside:avoid}.wire-step>svg{display:block;width:100%;height:auto}.wire-step figcaption,.layer-note{margin:10px 0}.layer-note{padding:12px;background:#f6f8fa}.task-standard{white-space:pre-wrap;overflow-wrap:anywhere}svg .rule,svg .rule *{fill:var(--rule-color)}@media print{.wire-step{break-inside:auto}}</style></head>
+<body>
+<button class="print-btn no-print" onclick="window.print()">打印 / 导出文档</button>
+<main class="page">
+<header class="cover">
+<h1>验收到期竞争与测试补发中断恢复</h1>
+<div class="subtitle">QA-004 · 验收任务单据</div>
+<div class="meta">来源：七日登录活动 v1.1<br>状态：只读拆分预演<br>日期：2026年9月30日</div>
+</header>
+<nav class="toc" aria-label="目录"><h3>目录</h3><ol><li><a href="#scope">任务与来源</a></li><li><a href="#wireframes">线框与分层</a></li><li><a href="#delivery">交付与验收</a></li><li><a href="#gate">完成门禁</a></li></ol></nav>
+<section id="scope"><h1>1. 任务与来源</h1><table><tbody><tr><th>临时编号</th><td>QA-004</td></tr><tr><th>负责角色</th><td>验收</td></tr><tr><th>源需求</th><td>LOGIN-7-REDRAFT · v1.1<br><a href="../../七日累计登录活动需求案-分层审阅版.html">查看原始需求 HTML</a></td></tr><tr><th>原始文件 SHA-256</th><td><code>60ae816171888547a08b219267eeefecd30e07bb8da47c34ef883fad6e3c64b4</code></td></tr><tr><th>状态</th><td>拆分预演 · 未审批 · 未发布</td></tr><tr><th>前置依赖</th><td class="rule"><a href="DEV-003.html">DEV-003</a>、<a href="DEV-004.html">DEV-004</a>、<a href="DEV-005.html">DEV-005</a></td></tr></tbody></table><p class="rule">本单据是宿主将固定 PM Agent 已返回的拆分草案排版为 HTML，并复用原需求线框；没有改动任务范围和依赖，未创建平台任务。</p><p><a href="../../七日累计登录活动-PM任务拆分预演.html#task-QA-004">返回 PM 拆分总览</a></p></section><section id="wireframes"><h1>2. 对应线框与分层</h1><p class="rule">以下线框仅说明本任务逻辑所关联的玩家交互，不要求本任务制作界面；实际范围以第三节交付标准为准。图示复用源需求，设备、安全区和图层标注不是运行界面资产。多个视图按原操作顺序单列排列。</p><figure class="wire-step"><h3>视图六 · P04测试邮件记录 · 从C04进入，C06返回P02</h3><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2000 1160" role="img" aria-label="测试邮件记录查看线框"><title>到期测试邮件记录，仅查看，不再次发奖</title><rect x="4" y="4" width="1992" height="1152" rx="110" fill="#20252c"></rect><svg x="40" y="40" width="1920" height="1080" viewBox="0 0 1920 1080"><rect width="1920" height="1080" rx="80" fill="#eef0f3"></rect><rect x="130" y="65" width="1660" height="905" rx="16" fill="none" stroke="#a3adba" stroke-width="3" stroke-dasharray="10 12"></rect><rect x="150" y="90" width="1620" height="850" rx="24" fill="white" stroke="#34404d" stroke-width="4"></rect><g font-family="Microsoft YaHei,Arial,sans-serif" fill="#34404d"><text x="210" y="170" font-size="44">P04 测试邮件记录</text><rect x="1570" y="120" width="150" height="72" rx="8" fill="#f0f2f4" stroke="#34404d"></rect><text x="1645" y="167" font-size="30" text-anchor="middle">C06 返回</text><text x="210" y="270" font-size="34">七日累计登录到期补发 · 已补发</text><text x="210" y="330" font-size="28">I06 记录编号、结算时间及锁定时区由服务器返回</text><rect x="210" y="385" width="1500" height="360" rx="12" fill="#f5f6f8" stroke="#8793a1"></rect><text x="260" y="447" font-size="31">I07 实际补发内容（示例）</text><text x="260" y="692" font-size="27">更多内容在此区域触屏滚动</text><text x="210" y="825" font-size="29" class="rule">奖励已记入测试账本；本页仅查看，没有领取按钮</text><text x="210" y="880" font-size="27" class="rule">独立查看分支，不要求先经过领取成功或失败</text></g><path d="M0 335 H38 Q80 335 80 380 V700 Q80 745 38 745 H0 Z" fill="#20252c"></path><rect x="700" y="1020" width="520" height="12" rx="6" fill="#333b46"></rect><g data-reward="R03-2" transform="translate(260 472)"><g data-layer="background" data-layer-id="R03-2-L1"><rect width="650" height="72" rx="6" fill="#eef3f7"></rect></g><g data-layer="icon" data-layer-id="R03-2-L2"><rect x="9" y="9" width="54" height="54" fill="#dde6ef" stroke="#54758a" stroke-dasharray="4 3"></rect><path d="M36 15 L57 36 L36 57 L15 36 Z" fill="none" stroke="#54758a"></path></g><g data-layer="text" data-layer-id="R03-2-L3" fill="#34404d" text-anchor="start"><text x="72" y="27" font-size="31">第2档 · 测试币</text><text x="72" y="50" font-size="31">×12</text></g><g data-layer="frame" data-layer-id="R03-2-L4"><rect width="650" height="72" rx="6" fill="none" stroke="#937953" stroke-width="2"></rect></g></g><g data-reward="R03-3" transform="translate(260 568)"><g data-layer="background" data-layer-id="R03-3-L1"><rect width="650" height="72" rx="6" fill="#eef3f7"></rect></g><g data-layer="icon" data-layer-id="R03-3-L2"><rect x="9" y="9" width="54" height="54" fill="#dde6ef" stroke="#54758a" stroke-dasharray="4 3"></rect><path d="M36 15 L57 36 L36 57 L15 36 Z" fill="none" stroke="#54758a"></path></g><g data-layer="text" data-layer-id="R03-3-L3" fill="#34404d" text-anchor="start"><text x="72" y="27" font-size="31">第3档 · 测试石</text><text x="72" y="50" font-size="31">×12</text></g><g data-layer="frame" data-layer-id="R03-3-L4"><rect width="650" height="72" rx="6" fill="none" stroke="#937953" stroke-width="2"></rect></g></g></svg></svg><figcaption class="rule">示例为到期累计3天、第1档已手动领取，第2、3档由结算补发。加载、空记录、结算中、成功及查询异常状态见3.3节；异常仍使用F01，不增设操作。返回P02时查询最新活动状态。</figcaption><p class="layer-note rule">R03 道具框：L1背景（浅底）→ L2图标（虚线占位）→ L3文本（名称／数量）→ L4框体（透明描边）。层号仅用于交付标注，不进入游戏界面。</p></figure>
+<figure class="wire-step layer-spec"><h3 id="QA-004-reward-layers">奖励道具框 · 四层结构与编号</h3><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 720" role="img" aria-label="奖励道具框四层纵向拆解"><title>从底到顶，四层独立交付</title><text x="25" y="65" font-size="24" fill="#b42318">L1 背景层：底色／底图</text><g data-layer="background" transform="translate(520 30)"><rect width="440" height="110" fill="#eef3f7" stroke="#a3adba" stroke-dasharray="6 4" stroke-width="2"></rect></g><path d="M740 152 V185 M730 174 L740 185 L750 174" fill="none" stroke="#687887" stroke-width="3"></path><text x="25" y="230" font-size="24" fill="#b42318">L2 图标层：道具图标／占位图</text><g data-layer="icon" transform="translate(520 195)"><rect width="440" height="110" fill="none" stroke="#a3adba" stroke-dasharray="6 4" stroke-width="2"></rect><rect x="20" y="24" width="62" height="62" fill="#dde6ef" stroke="#54758a"></rect></g><path d="M740 317 V350 M730 339 L740 350 L750 339" fill="none" stroke="#687887" stroke-width="3"></path><text x="25" y="395" font-size="24" fill="#b42318">L3 文本层：名称、数量</text><g data-layer="text" transform="translate(520 360)"><rect width="440" height="110" fill="none" stroke="#a3adba" stroke-dasharray="6 4" stroke-width="2"></rect><text x="110" y="65" font-size="26" fill="#34404d">测试币 ×12</text></g><path d="M740 482 V515 M730 504 L740 515 L750 504" fill="none" stroke="#687887" stroke-width="3"></path><text x="25" y="560" font-size="24" fill="#b42318">L4 框体层：透明内部的边框</text><g data-layer="frame" transform="translate(520 525)"><rect width="440" height="110" fill="none" stroke="#937953" stroke-dasharray="none" stroke-width="2"></rect></g></svg><figcaption class="rule">本图为纵向图层拆解，虚线界限是标注，不是最终素材。实际叠放顺序从背景到框体；框体内部透明。所有单道具实例保留四层，不合并为单张图。</figcaption><table><thead><tr><th>组件</th><th>复用页面</th><th>层编号</th><th>交付映射</th></tr></thead><tbody><tr><td>R01 奖励档位内道具</td><td>活动弹窗、处理中、失败反馈背景</td><td>R01-档位-道具序号-L1～L4</td><td class="rule">复用四层样式；更新名称数量，档位状态与领取按钮独立。</td></tr><tr><td>R02 成功奖励道具</td><td>领取成功列表</td><td>R02-道具序号-L1～L4</td><td class="rule">展示实际发放列表；多道具逐项复用，不改变领奖关闭交互。</td></tr><tr><td>R03 补发记录道具</td><td>测试邮件查看</td><td>R03-档位-道具序号-L1～L4</td><td class="rule">仅展示已补发奖励，不新增领取按钮。</td></tr></tbody></table></figure></section><section id="delivery"><h1>3. 范围、交付与验收</h1><article><h2>3.1 任务约定</h2><div class="rule task-standard">角色：QA。
+来源：v1.1源HTML的O05、O06、T06、T07、T12—T15、T20；DS-02、DS-07、DS-08。
+范围：结算、记录接口及与手动领取的原子一致性。
+前置产物：DEV-003活动、DEV-004统一发放、DEV-005结算记录实现。
+交付物：建议 deliveries/LOGIN-7-REDRAFT/qa/settlement/，包含受控时间、事务中断和账本记录对账证据，待实施时映射。
+启动条件：前置完成，能模拟离线到期和提交前后中断。
+完成门禁：每档一次、每实例最多一条记录及恢复一致性均可追溯，自有C#规范核对完成。</div></article><article><h2>3.2 结算专项验收用例｜尚未执行</h2><div class="rule task-standard">前置条件：部分领取、全部领取、未解锁、快照损坏及版本变化场景齐备。
+操作与处理中：跨截止竞争，延迟响应，离线结算并中断恢复，重复查询及结算。
+成功结果：原子裁定归属准确，无空邮件，按快照和既定顺序补发，历史名称可读，查询不发奖。
+失败反馈：未完成保持结算中，快照不可用不伪造已补发；其他账号记录不可读取。
+异常恢复：先核对持久结果再继续同一结算，无半份奖励、重复条目或新记录。
+测试用例：T06到期无空记录、T07、T12—T15、T20结算历史部分。</div></article></section><section id="gate"><h1>4. 完成门禁</h1><p class="rule">本单据中的实现与测试均尚未执行。正式派工须核对本版审批、工程映射、前置任务完成及产物版本。奖励框的四层不得合并为不可拆的单图；层编号与交付清单须一致。代理交付不替代人工最终验收。</p></section>
+<footer class="footer">QA-004 · 未上传、未发布</footer>
+</main>
+</body>
+</html>

@@ -27,7 +27,9 @@ export function createMcpServer(html: string)
             if (input.document_version)
             {
                 const rows = 'requirements' in snapshot.workbench ? snapshot.workbench.requirements : [];
-                const row = rows.find((item: {version_id: string; document_url?: string | null}) => item.version_id === input.document_version);
+                const taskRows = 'tasks' in snapshot.workbench ? snapshot.workbench.tasks : [];
+                const linkedTasks = taskRows.map((task: any) => ({ version_id: task.requirement_version_id, document_url: task.document_url }));
+                const row = [...rows, ...linkedTasks].find((item: {version_id: string; document_url?: string | null}) => item.version_id === input.document_version);
                 const artifactId = row?.document_url ? /\/documents\/([0-9a-f-]{36})$/i.exec(row.document_url)?.[1] : null;
                 const bytes = artifactId ? await readDocument(artifactId) : null;
                 if (!bytes) throw new Error('未找到关联的 HTML 文档。');
