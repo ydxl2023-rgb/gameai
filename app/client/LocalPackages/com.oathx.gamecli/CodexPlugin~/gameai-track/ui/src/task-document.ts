@@ -3,17 +3,24 @@ export function taskWireframes(html: string, references: string[])
 {
     const doc = new DOMParser().parseFromString(html, 'text/html');
     const figures = Array.from(doc.querySelectorAll('figure')).filter(f => f.querySelector('svg,img'));
-    const refs = references.join(' ');
-    const anchors = Array.from(refs.matchAll(/\.html#([^\s；，,]+)/g), m => m[1]);
-    const codes = Array.from(new Set(refs.match(/\b(?:P|R|F|C)\d{2}\b/g) ?? []));
-    const matched = figures.filter(f => anchors.some(id => {
+    // The first reference identifies this task's deliverable; later references are context.
+    // Never broaden an exact anchor match using component names repeated across pages.
+    const anchors = Array.from((references[0] ?? '').matchAll(/#([A-Za-z0-9_-]+)/g), m => m[1]);
+    const matched: Element[] = [];
+    for (const id of anchors)
+    {
         const target = doc.getElementById(id);
-        return !!target && (target === f || target.contains(f) || f.contains(target));
-    }) || codes.some(code => new RegExp('\\b' + code + '\\b').test(f.textContent ?? '')));
+        if (!target) continue;
+        const visual = target.closest('figure') ?? (target.querySelector('svg,img') ? target : null);
+        if (visual && !matched.includes(visual)) matched.push(visual);
+    }
     const selected = matched.length ? matched : figures;
     if (!selected.length) return {html:'', fallback:false, count:0};
     const output = doc.implementation.createHTMLDocument('任务线框');
     doc.querySelectorAll('style').forEach(style => output.head.append(style.cloneNode(true)));
+    // Inline <use> and clip-path nodes may depend on shared definitions outside the selected figure.
+    const definitions = doc.querySelector('svg.svg-definitions');
+    if (definitions) output.body.append(definitions.cloneNode(true));
     selected.forEach(f => output.body.append(f.cloneNode(true)));
     // Strip active content, external resources and document navigation from the isolated reader.
     output.querySelectorAll('script,iframe,object,embed,foreignObject,link,meta,base,form').forEach(node => node.remove());

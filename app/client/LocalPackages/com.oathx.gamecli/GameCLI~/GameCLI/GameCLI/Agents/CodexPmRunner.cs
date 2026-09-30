@@ -27,6 +27,7 @@ namespace GameCLI.Agents
             string[] skillNames =
             {
                 "gameai-pm",
+                "gameai-pm/pm-art-breakdown",
                 "gameai-common",
                 "gameai-common/gameai-task-delivery",
                 "gameai-common/gameai-task-writing",

@@ -91,6 +91,7 @@ namespace GameCLI.Plugins.PM
                 foreach (string name in new[]
                 {
                     "gameai-pm",
+                    "gameai-pm/pm-art-breakdown",
                     "gameai-common",
                     "gameai-common/gameai-task-delivery",
                     "gameai-common/gameai-task-writing",
