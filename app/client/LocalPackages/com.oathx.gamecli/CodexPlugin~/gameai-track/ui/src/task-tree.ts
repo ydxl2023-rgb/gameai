@@ -3,6 +3,14 @@ import type { Task } from './model';
 export type TaskProgress = { total:number; completed:number; failed:number; percent:number };
 export type TaskNode = Task & { children?:TaskNode[]; group?:{total:number;completed:number;blocked:number}; aggregate?:TaskProgress };
 
+/** Saved dispatch permission persists after execution; only eligible child states can be submitted again. */
+export function canDispatchTask(task:Task):boolean
+{
+    return !!task.dispatch_allowed && !!task.task_uuid && !!task.parent_id
+        && ['Art','Development','QA'].includes(task.role)
+        && ['待调度','依赖阻塞','失败'].includes(task.status);
+}
+
 /** Count real executable leaves once, using the full scope even when rows are filtered. */
 export function taskProgress(rootId:string, tasks:Task[], role?:string):TaskProgress
 {

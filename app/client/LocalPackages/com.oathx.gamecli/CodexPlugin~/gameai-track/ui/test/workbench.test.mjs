@@ -15,6 +15,18 @@ async function moduleBundle(name, context = {})
     return module.exports;
 }
 const delay = () => new Promise(resolve => setTimeout(resolve, 25));
+test('dispatch candidates exclude selected running, review and completed tasks', async () =>
+{
+    const { canDispatchTask } = await moduleBundle('task-tree');
+    const task = { id:'P-0000001',task_uuid:'task-uuid',parent_id:'T-0000001',role:'Development',dispatch_allowed:true };
+    const states = ['待调度','依赖阻塞','失败','执行中','开发中','待验收','验收中','已完成'];
+    const selected = states.map(status => ({...task,status}));
+    assert.deepEqual(selected.filter(canDispatchTask).map(t => t.status), ['待调度','依赖阻塞','失败']);
+    assert.equal(selected.slice(3).filter(canDispatchTask).length, 0);
+    assert.equal(canDispatchTask({...task,status:'待调度',dispatch_allowed:false}), false);
+    assert.equal(canDispatchTask({...task,status:'待调度',parent_id:undefined}), false);
+    assert.equal(canDispatchTask({...task,status:'待调度',role:'PM'}), false);
+});
 async function until(check)
 {
     for (let i = 0; i < 100; i++) { if (check()) return; await delay(); }
@@ -230,7 +242,9 @@ test('task tree expands children and checkbox persists only dispatch permission'
     const base={title:'测试任务',agent:null,status:'待调度',progress:0,dependencies:[],version:'v1',dispatch_allowed:false,dispatch_revision:0};
     const root={...base,id:'T-0000001',role:'PM',parent_id:null};
     const child={...base,id:'P-0000002',role:'Development',parent_id:root.id,task_uuid:'22222222-2222-4222-8222-222222222222'};
-    state.workbench.tasks=[root,child];
+    state.workbench.tasks=[root,child,
+        {...child,id:'P-0000003',task_uuid:'33333333-3333-4333-8333-333333333333',status:'已完成',dispatch_allowed:true},
+        {...child,id:'Q-0000004',task_uuid:'44444444-4444-4444-8444-444444444444',role:'QA',status:'待验收',dispatch_allowed:true}];
     const writes=[];
     const dom=new JSDOM(html,{url:'http://localhost/track',runScripts:'dangerously',pretendToBeVisual:true,virtualConsole:new VirtualConsole(),beforeParse(window)
     {
@@ -272,8 +286,8 @@ test('task tree expands children and checkbox persists only dispatch permission'
         await until(()=>doc.querySelector('.ant-table-row-expand-icon'));
         assert.equal(doc.querySelectorAll('.ant-table input[type=checkbox]').length,0,'Parent must not have a dispatch checkbox');
         doc.querySelector('.ant-table-row-expand-icon').click();
-        await until(()=>doc.querySelectorAll('.ant-table-row-expand-icon-collapsed').length===1);
-        assert.match(doc.body.textContent,/程序（1）/);
+        await until(()=>doc.querySelectorAll('.ant-table-row-expand-icon-collapsed').length===2);
+        assert.match(doc.body.textContent,/程序（2）/);
         assert.equal(doc.querySelectorAll('.ant-table input[type=checkbox]').length,0,'Role folders are view-only');
         doc.querySelector('.ant-table-row-expand-icon-collapsed').click();
         const checkbox=()=>doc.querySelector('input[aria-label="允许派发 P-0000002"]');
@@ -291,7 +305,9 @@ test('task tree expands children and checkbox persists only dispatch permission'
         checkbox().click();
         await until(()=>writes.length===3 && checkbox().checked && !checkbox().disabled);
         const button=text=>[...doc.querySelectorAll('button')].find(b=>b.textContent.includes(text));
-        button('派发已勾选任务').click();
+        assert.equal(button('派发（').textContent,'派发（1）');
+        assert.equal(button('派发（').disabled,false);
+        button('派发（').click();
         await until(()=>button('确认派发可执行任务'));
         assert.equal(dom.window.taskDispatchStarts,undefined,'Preview must not start an Agent');
         button('确认派发可执行任务').click();
