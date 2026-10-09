@@ -1,11 +1,5 @@
 {
   "dependencies": {
-    "com.oathx.gamecli": {
-      "version": "file:../LocalPackages/com.oathx.gamecli",
-      "depth": 0,
-      "source": "local",
-      "dependencies": {}
-    },
     "com.oathx.rpc": {
       "version": "file:../LocalPackages/com.oathx.rpc",
       "depth": 0,

@@ -50,3 +50,10 @@ npm-debug.log*
 /app/desgin/*.submission.json
 /app/desgin/*.submission.json.receipt.json
 /.gamecli/
+
+# Standalone platform authored project files
+!/src/GameAI.Cli/**/*.csproj
+!/src/GameAI.Cli/**/*.sln
+!/src/GameAI.Cli/**/*.slnx
+
+!/legacy/unity-bridge/Tests/**/*.csproj
