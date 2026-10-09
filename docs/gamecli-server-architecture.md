@@ -2,7 +2,7 @@
 
 ## 当前边界
 
-Node.js + TypeScript 服务与 React / Ant Design Track 共用 PostgreSQL 业务存储。服务代码位于 src/GameAI.CliServer。
+Node.js + TypeScript 服务与 React / Ant Design Track 共用 PostgreSQL 业务存储。服务代码位于 game-cli/src/GameAI.CliServer。
 
 旧第三方任务系统适配、通知中转、重放协议和 CLI 订阅调度已移除。当前已提供工作台、MCP 读取、原始 HTML 审阅、人工审批、本机固定 Agent 配置及手动 PM 任务发布；工作节点自动接单尚未接入。
 

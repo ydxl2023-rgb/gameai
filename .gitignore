@@ -52,8 +52,12 @@ npm-debug.log*
 /.gamecli/
 
 # Standalone platform authored project files
-!/src/GameAI.Cli/**/*.csproj
-!/src/GameAI.Cli/**/*.sln
-!/src/GameAI.Cli/**/*.slnx
+!/game-cli/src/GameAI.Cli/**/*.csproj
+!/game-cli/src/GameAI.Cli/**/*.sln
+!/game-cli/src/GameAI.Cli/**/*.slnx
 
 !/legacy/unity-bridge/Tests/**/*.csproj
+
+# Production intermediate data stays local.
+/game-cli/temp/*
+!/game-cli/temp/.gitkeep

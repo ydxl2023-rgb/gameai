@@ -1,9 +1,9 @@
 # GameAI 协作平台
 
-- `src/GameAI.Cli`：独立 C# CLI，不依赖 Unity。
-- `src/GameAI.Server`：云端编排与 Track。
-- `plugins/gameai-track`：Codex 插件与 UI。
-- `skills`：独立角色技能。
+- `game-cli/src/GameAI.Cli`：独立 C# CLI，不依赖 Unity。
+- `game-cli/src/GameAI.Server`：云端编排与 Track。
+- `game-cli/plugins/gameai-track`：Codex 插件与 UI。
+- `game-cli/skills`：独立角色技能。
 
 启动方式、路径配置与迁移边界见 [平台目录说明](docs/platform-layout.md)。
 
