@@ -52,7 +52,7 @@ export async function contextBlockReason(context,task)
     if (context.repair && (context.repair.state!=='open' || (context.repair.rounds>=3 && task.status!=='running'))) return '返修任务等待 QA 复测、已关闭或达到三轮上限';
     if (context.retests.some(d=>d.state!=='retest')) return '等待返修交付，当前不能复测';
     if (context.blockers.some(d=>task.role_code!=='QA' || d.state!=='retest')) return '上游存在尚未通过 QA 复测的缺陷';
-    if (task.role_code==='QA' && !context.dependencies.some(d=>d.role_code==='Development' && d.execution_id && d.agent_id)) return '缺少可追溯的原开发任务交付，不能执行 QA';
+    if (task.role_code==='QA' && !context.dependencies.some(d=>['Development','Prefab'].includes(d.role_code) && d.execution_id && d.agent_id)) return '缺少可追溯的原程序或预制任务交付，不能执行 QA';
     for (const dependency of context.dependencies)
     {
         if (!dependency.accepted) return '依赖未完成：'+dependency.task_key;

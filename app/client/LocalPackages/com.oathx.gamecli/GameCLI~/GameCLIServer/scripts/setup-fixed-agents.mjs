@@ -8,7 +8,7 @@ import pg from 'pg';
 const pool = createPool();
 const projectKey = process.env.GAMEAI_PROJECT_KEY ?? 'DEMO';
 const workerKey = hostname().toLowerCase();
-const definitions = [['Design','design-01','策划 Agent 01','gameai-design'],['PM','pm-01','PM Agent 01','gameai-pm'],['Art','art-01','美术 Agent 01','gameai-art'],['Development','dev-01','开发 Agent 01','gameai-dev'],['QA','qa-01','QA Agent 01','gameai-qa']];
+const definitions = [['Design','design-01','策划 Agent 01','gameai-design'],['PM','pm-01','PM Agent 01','gameai-pm'],['Prefab','prefab-01','预制 Agent 01','gameai-prefab'],['Art','art-01','美术 Agent 01','gameai-art'],['Development','dev-01','开发 Agent 01','gameai-dev'],['QA','qa-01','QA Agent 01','gameai-qa']];
 try
 {
     await syncSkillCatalog(pool);
@@ -50,12 +50,12 @@ try
         await c.query('GRANT SELECT ON gameai.fixed_agents,gameai.agent_conversations,gameai.agent_runs TO '+writer);
         await c.query('GRANT INSERT,UPDATE ON gameai.agent_conversations,gameai.agent_runs TO '+writer);
         await c.query('GRANT UPDATE(last_heartbeat_at) ON gameai.workers TO '+writer);
-        await c.query("INSERT INTO gameai.audit_events(project_id,actor,event,payload) VALUES($1,'local:setup','启用五个固定角色 Agent',$2)",[p.id,{worker:workerKey,agents:definitions.map(d=>d[1])}]);
+        await c.query("INSERT INTO gameai.audit_events(project_id,actor,event,payload) VALUES($1,'local:setup','启用六个固定角色 Agent',$2)",[p.id,{worker:workerKey,agents:definitions.map(d=>d[1])}]);
         await c.query('COMMIT');
         const directory = new URL('../../../../../../../.gamecli/',import.meta.url);
         await mkdir(directory,{recursive:true});
         await writeFile(new URL('client.json',directory),JSON.stringify({server:process.env.GAMEAI_SERVER_URL ?? 'http://127.0.0.1:18090',worker_key:workerKey,token:config.SUBMISSION_TOKEN},null,2));
-        console.log('五个固定 Agent 已启用，本机连接配置已写入被忽略的 .gamecli/client.json。');
+        console.log('六个固定 Agent 已启用，本机连接配置已写入被忽略的 .gamecli/client.json。');
     }
     catch (error)
     {

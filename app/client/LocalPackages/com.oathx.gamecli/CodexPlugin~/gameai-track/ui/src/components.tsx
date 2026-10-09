@@ -84,7 +84,7 @@ export function TaskTable({ tasks, allTasks = tasks, select, canSelectDispatch =
     }, [filterKey]);
     const columns: ColumnsType<TaskNode> = [
         { title: 'Task', dataIndex: 'id', fixed: 'left', render: (id, t) => t.group
-            ? <strong style={{whiteSpace:'nowrap'}}>{({Design:'策划',Art:'美术',Development:'程序',QA:'测试',PM:'项目管理'} as Record<string,string>)[t.role] ?? t.role}（{t.group.total}）</strong>
+            ? <strong style={{whiteSpace:'nowrap'}}>{({Design:'策划',Prefab:'预制',Art:'美术',Development:'程序',QA:'测试',PM:'项目管理'} as Record<string,string>)[t.role] ?? t.role}（{t.group.total}）</strong>
             : <span style={{whiteSpace:'nowrap'}}>
             {t.parent_id && t.role !== 'PM' && <Tooltip title={!canSelectDispatch ? '请先登录人工审批账户' : !['待调度','依赖阻塞'].includes(t.status) ? '该任务已派发或结束，不能在此修改' : '仅保存允许派发；依赖完成后才可启动，不自动勾选前置任务'}>
                 <Checkbox aria-label={`允许派发 ${id}`} checked={t.dispatch_allowed === true}

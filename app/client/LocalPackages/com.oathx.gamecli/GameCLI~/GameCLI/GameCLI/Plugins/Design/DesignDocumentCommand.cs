@@ -71,7 +71,7 @@ namespace GameCLI.Plugins.Design
                     }
                     string skillRoot = values.GetValueOrDefault("--skills", Path.Combine(project, "app/client/LocalPackages/com.oathx.gamecli/game-cli"));
                     StringBuilder instructions = new();
-                    foreach (string skill in new[] { "gameai-design", "gameai-common/gameai-document-format", "gameai-design/gameai-requirement-discovery", "gameai-common/gameai-mobile-requirements", "gameai-common/gameai-task-writing", "gameai-common", "gameai-common/gameai-cli-development" })
+                    foreach (string skill in new[] { "gameai-design", "gameai-common/gameai-document-format", "gameai-common/gameai-mobile-requirements", "gameai-common/gameai-task-writing", "gameai-common", "gameai-common/gameai-cli-development" })
                     {
                         instructions.AppendLine(await File.ReadAllTextAsync(Path.Combine(skillRoot, skill, "SKILL.md"), timeout.Token));
                     }

@@ -18,6 +18,8 @@ const tabs = [['overview', '项目总览'], ['requirements', '需求审批'], ['
 export function WorkbenchApp()
 {
     const [taskEditing,setTaskEditing] = useState(false);
+    const [clearingTasks,setClearingTasks] = useState(false);
+    const clearTasksLock = useRef(false);
     const [data, setData] = useState<Workbench>();
     const [skillAgent,setSkillAgent] = useState<Agent>();
     const [addingAgent, setAddingAgent] = useState(false);
@@ -119,6 +121,31 @@ export function WorkbenchApp()
         const timer = window.setInterval(() => void refresh(), 3000);
         return () => window.clearInterval(timer);
     }, [persistent]);
+
+    async function clearTasks()
+    {
+        if (clearTasksLock.current) return;
+        clearTasksLock.current = true;
+        setClearingTasks(true);
+        try
+        {
+            const result = await reviewRequest('review-task-clear',{});
+            setDetail(undefined);
+            setDispatchRows(undefined);
+            setDispatchInput([]);
+            await refresh();
+            void message.success(`已清空 ${result.cleared} 项任务及 ${result.requirements} 项需求，权限配置已保留`);
+        }
+        catch (e)
+        {
+            void message.error(e instanceof Error ? e.message : '清空失败');
+        }
+        finally
+        {
+            clearTasksLock.current = false;
+            setClearingTasks(false);
+        }
+    }
 
     async function setAutomatic(agent:Agent,enabled:boolean)
     {
@@ -360,7 +387,7 @@ export function WorkbenchApp()
         if (tab === 'tasks') return <Section title="任务与依赖" extra={<Space wrap><Button type="primary" disabled={!persistent || context.embedded || !reviewSession.authenticated || !!savingTask || dispatchBusy || !data.tasks.some(canDispatchTask)} loading={dispatchBusy} onClick={()=>void previewDispatch(data.tasks.filter(canDispatchTask))}>派发（{data.tasks.filter(canDispatchTask).length}）</Button><Input.Search aria-label="搜索任务" placeholder="任务 / Agent" value={query} allowClear onChange={e => setQuery(e.target.value)} style={{ width: 180 }} /></Space>}><TaskTable openAgent={task=>{const agent=data.agents.find(a=>a.id===task.executor_agent); if(agent){setHistoryRequirement(task.requirement_key);setDetail(agent);} else {void message.warning('执行 Agent 已不可用');}}} retryTask={task=>void retryTask(task)} retryBusy={dispatchBusy} canSelectDispatch={persistent && !context.embedded && reviewSession.authenticated} savingTask={savingTask} setDispatch={(task,allowed) => void setTaskDispatch(task,allowed)} allTasks={data.tasks} tasks={data.tasks.filter(t => [t.id, t.title, t.agent ?? ''].join(' ').toLowerCase().includes(query.toLowerCase()))} select={setDetail} /></Section>;
         if (tab === 'versions') return <Section title="需求版本"><ResizableTable storageKey="gameai.track.versions-widths.v1" size="small" rowKey="version" pagination={false} scroll={{ x: 600 }} dataSource={data.versions?.map(({ version, status, change, reference }) => ({ version, status, change, reference })) ?? [{ version: r.version, status: r.status, change: '异常恢复与测试用例', reference: '尚未派工' }, { version: 'v1.2', status: '已批准', change: '基础规则与 UI 交付标准', reference: '4 项任务 · 2 项执行中' }]} columns={[{ title: 'Version', dataIndex: 'version' }, { title: 'State', dataIndex: 'status', render: s => <StateTag value={s} /> }, { title: 'Change', dataIndex: 'change' }, { title: 'References', dataIndex: 'reference' }, { title: 'Action', render: (_, v) => <Button type="link" onClick={() => openVersion(v.version)}>审阅</Button> }]} /><Typography.Paragraph className="note">需求版本 → PM 计划版本 → 执行编号 → 产物版本 → QA 验收版本。历史版本只读，恢复内容需新建修订并重新审批。</Typography.Paragraph></Section>;
         if (tab === 'permissions') return <>
-            <Section title="Agent 授权"><Typography.Paragraph type="secondary">{persistent ? '读写授权只读；登录人工审批账户后可设置自动执行。PM 自动拆分并建单，其余角色依赖满足后执行；新授权适用于之后批准的需求。' : identity === 'admin' ? '可模拟调整读取与任务写入权限。' : '只读预览；请切换到模拟管理员体验配置。'} Agent 不得自行批准，写入仅限有效任务授权。</Typography.Paragraph><ResizableTable storageKey="gameai.track.agent-permissions-widths.v1" size="small" rowKey="id" pagination={false} scroll={{ x: 650 }} dataSource={data.agents} columns={[{ title: 'Agent', dataIndex: 'id' }, { title: 'Role', dataIndex: 'role' }, { title: 'Read', render: (_, a) => <Checkbox aria-label={a.id + ' 读取'} disabled={persistent || identity !== 'admin'} checked={a.read} onChange={e => grant(a, 'read', e.target.checked)} /> }, { title: 'Auto', key:'auto_execute', width:85, render: (_,a) => <Checkbox aria-label={a.id+' 自动执行'} checked={a.auto_execute===true} disabled={!persistent || context.embedded || !reviewSession.authenticated || !!savingAutomation || !a.fixed || !['PM','Art','Development','QA'].includes(a.role)} onChange={e=>void setAutomatic(a,e.target.checked)} /> }, { title: 'Write assigned task', render: (_, a) => <Checkbox aria-label={a.id + ' 写入'} disabled={persistent || identity !== 'admin'} checked={a.write} onChange={e => grant(a, 'write', e.target.checked)} /> }, { title: 'Approve', render: () => '禁止 · 需人工' }]} /></Section>
+            <Section title="Agent 授权" extra={<Button danger loading={clearingTasks} disabled={!persistent || context.embedded || !reviewSession.authenticated} title="立即永久删除当前项目需求、审批、任务、依赖和执行记录；保留Agent、技能及权限配置。执行中不可清空。" onClick={() => void clearTasks()}>清空需求与任务</Button>}><Typography.Paragraph type="secondary">{persistent ? '读写授权只读；登录人工审批账户后可设置自动执行。PM 自动拆分并建单，其余角色依赖满足后执行；新授权适用于之后批准的需求。' : identity === 'admin' ? '可模拟调整读取与任务写入权限。' : '只读预览；请切换到模拟管理员体验配置。'} Agent 不得自行批准，写入仅限有效任务授权。</Typography.Paragraph><ResizableTable storageKey="gameai.track.agent-permissions-widths.v1" size="small" rowKey="id" pagination={false} scroll={{ x: 650 }} dataSource={data.agents} columns={[{ title: 'Agent', dataIndex: 'id' }, { title: 'Role', dataIndex: 'role' }, { title: 'Read', render: (_, a) => <Checkbox aria-label={a.id + ' 读取'} disabled={persistent || identity !== 'admin'} checked={a.read} onChange={e => grant(a, 'read', e.target.checked)} /> }, { title: 'Auto', key:'auto_execute', width:85, render: (_,a) => <Checkbox aria-label={a.id+' 自动执行'} checked={a.auto_execute===true} disabled={!persistent || context.embedded || !reviewSession.authenticated || !!savingAutomation || !a.fixed || !['PM','Prefab','Art','Development','QA'].includes(a.role)} onChange={e=>void setAutomatic(a,e.target.checked)} /> }, { title: 'Write assigned task', render: (_, a) => <Checkbox aria-label={a.id + ' 写入'} disabled={persistent || identity !== 'admin'} checked={a.write} onChange={e => grant(a, 'write', e.target.checked)} /> }, { title: 'Approve', render: () => '禁止 · 需人工' }]} /></Section>
         </>;
         return <Section title="操作记录"><ResizableTable storageKey="gameai.track.audit-widths.v1" size="small" rowKey="id" dataSource={audit} pagination={{ pageSize: 10, hideOnSinglePage: true }} scroll={{ x: 550 }} locale={{ emptyText: '尚无操作记录；模拟审批和权限调整将记录在这里。' }} columns={[{ title: 'Time', dataIndex: 'time' }, { title: 'Actor', dataIndex: 'actor' }, { title: 'Event', dataIndex: 'event' }]} /></Section>;
     }

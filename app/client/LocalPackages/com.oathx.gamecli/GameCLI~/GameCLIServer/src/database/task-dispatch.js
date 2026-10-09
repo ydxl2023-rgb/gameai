@@ -38,7 +38,7 @@ export async function dispatchTasks(pool,projectKey,userId,raw,commit=false,auto
             const a=(await c.query(`SELECT a.*,w.worker_key,w.enabled worker_enabled,w.capacity worker_capacity FROM gameai.fixed_agents f
                 JOIN gameai.agents a ON a.id=f.agent_id JOIN gameai.workers w ON w.id=a.worker_id WHERE f.project_id=$1 AND f.role_code=$2`,[project.id,t.role_code])).rows[0];
             let reason='';
-            if (!t.parent_id || !['Art','Development','QA'].includes(t.role_code)) reason='此入口仅执行美术、程序和 QA 子任务';
+            if (!t.parent_id || !['Prefab','Art','Development','QA'].includes(t.role_code)) reason='此入口仅执行预制、美术、程序和 QA 子任务';
             else if (!t.dispatch_allowed) reason='尚未勾选允许派发';
             else if (t.dispatch_revision!==input.revision) reason='勾选状态已改变，请刷新';
             else if (!['pending','blocked'].includes(t.status) && !(parsed.data.retry && t.status==='failed')) reason='任务已派发、结束或需核实';
@@ -146,7 +146,7 @@ export async function finishTaskDispatch(pool,job,result,error)
         const state=success ? 'succeeded' : unknown ? 'unknown' : 'failed';
         await c.query('UPDATE gameai.executions SET state=$2,result=$3,ended_at=now() WHERE id=$1',[job.executionId,state,{result,artifacts:result?.artifacts ?? [],error:error ?? (success ? '' : '缺少完成凭据，需核实执行')}]);
         const flow=(await c.query('SELECT state FROM gameai.plan_dispatch_flows WHERE plan_version_id=$1',[task.plan_version_id])).rows[0];
-        const completed=success && !context.repair && flow?.state==='active' && ['Art','Development'].includes(task.role_code);
+        const completed=success && !context.repair && flow?.state==='active' && ['Prefab','Art','Development'].includes(task.role_code);
         await c.query('UPDATE gameai.tasks SET status=$2,progress=$3 WHERE id=$1',[job.taskId,success ? completed ? 'completed' : 'review' : unknown ? 'running' : 'failed',success ? 100 : 0]);
         if (success && context.repair) await finishRepair(c,task,context.repair);
         if (success && task.role_code==='QA') await applyQaReport(c,task,execution,context,content);

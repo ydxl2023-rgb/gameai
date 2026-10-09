@@ -5,7 +5,7 @@ import {loadTaskContext,contextBlockReason} from './qa-context.js';
 import {isDeepStrictEqual} from 'node:util';
 import { ReviewError } from './requirements.js';
 
-const roles = z.enum(['Design','PM','Art','Development','QA']);
+const roles = z.enum(['Design','PM','Prefab','Art','Development','QA']);
 const claim = z.object({ action:z.literal('claim'), execution_id:z.string().regex(/^[a-f0-9]{32}$/), role:roles,
     requirement_key:z.string().regex(/^[A-Z][A-Z0-9_-]{1,79}$/), worker_key:z.string().min(1).max(100), input_hash:z.string().regex(/^[a-f0-9]{64}$/) }).strict();
 const update = z.object({ action:z.enum(['heartbeat','attach','finish']), execution_id:z.string().regex(/^[a-f0-9]{32}$/),

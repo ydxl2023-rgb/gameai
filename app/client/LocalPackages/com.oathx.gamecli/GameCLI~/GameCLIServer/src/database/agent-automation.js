@@ -17,7 +17,7 @@ export async function setAgentAutomation(pool,projectKey,userId,raw)
             WHERE u.id=$1 AND u.enabled AND ur.project_id=$2 AND rp.permission_code='requirement.approve'`,[userId,project.id]);
         if(!permission.rowCount) throw new ReviewError('需要人工审批权限才能配置自动执行。');
         const agent=(await c.query('SELECT a.* FROM gameai.agents a JOIN gameai.fixed_agents f ON f.agent_id=a.id WHERE a.project_id=$1 AND a.agent_key=$2',[project.id,input.agent])).rows[0];
-        if(!agent || !['PM','Art','Development','QA'].includes(agent.role_code)) throw new ReviewError('仅固定 PM、美术、开发和 QA 支持此流程自动执行。');
+        if(!agent || !['PM','Prefab','Art','Development','QA'].includes(agent.role_code)) throw new ReviewError('仅固定 PM、预制、美术、开发和 QA 支持此流程自动执行。');
         if(agent.automation_revision!==input.revision) throw new ReviewError('设置已改变，请刷新后重试。');
         if(input.enabled && !agent.enabled) throw new ReviewError('请先启用 Agent。');
         const updated=(await c.query('UPDATE gameai.agents SET auto_execute=$2,automation_revision=automation_revision+1 WHERE id=$1 RETURNING auto_execute,automation_revision',[agent.id,input.enabled])).rows[0];
@@ -31,5 +31,5 @@ export async function setAgentAutomation(pool,projectKey,userId,raw)
 export async function readAutomationPolicy(c,projectId)
 {
     return (await c.query(`SELECT a.id,a.role_code FROM gameai.fixed_agents f JOIN gameai.agents a ON a.id=f.agent_id
-        WHERE f.project_id=$1 AND a.enabled AND a.auto_execute AND a.role_code IN ('PM','Art','Development','QA') ORDER BY a.role_code`,[projectId])).rows;
+        WHERE f.project_id=$1 AND a.enabled AND a.auto_execute AND a.role_code IN ('PM','Prefab','Art','Development','QA') ORDER BY a.role_code`,[projectId])).rows;
 }

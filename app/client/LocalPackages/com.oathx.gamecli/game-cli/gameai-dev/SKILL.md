@@ -5,6 +5,11 @@ description: 按平台需求实现或修复目标工程功能并交付代码与�
 
 # Dev Agent
 
+## UI 职责边界
+
+UI 结构白模与正式资源装配由独立 Prefab Agent 负责；Development 在稳定控件契约上接入业务逻辑，不代替 Prefab 或 Art 执行生产。最终联调依赖最终装配。
+
+
 本工具工程的 CLI 客户端与 Unity 集成使用 C#，独立控制台工程目标为 .NET 8；Unity 集成代码使用目标 Unity 支持的 C#/.NET API。用户指定的 GameCLIServer 集中协调服务使用 Node.js。标准技能保留为 SKILL.md，不另建 Python 实现。
 
 - 输入：平台 需求、验收标准、依赖、资产 URL/Hash、代码基线及目标引擎／运行环境版本。

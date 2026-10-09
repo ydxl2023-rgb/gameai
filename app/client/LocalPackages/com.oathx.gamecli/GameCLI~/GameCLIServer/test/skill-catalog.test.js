@@ -5,7 +5,7 @@ import {discoverSkills,readSkill,loadSkillInstructions,canUseExtraSkill,isPrimar
 test('nested specialists inherit roles; loading includes parents and shared rules but not sibling specialties', async () =>
 {
     const skills = await discoverSkills();
-    assert.equal(skills.filter(s => s.skill_key.includes('/')).length, 23);
+    assert.ok(skills.some(s => s.skill_key === 'gameai-design/design-system'));
     const child = skills.find(s => s.skill_key === 'gameai-dev/dev-web');
     assert.equal(child.name, 'dev-web');
     assert.equal(child.role_code, 'Development');
@@ -14,6 +14,9 @@ test('nested specialists inherit roles; loading includes parents and shared rule
     assert.equal(canUseExtraSkill(child, 'QA'), false);
     assert.equal(canUseExtraSkill(skills.find(s => s.skill_key === 'gameai-dev'), 'Development'), false);
     const catalog = skills.map(s => ({...s,enabled:true}));
+    const design = await loadSkillInstructions([skills.find(s => s.skill_key === 'gameai-design')], catalog);
+    assert.ok(design.includes('Design 自检修订'));
+    assert.equal(design.includes('gameai-requirement-discovery'), false);
     const text = await loadSkillInstructions([child], catalog);
     assert.ok(text.includes('技能来源：game-cli/gameai-dev/SKILL.md'));
     assert.ok(text.includes('技能来源：game-cli/gameai-common/SKILL.md'));

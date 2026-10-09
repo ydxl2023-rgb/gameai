@@ -20,6 +20,7 @@ namespace GameCLI
                 new PMPlugin(),
                 new ArtPlugin(),
                 new DevelopmentPlugin(),
+                new GameCLI.Plugins.Prefab.PrefabPlugin(),
                 new UnityPlugin(),
                 new QAPlugin()
             };

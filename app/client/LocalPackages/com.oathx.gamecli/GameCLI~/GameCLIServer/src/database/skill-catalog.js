@@ -3,14 +3,13 @@ import { readFile, readdir, realpath } from 'node:fs/promises';
 import { resolve, relative, dirname, sep, isAbsolute } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const roles = { 'gameai-design': 'Design', 'gameai-pm': 'PM', 'gameai-art': 'Art', 'gameai-dev': 'Development', 'gameai-qa': 'QA' };
+const roles = { 'gameai-design': 'Design', 'gameai-pm': 'PM', 'gameai-prefab': 'Prefab', 'gameai-art': 'Art', 'gameai-dev': 'Development', 'gameai-qa': 'QA' };
 export const skillRelocations = {
     'gameai-task-writing': 'gameai-common/gameai-task-writing',
     'gameai-task-delivery': 'gameai-common/gameai-task-delivery',
     'gameai-document-format': 'gameai-common/gameai-document-format',
     'gameai-mobile-requirements': 'gameai-common/gameai-mobile-requirements',
     'gameai-cli-development': 'gameai-common/gameai-cli-development',
-    'gameai-requirement-discovery': 'gameai-design/gameai-requirement-discovery',
     'gameai-qa-repair': 'gameai-qa/gameai-qa-repair',
     'gameai-unity': 'gameai-dev/dev-unity',
     'gameai-dev/gameai-unity': 'gameai-dev/dev-unity'
@@ -100,6 +99,10 @@ export async function loadSkillInstructions(selected, catalog, root = skillRoot,
             // Child links are routing choices, not instructions to load every specialty.
             if (dependency.startsWith(key + '/') && !dependency.split('/').at(-1).startsWith('gameai-')) continue;
             if (key === 'gameai-common' && dependency.startsWith(key + '/') && dependency !== 'gameai-common/gameai-cli-development') continue;
+            // Cross-role links describe collaboration; they must not import another role's execution instructions.
+            const owner = role ?? selected.find(s => s.role_code)?.role_code;
+            const dependencyRole = registered.get(dependency)?.role_code;
+            if (owner && dependencyRole && dependencyRole !== owner && section !== 'unity-validation') continue;
             await load(dependency, section ?? null);
         }
     }

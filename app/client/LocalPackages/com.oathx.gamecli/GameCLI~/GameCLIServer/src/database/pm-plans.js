@@ -7,7 +7,7 @@ import { ReviewError } from './requirements.js';
 const requestSchema = z.object({ version_id:z.uuid(), revision:z.string().regex(/^[0-9a-f]{64}$/), document_hash:z.string().regex(/^[0-9a-f]{64}$/) }).strict();
 const text = z.string().trim().min(1).max(12000);
 const taskSchema = z.object({
-    id:z.string().regex(/^[A-Z][A-Z0-9-]{0,31}$/), title:text.max(200), role:z.enum(['Art','Development','QA']),
+    id:z.string().regex(/^[A-Z][A-Z0-9-]{0,31}$/), title:text.max(200), role:z.enum(['Prefab','Art','Development','QA']),
     description:text, source_refs:z.array(text.max(200)).min(1).max(30),
     acceptance:z.object({ preconditions:text, steps:text, success:text, failure:text, recovery:text, tests:text }).strict(),
     depends_on:z.array(z.string()).max(100)
@@ -58,7 +58,7 @@ export function validatePmPlan(raw)
         ordered.push(task);
     }
     plan.tasks.forEach(visit);
-    if (plan.tasks.some(t=>t.role==='QA' && !t.depends_on.some(id=>byId.get(id)?.role==='Development'))) throw new ReviewError('QA 必须依赖具体程序交付任务。');
+    if (plan.tasks.some(t=>t.role==='QA' && !t.depends_on.some(id=>['Development','Prefab'].includes(byId.get(id)?.role)))) throw new ReviewError('QA 必须依赖具体程序或预制交付任务。');
     return { ...plan, tasks:ordered };
 }
 

@@ -6,7 +6,7 @@ export function validateQaReport(context,report)
     if (context.retests.some(d=>d.state!=='retest') || report.retests.length!==expected.size || report.retests.some(r=>!expected.has(r.defect_id))) throw new ReviewError('必须逐一复测本轮全部返修项，不得引用其他缺陷。');
     for (const defect of report.defects)
     {
-        if (!context.dependencies.some(d=>d.role_code==='Development' && d.task_key===defect.source_task_key && d.execution_id && d.agent_id)) throw new ReviewError('缺陷只能关联本次 QA 验收的原开发交付。');
+        if (!context.dependencies.some(d=>['Development','Prefab'].includes(d.role_code) && d.task_key===defect.source_task_key && d.execution_id && d.agent_id)) throw new ReviewError('缺陷只能关联本次 QA 验收的原开发交付。');
         const prior=context.retests.find(d=>d.source_task_id===context.dependencies.find(s=>s.task_key===defect.source_task_key)?.id && d.case_key===defect.case_key);
         if (prior && report.retests.find(r=>r.defect_id===prior.id)?.passed) throw new ReviewError('同一缺陷不能同时复测通过和报告失败。');
     }
@@ -35,7 +35,7 @@ export async function applyQaReport(c,task,execution,context,report)
         {
             const description=`原开发任务：${source.task_key}\n原 QA 任务：${task.task_key}\n缺陷编号：${defect.case_key}\n前置条件：${defect.preconditions}\n操作步骤：${defect.steps}\n预期结果：${defect.expected}\n实际结果：${defect.actual}\n证据：${defect.evidence_path}\n修复验收：${defect.fix_acceptance}`;
             repairId=(await c.query(`INSERT INTO gameai.tasks(project_id,plan_version_id,parent_id,title,role_code,description,delivery_criteria,source_refs,bound_agent_id,dispatch_allowed,dispatch_revision,dispatch_selected_by,dispatch_selected_at)
-                VALUES($1,$2,$3,$4,'Development',$5,$6,$7,$8,$9,$10,$11,$12) RETURNING id`,[task.project_id,task.plan_version_id,task.parent_id,'返修：'+defect.title,description,JSON.stringify([{kind:'tests',text:defect.fix_acceptance}]),JSON.stringify(task.source_refs),source.agent_id,task.dispatch_allowed,task.dispatch_allowed?1:0,task.dispatch_selected_by,task.dispatch_selected_at])).rows[0].id;
+                VALUES($1,$2,$3,$4,$13,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING id`,[task.project_id,task.plan_version_id,task.parent_id,'返修：'+defect.title,description,JSON.stringify([{kind:'tests',text:defect.fix_acceptance}]),JSON.stringify(task.source_refs),source.agent_id,task.dispatch_allowed,task.dispatch_allowed?1:0,task.dispatch_selected_by,task.dispatch_selected_at,source.role_code])).rows[0].id;
             await c.query(`INSERT INTO gameai.qa_defects(project_id,qa_task_id,source_task_id,repair_task_id,source_execution_id,developer_agent_id,qa_agent_id,case_key,details)
                 VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)`,[task.project_id,task.id,source.id,repairId,source.execution_id,source.agent_id,execution.agent_id,defect.case_key,JSON.stringify(defect)]);
         }

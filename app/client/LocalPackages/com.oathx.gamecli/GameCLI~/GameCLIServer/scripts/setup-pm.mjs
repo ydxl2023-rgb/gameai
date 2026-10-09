@@ -13,6 +13,7 @@ try
         throw new Error('Workflow database account missing');
     }
     const role = pg.escapeIdentifier(config.PGUSER);
+    await pool.query('GRANT EXECUTE ON FUNCTION gameai.clear_project_requirements(uuid,uuid) TO '+role);
     await pool.query('GRANT SELECT,INSERT,UPDATE ON gameai.pm_jobs TO '+role);
     await pool.query('GRANT INSERT ON gameai.plans,gameai.plan_versions,gameai.tasks,gameai.task_dependencies TO '+role);
     await pool.query('GRANT UPDATE(dispatch_allowed,dispatch_revision,dispatch_selected_by,dispatch_selected_at) ON gameai.tasks TO '+role);
@@ -27,6 +28,7 @@ try
     await pool.query('GRANT SELECT,INSERT ON gameai.task_edits TO '+role);
     await pool.query('GRANT UPDATE(title,description,delivery_criteria,content_revision) ON gameai.tasks TO '+role);
     await pool.query('GRANT DELETE ON gameai.task_dependencies TO '+role);
+    await pool.query('GRANT DELETE ON gameai.approval_workflows,gameai.plan_dispatch_flows,gameai.task_edits,gameai.qa_defects,gameai.task_leases,gameai.task_dispatch_jobs,gameai.comments,gameai.artifact_links,gameai.executions,gameai.tasks,gameai.pm_jobs,gameai.plan_versions,gameai.plans TO '+role);
     await pool.query('GRANT UPDATE(auto_execute,automation_revision) ON gameai.agents TO '+role);
     console.log('PM 任务发布所需数据库权限已配置。');
 }

@@ -22,6 +22,24 @@ GameCLI on the user's behalf; do not ask the user to enter documents or operate
 workflow buttons in the Unity panel. Merely attaching a document for discussion
 does not authorize starting the workflow or creating platform tasks.
 
+For new or revised requirements, first apply the plugin entry skill
+`app/client/LocalPackages/com.oathx.gamecli/CodexPlugin~/gameai-track/skills/gameai-requirement-draft/SKILL.md`.
+Each requirement discussion turn returns a short complete text draft, without HTML
+or wireframes. Do not invoke cloud Design or upload until the user explicitly
+approves that draft version. Draft approval does not replace formal Track approval.
+Every issue requiring a decision must be resolved in the draft conversation before
+handoff; approval alone does not bypass unresolved issues. Do not delegate pending
+decisions to Design. Explicit bounded creative freedom counts as a resolved choice.
+The required sequence is conversation and necessary research, resolve every draft
+decision, human approval of the draft, precise prompt preparation, Design writing,
+Design self-check and revision, human approval of the final HTML in Track, then PM
+decomposition. Research belongs to the plugin conversation stage; Design must not
+repeat it or reopen settled decisions. New decision gaps return to draft review.
+Draft approval and Design self-check never authorize PM publication; preserve
+each role's actual automatic-execution grants after formal Track approval.
+
 For user-facing document deliverables, apply `app/client/LocalPackages/com.oathx.gamecli/game-cli/gameai-common/gameai-document-format/SKILL.md`. Deliver outline-style standalone HTML with a cover, linked contents and print styling; the conversation host renders structured agent results. Keep SKILL.md, CLI schemas and structured task formats unchanged.
 
 Design document artifacts must be saved under `app/desgin/` relative to this repository root; preserve this spelling and create the directory automatically when absent. The conversation host writes artifacts there when the Design process cannot write files. Do not resolve this path relative to `app/client/`.
+
+UI production uses a separate Prefab role and gameai-prefab skill: whitebox prefab -> Art resources -> final prefab assembly. Business Development may start from stable whitebox bindings; final QA depends on assembled UI and business delivery. Keep one responsibility chain per Agent and preserve per-role automatic-execution consent.

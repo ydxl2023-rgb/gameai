@@ -5,7 +5,7 @@ import { z } from 'zod';
 const inputSchema = z.object({
     request_id: z.uuid(),
     name: z.string().trim().min(1).max(80),
-    role: z.enum(['Design', 'PM', 'Art', 'Development', 'QA']),
+    role: z.enum(['Design', 'PM', 'Prefab', 'Art', 'Development', 'QA']),
     worker_id: z.uuid(),
     primary_skill: z.string().min(1).max(100),
     extra_skills: z.array(z.string().min(1).max(100)).max(16),

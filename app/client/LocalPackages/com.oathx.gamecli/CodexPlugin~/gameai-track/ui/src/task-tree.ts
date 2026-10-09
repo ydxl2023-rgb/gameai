@@ -7,7 +7,7 @@ export type TaskNode = Task & { children?:TaskNode[]; group?:{total:number;compl
 export function canDispatchTask(task:Task):boolean
 {
     return !!task.dispatch_allowed && !!task.task_uuid && !!task.parent_id
-        && ['Art','Development','QA'].includes(task.role)
+        && ['Prefab','Art','Development','QA'].includes(task.role)
         && ['待调度','依赖阻塞','失败'].includes(task.status);
 }
 
@@ -36,7 +36,7 @@ export function taskProgress(rootId:string, tasks:Task[], role?:string):TaskProg
 /** Role folders are view-only; task IDs and persisted dependency edges stay unchanged. */
 export function groupTaskTree(tasks:Task[], allTasks:Task[]):TaskNode[]
 {
-    const roles = ['Design','Art','Development','QA','PM'];
+    const roles = ['Design','Prefab','Art','Development','QA','PM'];
     return buildTaskTree(tasks,allTasks).map(root =>
     {
         if (!root.children?.length) return root.role === 'PM' && !root.parent_id ? {...root,aggregate:taskProgress(root.id,allTasks)} : root;

@@ -1,4 +1,5 @@
 import {canEditTasks,editTaskField} from '../database/task-edits.js';
+import { clearProjectTasks } from '../database/task-clear.js';
 import {setAgentAutomation} from '../database/agent-automation.js';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { readFile } from 'node:fs/promises';
@@ -198,6 +199,11 @@ export async function handleReviewRequest(request: IncomingMessage, response: Se
             reply(response,200,await setAgentAutomation(writer,project,session!.user,input));
             void resumeApprovalWorkflows(writer).catch(()=>console.error('自动 PM 检查失败。'));
             void resumeTaskFlows(writer).catch(()=>console.error('自动任务检查失败。'));
+            return;
+        }
+        if (path === '/api/track/review-task-clear')
+        {
+            reply(response,200,await clearProjectTasks(writer,project,session!.user));
             return;
         }
         if (path === '/api/track/review-task-edit')

@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>设备标识登录界面需求案 v1.0</title>
+<style>
+:root{--rule-color:#b42318;--fg:#1f2328;--muted:#57606a;--border:#d0d7de;--accent:#0969da}*{box-sizing:border-box}body{margin:0;background:#f6f8fa;color:var(--fg);font:14px/1.75 'Microsoft YaHei','PingFang SC',Arial,sans-serif}.page{max-width:1000px;margin:auto;padding:54px 58px;background:white;box-shadow:0 2px 12px #0000000d;overflow-wrap:anywhere}.cover{text-align:center;padding:64px 0 48px;border-bottom:1px solid var(--border);margin-bottom:36px}.cover h1{border:0;font-size:32px;margin:0 0 16px}.subtitle{color:var(--muted);font-size:17px}.meta{display:inline-block;text-align:left;border-top:1px solid var(--border);border-bottom:1px solid var(--border);padding:16px 24px;margin-top:24px}.toc{background:#fafbfc;border:1px solid var(--border);border-radius:8px;padding:20px 26px}.toc a,a{color:var(--accent)}h1{font-size:25px;border-bottom:2px solid #24292f;padding-bottom:8px;margin-top:42px}h2{font-size:20px;border-bottom:1px solid var(--border);padding-bottom:6px;margin-top:32px}h3{font-size:16px;margin-top:24px}p{margin:9px 0}li{margin:5px 0}table{width:100%;border-collapse:collapse;margin:14px 0;font-size:13px}th,td{border:1px solid var(--border);padding:8px;vertical-align:top;text-align:left}th{background:#f6f8fa}tr:nth-child(even) td{background:#fafbfc}.rule,.rule *{color:var(--rule-color)!important}svg .rule,svg .rule *{fill:var(--rule-color)}code{font-family:Consolas,monospace;background:#f6f8fa;padding:1px 4px;overflow-wrap:anywhere}pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f6f8fa;border:1px solid var(--border);padding:14px;font:13px/1.8 Consolas,'Microsoft YaHei',monospace}.callout{border-left:4px solid var(--accent);background:#ddf4ff;padding:12px 16px;margin:18px 0}.wire-gallery{display:flex;flex-direction:column;gap:24px}.wire-step{width:100%;margin:18px 0;padding:12px;background:#fafbfc;border:1px solid var(--border);border-radius:8px}.wire-step svg{display:block;width:100%;height:auto}.caption{font-size:13px;color:var(--muted);margin-top:10px}svg text{font-family:'Microsoft YaHei','PingFang SC',Arial,sans-serif;fill:#263442;font-size:32px}.order{color:var(--rule-color);font-weight:bold}.test{border-left:3px solid var(--border);padding-left:15px;margin:20px 0}.test p{margin:4px 0}.footer{margin-top:45px;padding-top:18px;border-top:1px solid var(--border);color:var(--muted);text-align:center}.print-note{font-size:12px;color:var(--muted);text-align:right}@media(max-width:700px){.page{padding:24px 16px}.cover{padding:28px 0}.cover h1{font-size:26px}.toc{padding:14px}th,td{padding:6px;font-size:12px}}@page{size:A4;margin:17mm 14mm}@media print{body{background:white;font-size:10.5pt}.page{max-width:none;padding:0;box-shadow:none}.cover{break-after:page}.no-print{display:none}h1,h2,h3{break-after:avoid}tr,.wire-step,.test{break-inside:avoid}thead{display:table-header-group}a{text-decoration:none}.rule,.rule *{color:#b42318!important;print-color-adjust:exact}svg{print-color-adjust:exact}pre{white-space:pre-wrap}.wire-gallery{display:flex;flex-direction:column}}
+</style>
+</head>
+<body>
+<main class="page">
+<p class="print-note no-print">可通过浏览器打印功能打印或导出 PDF；本文不含可执行脚本。</p>
+<header class="cover">
+<h1>设备标识登录界面需求案</h1>
+<p class="subtitle">移动端模拟登录测试闭环 · 正式需求阅读版</p>
+<div class="meta">需求编号：LOGIN-UI-V05<br>文档版本：v1.0<br>文档状态：待人工审批<br>编写日期：2026-10-09<br>来源初稿：用户已批准的 v0.5 完整文本<br>用途：界面制作、模拟逻辑实现及后续验收依据</div>
+</header>
+<nav class="toc" aria-label="目录">
+<h2>目录</h2>
+<ol>
+<li><a href="#goals">设计目标</a></li>
+<li><a href="#overview">功能综述</a></li>
+<li><a href="#ui">界面与交互</a><ol>
+<li><a href="#login">3.1 登录窗口</a> · <a href="#wireframes">界面线框布局</a></li>
+<li><a href="#dropdown">3.2 服务器下拉展开</a></li>
+<li><a href="#processing">3.3 登录处理中</a></li>
+<li><a href="#failure">3.4 失败及超时提示</a></li>
+<li><a href="#success">3.5 成功占位主界面</a></li>
+<li><a href="#reuse">3.6 复用组件与统一属性</a></li>
+<li><a href="#config">3.7 Excel 配置表设计</a></li>
+<li><a href="#operations">3.8 操作交付标准与程序需求</a></li>
+</ol></li>
+<li><a href="#art">美术与表现需求</a></li>
+</ol>
+<p><a href="#tests">附录 A：完整测试用例</a> · <a href="#sources">附录 B：来源与批准初稿</a> · <a href="#check">附录 C：文档自检与交付说明</a></p>
+</nav>
+<section id="goals">
+<h1>1 设计目标</h1>
+<p>提供简洁的移动端测试登录入口，用本地安装 ID 串联选服、模拟登录、首次建号及成功页面，便于检查完整交互和各服务器数据隔离。</p>
+<ul class="rule">
+<li>本期完成模拟登录测试闭环，不连接真实登录服务。</li>
+<li>应用安装 ID 是本地生成并保存的标识，不是永久硬件 ID，也不是安全认证凭据。</li>
+<li>手机号、用户名、密码、注册输入、真实认证、账号找回、跨设备继承及奖励系统均不在本期。</li>
+<li>仅设计移动端触屏操作；设计画布为 1920×1080 横屏，运行时适配设备实际安全区。</li>
+</ul>
+</section>
+<section id="overview">
+<h1>2 功能综述</h1>
+<table><thead><tr><th>编号</th><th>主题</th><th>确定规则</th></tr></thead><tbody>
+<tr><td>R01</td><td>安装标识</td><td class="rule">首次安装使用时生成并持久化安装 ID；重复启动读取同一个 ID。标识数据丢失后生成新 ID，并视为新账号，不自动关联旧账号。</td></tr>
+<tr><td>R02</td><td>模拟账号</td><td class="rule">以安装 ID 与服务器 ID 的组合定位模拟账号。首次在对应服务器成功登录时自动建号；后续复用。不同服务器的数据独立。</td></tr>
+<tr><td>R03</td><td>选服</td><td class="rule">从本地配置按行顺序读取服务器列表。上次选择仍存在且可用时优先恢复，否则选择首个可用服。不可用服保留展示但禁止选择。</td></tr>
+<tr><td>R04</td><td>无可用服</td><td class="rule">没有可用服务器时显示“暂无可用服务器”，登录按钮禁用。列表为空时选服控件同时禁用；列表非空但全不可用时允许展开查看，全部条目禁选。</td></tr>
+<tr><td>R05</td><td>版本展示</td><td class="rule">左上角完整展示测试 ICON 与 32 位字母数字版本号。版本号仅展示，不参与登录校验、版本匹配或登录阻断。</td></tr>
+<tr><td>R06</td><td>请求状态</td><td class="rule">模拟登录处理中同时禁用选服及登录按钮，关闭已展开的下拉列表；成功后进入占位主界面。</td></tr>
+<tr><td>R07</td><td>失败及超时</td><td class="rule">明确失败或模拟超时均使用屏幕中部出现、向上飘动后消失的原因提示条；恢复符合当前可用条件的选服与登录操作，不自动重试。</td></tr>
+<tr><td>R08</td><td>表现范围</td><td class="rule">简洁测试风格，静态背景；窗口显示及切换不制作开关动画，按钮不制作音效。失败提示条的上飘及消失是本期唯一必需的动态反馈。</td></tr>
+</tbody></table>
+<p class="rule">本期所有登录结果来自本地模拟，不存在真实远端发号或远端提交结果未知的场景。模拟超时结束当前尝试，旧尝试的迟到结果不得改变当前页面、账号或选服状态。玩家可恢复操作后手动再次登录；不增加重试按钮、网络异常窗口或自动查询网络服务。</p>
+<p class="rule">模拟建号与成功结果作为同一有效尝试的完成步骤；失败或已超时尝试不提交新账号。相同安装 ID 与服务器 ID 的重复成功登录不得重复建号。配置、标识或模拟数据读取／保存失败时不伪装成功。</p>
+</section>
+<section id="ui">
+<h1>3 界面与交互</h1>
+<p>以下线框是低保真制作依据，包含 Design 在授权范围内确定的布局。占位颜色与图形不表示已制作正式资源。手机外框、左侧刘海、手势条、安全区虚线、编号及引线均为文档辅助标记。</p>
+<p class="rule">所有窗口共用 1920×1080 设计画布。坐标原点为父节点左上角，x 向右、y 向下；表中尺寸单位为设计像素。根节点铺满屏幕，关键内容约束在实际安全区内；示意安全区为 (130,65,1660,905)，不将示意边距硬编码为设备安全区。</p>
+<p class="rule">组件树的 S 数字表示同父节点从底到顶的 Sibling 顺序，不代表独立 Canvas 或 Canvas.sortingOrder。每个节点的相对布局、类型和输入属性见对应表；共用属性见 <a href="#reuse">3.6</a>。所有图片使用静态 Image.Type.Simple；本期没有九宫格图片。</p>
+<section id="login">
+<h2>3.1 登录窗口</h2>
+<h3 id="wireframes">3.1.1 界面线框布局</h3>
+<p>应用启动进入此窗口。主区域只有服务器下拉框和登录按钮；左上角提供测试 ICON 与版本号。登录窗口没有额外注册、找回、设置或退出按钮。</p>
+<div class="wire-step" id="wire-login">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2000 1160" role="img" aria-label="登录窗口完整线框">
+<title>登录窗口：左上角标识与版本、服务器下拉框、登录按钮</title>
+<defs><g id="phone-frame"><rect x="4" y="4" width="1992" height="1152" rx="110" fill="#20252c"/><svg x="40" y="40" width="1920" height="1080" viewBox="0 0 1920 1080"><rect width="1920" height="1080" rx="80" fill="#eef0f3"/><rect x="130" y="65" width="1660" height="905" rx="16" fill="none" stroke="#a6b4c2" stroke-width="2" stroke-dasharray="10 12"/><path d="M0 335 H38 Q80 335 80 380 V700 Q80 745 38 745 H0 Z" fill="#20252c"/><rect x="700" y="1020" width="520" height="12" rx="6" fill="#333b46"/></svg></g>
+<g id="login-content"><rect x="150" y="90" width="88" height="88" rx="16" fill="#506d86"/><path d="M169 116 H219 M194 116 V157" fill="none" stroke="white" stroke-width="8"/><text x="258" y="142" font-size="34">A1B2C3D4E5F6G7H8I9J0K1L2M3N4P5Q6</text><rect x="610" y="430" width="700" height="96" rx="12" fill="white" stroke="#6d8193" stroke-width="3"/><text x="642" y="491">测试服一</text><text x="1246" y="491">▾</text><rect x="760" y="580" width="400" height="104" rx="14" fill="#496b88"/><text x="960" y="646" text-anchor="middle" style="fill:white">登录</text></g></defs>
+<use href="#phone-frame"/><g transform="translate(40 40)"><use href="#login-content"/><text x="150" y="220">L02 · 测试 ICON</text><text x="258" y="265">L03 · 完整版本号（示例）</text><text x="610" y="396">B01 · 服务器下拉框 · UI-BUTTON</text><text x="760" y="742">B02 · 登录按钮 · UI-BUTTON</text><text x="150" y="900" class="rule">绘制：L01 背景 → L02／L03 → B01 → B02；关键内容位于安全区</text><text x="150" y="952" font-size="26">设计画布 1920×1080 · 辅助编号不进入游戏界面</text></g>
+</svg>
+<p class="caption">低保真图。入口为应用启动；点击 B01 展开选服，点击 B02 发起模拟登录。版本号为 32 位示例字符串，不显示省略号。</p>
+</div>
+<h3>3.1.2 本窗口结构分解</h3>
+<pre class="rule">L00 登录根容器（透明 Panel）
+└─ S0 L01 登录背景（Background / Image）
+   ├─ S0 L02 测试 ICON（Image）
+   ├─ S1 L03 版本号（TMP_Text）
+   ├─ S2 B01 服务器下拉框（Button，UI-BUTTON 选服变体）
+   │  ├─ S0 B01-BG 下拉框底色（Image）
+   │  ├─ S1 B01-T 当前服务器文字（TMP_Text）
+   │  └─ S2 B01-A 展开箭头“▾”（TMP_Text）
+   └─ S3 B02 登录按钮（Button，UI-BUTTON 主按钮变体）
+      ├─ S0 B02-BG 登录底色（Image）
+      └─ S1 B02-T 登录状态文字（TMP_Text）</pre>
+<h3>3.1.3 控件属性与复用标注</h3>
+<table><thead><tr><th>编号／父节点／顺序</th><th>类型与局部布局</th><th>内容、输入与图片模式</th></tr></thead><tbody class="rule">
+<tr><td>L00／屏幕／窗口基础层</td><td>透明 Panel；四边拉伸，1920×1080</td><td>不添加透明 Image；不接收输入。</td></tr>
+<tr><td>L01／L00／S0</td><td>Background / Image；(0,0,1920,1080)，拉伸</td><td>静态纯色 #EEF0F3；Simple，纯色允许铺满，不要求贴图；raycastTarget=false。</td></tr>
+<tr><td>L02／L01／S0</td><td>Image；(150,90,88,88)，左上锚点</td><td>测试 ICON；Simple，保持 1:1，不裁剪图标；raycastTarget=false。</td></tr>
+<tr><td>L03／L01／S1</td><td>TMP_Text；(258,102,1400,64)，左上锚点</td><td>绑定展示版本字符串；34 设计字号，单行完整显示，适配时等比缩放，不截断、不省略；raycastTarget=false。</td></tr>
+<tr><td>B01／L01／S2</td><td>Button；(610,430,700,96)，居中布局；复用 UI-BUTTON</td><td>点击展开服务器列表。命中整个矩形；登录中禁用。显示已选名称或“暂无可用服务器”。</td></tr>
+<tr><td>B01-BG／B01／S0</td><td>Image；(0,0,700,96)，铺满按钮</td><td>Simple 纯色静态背景，禁用时降低对比度；raycastTarget=true，事件归属 B01。</td></tr>
+<tr><td>B01-T／B01／S1</td><td>TMP_Text；(32,16,570,64)</td><td>名称来自配置；过长可在此处省略，完整名称在列表项显示；raycastTarget=false。</td></tr>
+<tr><td>B01-A／B01／S2</td><td>TMP_Text；(620,16,48,64)</td><td>文字箭头“▾”，非图片资源；raycastTarget=false。</td></tr>
+<tr><td>B02／L01／S3</td><td>Button；(760,580,400,104)，居中布局；复用 UI-BUTTON</td><td>业务名称始终为“登录按钮”；状态文案为“登录”或“登录中…”；无可用服及处理中禁用。</td></tr>
+<tr><td>B02-BG／B02／S0</td><td>Image；(0,0,400,104)</td><td>Simple 纯色静态底色；raycastTarget=true，命中事件归属 B02。</td></tr>
+<tr><td>B02-T／B02／S1</td><td>TMP_Text；(24,20,352,64)</td><td>状态文字居中、不省略；raycastTarget=false。</td></tr>
+</tbody></table>
+</section>
+<section id="dropdown">
+<h2>3.2 服务器下拉展开</h2>
+<p>由 B01 进入，覆盖在登录窗口之上。选择可用服务器后返回收起状态；点击列表外区域仅关闭下拉层。</p>
+<div class="wire-step" id="wire-dropdown">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2000 1160" role="img" aria-label="服务器下拉展开及纵向滚动线框"><title>服务器下拉层：四个完整条目及下一项局部</title><defs><clipPath id="server-clip"><rect x="622" y="538" width="676" height="336"/></clipPath></defs><use href="#phone-frame"/><g transform="translate(40 40)"><use href="#login-content"/><rect x="610" y="526" width="700" height="360" rx="8" fill="white" stroke="#657e94" stroke-width="3"/><g clip-path="url(#server-clip)"><rect x="622" y="538" width="676" height="80" fill="#dce9f3"/><text x="646" y="590">测试服一　已选择</text><rect x="622" y="618" width="676" height="80" fill="#fff"/><text x="646" y="670">测试服二</text><rect x="622" y="698" width="676" height="80" fill="#e3e6e9"/><text x="646" y="750">测试服三　不可用</text><rect x="622" y="778" width="676" height="80" fill="#fff"/><text x="646" y="830">测试服四</text><rect x="622" y="858" width="676" height="80" fill="#e9f0f5"/><text x="646" y="910">测试服五</text></g><rect x="622" y="538" width="676" height="336" fill="none" stroke="#b42318" stroke-width="2" stroke-dasharray="8 8"/><text x="1350" y="560">D02 下拉背景</text><text x="1350" y="625">D03 纵向列表</text><text x="1350" y="690">D04 裁剪区域</text><text x="1350" y="755">↕ 触屏拖动</text><text x="150" y="340">D01：列表外点击</text><text x="150" y="390">关闭且不穿透</text><text x="150" y="930" class="rule">绘制：登录窗口 → D01 捕获层 → D02 → D03/D04/D05 → D07[n]</text></g></svg>
+<p class="caption">低保真图。图中六条示例服务器需要纵向滚动，一屏显示四条完整记录及第五条的局部背景；虚线为裁剪边界，箭头为辅助说明。登录按钮被下拉层覆盖时不得接收点击。</p>
+</div>
+<h3>3.2.1 本窗口结构分解</h3>
+<pre class="rule">D00 下拉根容器（透明 Panel；位于 L00 上方）
+└─ S0 D01 下拉捕获背景（Background / Image，透明）
+   └─ S0 D02 下拉面板背景（Image）
+      └─ S0 D03 服务器滚动列表（ScrollRect）
+         └─ S0 D04 服务器裁剪区域（Viewport + RectMask2D + 透明 Image）
+            └─ S0 D05 服务器内容（Content / Panel）
+               └─ Sn D07[n] 服务器选择按钮（Button；UI-BUTTON 列表项变体）
+                  ├─ S0 D08[n] 条目背景（Image）
+                  └─ S1 D09[n] 服务器名称与状态（TMP_Text）
+从底到顶：L00 → D00；D01 接收列表外点击，D04 与条目接收列表内触控。</pre>
+<h3>3.2.2 控件属性与复用标注</h3>
+<table><thead><tr><th>编号／父节点／顺序</th><th>局部布局与类型</th><th>交付约束</th></tr></thead><tbody class="rule">
+<tr><td>D00／屏幕／L00 上方</td><td>透明 Panel，四边拉伸</td><td>与登录窗口同画布；根节点不接收射线。</td></tr>
+<tr><td>D01／D00／S0</td><td>Background / Image，(0,0,1920,1080)</td><td>Simple 透明纯色，raycastTarget=true；仅未被列表命中的点击关闭下拉层，本次点击不得穿透。</td></tr>
+<tr><td>D02／D01／S0</td><td>Image，(610,526,700,H)</td><td>Simple 静态纯色，raycastTarget=true；面板空白处吸收点击，不选服、不关闭。H=min(24+80N,360)，N 为条目数。</td></tr>
+<tr><td>D03／D02／S0</td><td>ScrollRect，(12,12,676,H−24)</td><td>horizontal=false，vertical=true；无滚动条；Viewport=D04，Content=D05；采用边界钳制，不越界停留。</td></tr>
+<tr><td>D04／D03／S0</td><td>Viewport + RectMask2D + Image；铺满 D03</td><td>Simple 透明纯色，raycastTarget=true，用于捕获空白区拖动；裁剪全部内容与点击范围。</td></tr>
+<tr><td>D05／D04／S0</td><td>Content / Panel；(0,0,676,80N)，顶部锚定</td><td>垂直排列，间距 0，按配置行顺序；无图片，不拦截输入。</td></tr>
+<tr><td>D07[n]／D05／Sn</td><td>Button；(0,80n,676,80)，n 从 0 开始</td><td>服务器选择按钮，复用 UI-BUTTON；可用项可点，不可用项禁选但允许起始拖动；单击选择与拖动互斥。</td></tr>
+<tr><td>D08[n]／D07[n]／S0</td><td>Image；铺满 676×80</td><td>Simple 纯色；选中、普通、不可用三种样式；raycastTarget=true，点击事件归属 D07[n]，拖动交 D03。</td></tr>
+<tr><td>D09[n]／D07[n]／S1</td><td>TMP_Text；(24,8,628,64)</td><td>名称加“已选择”或“不可用”；最多两行，完整显示配置允许长度；raycastTarget=false。</td></tr>
+</tbody></table>
+<p class="rule">N 为本地配置实际条目数，不新增业务数量上限。一至四项时面板随内容缩短且不滚动；五项及以上使用 336 高度视口，显示四项与下一项局部。Content 未溢出时停止滚动。没有嵌套滚动列表，同一次拖动只由 D03 处理，不能误触条目或下层登录按钮。</p>
+<p class="rule">每次展开从列表顶部展示，不因打开下拉框改变已选服务器；选择结果以名称及状态文字保持可见。点击不可用项不改变选择，不追加业务弹窗。</p>
+</section>
+<section id="processing">
+<h2>3.3 登录处理中</h2>
+<p>由 B02 进入，仍使用登录窗口结构，没有新的独立窗口或遮罩。</p>
+<div class="wire-step" id="wire-processing"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2000 1160" role="img" aria-label="登录处理中线框"><title>登录中：选服及登录按钮禁用</title><use href="#phone-frame"/><g transform="translate(40 40)"><use href="#login-content"/><rect x="610" y="430" width="700" height="96" rx="12" fill="#dde2e7" stroke="#9ca9b5" stroke-width="3"/><text x="642" y="491">测试服一</text><text x="1246" y="491">▾</text><rect x="760" y="580" width="400" height="104" rx="14" fill="#8a99a7"/><text x="960" y="646" text-anchor="middle" style="fill:white">登录中…</text><text x="610" y="380" class="rule">B01：禁用选服，固定本次目标服务器</text><text x="760" y="750" class="rule">B02：禁用重复点击</text><text x="150" y="920" class="rule">绘制沿用 L01 → L02／L03 → B01 → B02；不新增覆盖层</text></g></svg><p class="caption">低保真状态图。登录中只改变 B01、B02 的可操作状态及 B02-T 文案；成功与失败是后续互斥结果。</p></div>
+<h3>3.3.1 本状态结构分解</h3>
+<pre class="rule">复用 3.1 的完整树：L00 → L01 → L02、L03、B01、B02
+B01 → B01-BG、B01-T、B01-A（S0、S1、S2）
+B02 → B02-BG、B02-T（S0、S1）
+绘制顺序、父节点、坐标、图片 Simple 模式与 3.1 完全一致。
+D00 已收起，不存在可操作的下拉列表。</pre>
+<h3>3.3.2 状态属性</h3>
+<table><thead><tr><th>节点</th><th>变化属性</th><th>保持属性</th></tr></thead><tbody class="rule">
+<tr><td>B01、B01-BG、B01-T、B01-A</td><td>Button.interactable=false；背景禁用样式；当前服务器名称保持。</td><td>仍为按钮、静态 Simple 背景及文字；布局、父节点与 Sibling 顺序见 3.1。</td></tr>
+<tr><td>B02、B02-BG、B02-T</td><td>Button.interactable=false；背景禁用样式；文案“登录中…”。</td><td>业务名称仍是登录按钮；命中范围与 3.1 相同，不能发出重复尝试。</td></tr>
+<tr><td>L00、L01、L02、L03</td><td>无变化。</td><td>背景、ICON、完整版本号保留；不增加加载动画、进度条或取消按钮。</td></tr>
+</tbody></table>
+</section>
+<section id="failure">
+<h2>3.4 失败及超时提示</h2>
+<p>本分支与成功进入主界面互斥。提示条覆盖在恢复可操作状态的登录窗口上，不构成失败弹窗。</p>
+<div class="wire-step" id="wire-failure"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2000 1160" role="img" aria-label="失败和超时原因提示条线框"><title>失败提示：屏幕中部出现，向上飘动后消失</title><use href="#phone-frame"/><g transform="translate(40 40)"><use href="#login-content"/><rect x="450" y="496" width="1020" height="88" rx="12" fill="#3e4953"/><text x="960" y="553" text-anchor="middle" style="fill:white">模拟登录超时，请再次登录</text><path d="M1500 540 V340 M1482 365 L1500 340 L1518 365" fill="none" stroke="#b42318" stroke-width="4"/><text x="1060" y="320" class="rule">向上飘动并消失（轨迹示意）</text><text x="450" y="795">F01 提示背景 · F02 原因文字</text><text x="150" y="900" class="rule">绘制：登录窗口 → F00/F01 → F02；提示条全部不接收射线</text><text x="150" y="952" class="rule">B01、B02 按当前资格恢复；提示没有按钮，不阻塞触屏操作</text></g></svg><p class="caption">低保真图。普通失败显示对应原因；超时显示图中示例文案。箭头只说明运动方向，不规定额外时长或位移数值，不进入运行界面。</p></div>
+<h3>3.4.1 本浮层结构分解</h3>
+<pre class="rule">L00 登录窗口恢复普通状态（完整树见 3.1）
+F00 原因提示根容器（透明 Panel；位于 L00、D00 上方）
+└─ S0 F01 提示背景（Background / Image）
+   └─ S0 F02 原因文字（TMP_Text）
+从底到顶：登录窗口 → 已展开的下拉层（如有）→ F01 → F02。
+F00、F01、F02 全部不拦截输入；与弹窗遮罩不同。</pre>
+<h3>3.4.2 控件属性</h3>
+<table><thead><tr><th>编号／父节点／顺序</th><th>类型与局部布局</th><th>表现与输入</th></tr></thead><tbody class="rule">
+<tr><td>F00／屏幕／最上提示层</td><td>透明 Panel，四边拉伸</td><td>无图片、无点击事件，不改变下层交互资格。</td></tr>
+<tr><td>F01／F00／S0</td><td>Background / Image；初始 (450,496,1020,88)，居中锚定</td><td>Simple 静态纯色底板，raycastTarget=false。动画 AN01 同步移动背景及其文字并消隐；结束后隐藏。</td></tr>
+<tr><td>F02／F01／S0</td><td>TMP_Text；(24,12,972,64)</td><td>绑定中文失败原因，至多两行，不使用按钮；raycastTarget=false。过长的内部异常不直接展示，映射为可读的短原因。</td></tr>
+</tbody></table>
+<p class="rule">超时文案为“模拟登录超时，请再次登录”；普通模拟失败可显示“模拟登录失败，请再次登录”。配置或本地存储错误显示实际类别，例如“服务器配置读取失败”或“本地数据保存失败”。不把本地异常描述为真实账号认证失败。</p>
+<p class="rule">提示条从屏幕中间出现，向上移动并消失。显示期间不阻塞选服及再次登录；连续反馈复用单个提示实例，以最新原因更新并重新播放，不叠出多个遮挡区域。</p>
+</section>
+<section id="success">
+<h2>3.5 成功占位主界面</h2>
+<p>当前有效尝试模拟登录成功后进入此页，作为闭环终点；本期不扩展主界面玩法。</p>
+<div class="wire-step" id="wire-success"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2000 1160" role="img" aria-label="模拟登录成功占位主界面"><title>成功占位主界面</title><use href="#phone-frame"/><g transform="translate(40 40)"><text x="960" y="430" text-anchor="middle" style="font-size:54px">占位主界面</text><text x="960" y="550" text-anchor="middle">模拟登录成功</text><text x="960" y="640" text-anchor="middle">当前服务器：测试服一</text><text x="150" y="890">M02 标题 · M03 成功说明 · M04 服务器信息</text><text x="150" y="950" class="rule">绘制：M01 背景 → M02 → M03 → M04；本页没有交互按钮</text></g></svg><p class="caption">低保真图。由当前有效登录成功进入；测试信息来自实际本次模拟结果。无新增返回、注销或切服按钮，重启应用后重新进入登录流程。</p></div>
+<h3>3.5.1 本窗口结构分解</h3>
+<pre class="rule">M00 占位主界面根容器（透明 Panel；替换 L00）
+└─ S0 M01 占位背景（Background / Image）
+   ├─ S0 M02 页面标题（TMP_Text）
+   ├─ S1 M03 成功说明（TMP_Text）
+   └─ S2 M04 当前服务器信息（TMP_Text）
+从底到顶：M01 → M02 → M03 → M04。
+成功切换后隐藏 L00、D00 及登录原因提示 F00，禁止残留登录触控。</pre>
+<h3>3.5.2 控件属性</h3>
+<table><thead><tr><th>编号／父节点／顺序</th><th>类型与局部布局</th><th>显示与输入</th></tr></thead><tbody class="rule">
+<tr><td>M00／屏幕／主窗口层</td><td>透明 Panel，四边拉伸</td><td>复用统一窗口结构；无输入。</td></tr>
+<tr><td>M01／M00／S0</td><td>Background / Image，(0,0,1920,1080)</td><td>Simple 静态纯色，复用登录背景颜色；raycastTarget=false。</td></tr>
+<tr><td>M02／M01／S0</td><td>TMP_Text，(510,360,900,100)</td><td>“占位主界面”，居中，完整显示；raycastTarget=false。</td></tr>
+<tr><td>M03／M01／S1</td><td>TMP_Text，(510,488,900,80)</td><td>“模拟登录成功”，居中；raycastTarget=false。</td></tr>
+<tr><td>M04／M01／S2</td><td>TMP_Text，(410,578,1100,100)</td><td>“当前服务器：”加实际成功服务器名称，最多两行完整显示；raycastTarget=false。</td></tr>
+</tbody></table>
+</section>
+<section id="reuse">
+<h2>3.6 复用组件与统一属性</h2>
+<table><thead><tr><th>模板</th><th>实例及定义</th><th>依赖与范围</th></tr></thead><tbody class="rule">
+<tr><td>UI-BUTTON 文本按钮</td><td>容器 Button → S0 静态底色 Image → S1 TMP_Text；业务名称由实例绑定。B01 额外包含 S2 箭头文字。B01、B02、D07[n] 使用不同样式。</td><td>先交付基础按钮结构，再组装选服控件和列表项，最后组装登录窗口。按钮模板不自带登录行为。</td></tr>
+<tr><td>UI-SERVER-ROW 服务器条目</td><td>D07[n]／D08[n]／D09[n]；676×80；名称、可用性、选中状态来自当前数据。</td><td>复用 UI-BUTTON 列表项变体；同类条目只生产一份模板。D03、D04、D05 随列表组装交付。</td></tr>
+<tr><td>UI-TOAST 原因提示</td><td>F00／F01／F02，组件图及属性见 3.4；各失败原因复用同一结构。</td><td>纯色底板、原因文字与 AN01 表现组成同一交付结果；不增加可操作按钮。</td></tr>
+<tr><td>窗口基础布局</td><td>L00→L01、M00→M01；透明根 Panel 与静态背景。</td><td>透明 Panel、Content、Viewport 是结构节点，不对应独立贴图或机械拆分的资源任务。</td></tr>
+</tbody></table>
+<pre class="rule">UI-BUTTON 分层示意（实例尺寸见各窗口属性表）
+按钮容器：Button / RectTransform
+  S0 ┌────────────────────┐ 静态 Simple 背景，提供命中范围
+  S1 │    业务状态文字    │ TMP_Text，不接收射线
+     └────────────────────┘
+B01 追加 S2 箭头文字；不是单独图片。
+从底到顶始终为背景 → 文字 → 实例附加文字。</pre>
+<p class="rule">所有 Simple 纯色底板可随容器拉伸，无图案边缘保护要求；ICON 保持比例，不拉伸变形。没有 Sliced 图片，因此本期不设置 Sprite.border。文本保持独立节点，不烘焙进 ICON 或底板。</p>
+<p class="rule">普通按钮使用默认、按下、禁用的静态色差提供触屏反馈，不制作过渡动画或音效。全部实际触控区域位于安全区，文本与装饰图片不夺取按钮和滚动列表的输入。</p>
+</section>
+<section id="config">
+<h2>3.7 Excel 配置表设计</h2>
+<p>配置工作簿名为“模拟登录配置.xlsx”，作为本地配置制作约定；本文未生成工作簿或导入代码。正式运行只读取本地发布数据，不请求服务器列表 API。</p>
+<table><thead><tr><th>工作表</th><th>职责及每行含义</th><th>字段</th><th>C# 类型</th><th>必填／键／范围／格式</th></tr></thead><tbody class="rule">
+<tr><td rowspan="3">服务器列表</td><td rowspan="3">每行一个测试服务器；物理行顺序即显示和首个可用服判定顺序。</td><td>ServerId</td><td><code>string</code></td><td>必填、唯一主键、非空；去除首尾空白后判重，区分大小写。无外键。稳定标识，不随显示名变化。</td></tr>
+<tr><td>ServerName</td><td><code>string</code></td><td>必填、非空；1～20 个 Unicode 文本元素，为本期完整显示的排版约束，不含换行。Excel 文本单元格。</td></tr>
+<tr><td>IsAvailable</td><td><code>bool</code></td><td>必填；仅填写 true 或 false，无单位；false 为不可选，不表示真实在线检测结果。</td></tr>
+<tr><td>展示信息</td><td>固定一行，提供左上角版本展示内容。</td><td>VersionText</td><td><code>string</code></td><td>必填；以文本单元格保存完整 32 位字母数字串，不转换为数值。没有业务主键或外键。</td></tr>
+</tbody></table>
+<h3>3.7.1 最小示例与滚动示例</h3>
+<p>以下是示例配置，不代表真实服务器或已有工程资源。仅保留服务器列表第一行即可形成最小可登录示例；六行完整示例对应下拉线框。</p>
+<table><thead><tr><th>ServerId</th><th>ServerName</th><th>IsAvailable</th></tr></thead><tbody>
+<tr><td>local01</td><td>测试服一</td><td>true</td></tr><tr><td>local02</td><td>测试服二</td><td>true</td></tr><tr><td>local03</td><td>测试服三</td><td>false</td></tr><tr><td>local04</td><td>测试服四</td><td>true</td></tr><tr><td>local05</td><td>测试服五</td><td>true</td></tr><tr><td>local06</td><td>测试服六</td><td>true</td></tr>
+</tbody></table>
+<table><thead><tr><th>VersionText</th></tr></thead><tbody><tr><td><code>A1B2C3D4E5F6G7H8I9J0K1L2M3N4P5Q6</code></td></tr></tbody></table>
+<h3>3.7.2 校验、错误处理与生效</h3>
+<ul class="rule">
+<li>服务器列表加载前校验字段存在、主键唯一、名称长度及布尔类型；字段错误时不跳过坏行拼装可登录列表，按配置读取失败处理，禁用登录并显示原因提示。</li>
+<li>合法的零条服务器列表不视为解析失败，按“暂无可用服务器”处理；非空但全部不可用时遵循 R04。</li>
+<li>版本号的 32 位字母数字要求是配置制作及人工验收标准。登录逻辑不得检查、比较该字符串或据此放行／拒绝登录；即使测试注入异常版本文本，也不得影响模拟登录结果。</li>
+<li>展示信息缺失时不伪造版本，L03 显示“版本信息缺失”；服务器列表仍独立决定能否登录。正常交付配置必须提供完整规定字符串。</li>
+<li>本地配置在应用启动时加载，本次运行固定使用该份配置；替换配置在下次启动生效，不增加运行中刷新入口或热更行为。</li>
+<li>更新配置后，按 ServerId 恢复上次选择；不存在或不可用时回退到首个可用服。修改 ServerName 不改变账号身份；改变 ServerId 视为不同服务器数据域。</li>
+<li>不清除其他服务器已有模拟数据；配置中移除的服务器本期不可进入。恢复相同 ServerId 时仍使用对应原数据。</li>
+<li>不增加账号进度、安装 ID、上次选择、模拟登录结果、超时数值、认证地址或真实接口字段到工作簿。模拟成功、失败和超时由测试夹具控制，不新增玩家设置界面。</li>
+</ul>
+<h3>3.7.3 本地运行数据边界</h3>
+<table><thead><tr><th>数据</th><th>性质</th><th>生命周期与约束</th></tr></thead><tbody class="rule">
+<tr><td>安装 ID</td><td>本地运行数据，非配置</td><td>首次使用生成并成功保存后复用；可采用随机生成的 Guid，以字符串持久化。不得读取硬件标识来替代已批准方案。</td></tr>
+<tr><td>上次服务器 ID</td><td>本地运行数据，非配置</td><td>选定可用服时记录；重启复用，失效时回退。保存失败不宣称记忆成功，提示本地数据保存失败。</td></tr>
+<tr><td>模拟账号与服务器数据</td><td>本地运行数据，非配置</td><td>按安装 ID 与 ServerId 隔离并持久化；首次成功建号、后续复用。无跨设备继承或真实服务端同步。</td></tr>
+<tr><td>当前尝试标记与状态</td><td>运行中临时状态，非配置</td><td>区分有效尝试及过期回调；进程退出后不自动恢复请求、不自动登录。</td></tr>
+</tbody></table>
+</section>
+<section id="operations">
+<h2>3.8 操作交付标准与程序需求</h2>
+<p>以下按操作链定义程序交付结果，未创建专业任务。每项测试均为计划，完整用例见附录 A。</p>
+<h3>OP01 启动与本地状态恢复</h3>
+<ul class="rule">
+<li>前置条件：启动应用；本地配置与运行数据可能为首次、已有或丢失状态。</li>
+<li>操作处理：显示登录窗口，读取本地配置、安装 ID 及上次选服；初始化尚未完成时禁用登录，避免使用不完整状态。</li>
+<li>成功结果：缺少安装 ID 时生成并保存；已有 ID 时复用。恢复有效的上次服务器，否则选择首个可用服；显示 ICON 和完整版本号。</li>
+<li>失败反馈：配置或本地存储异常显示 F00 原因提示。缺少有效安装 ID、有效服务器配置或可用服时不允许登录；显示数据不可被误认为已经保存。</li>
+<li>异常恢复：重新启动时重新读取本地状态；不自动发起登录。标识数据丢失按新账号处理，不尝试找回旧账号。</li>
+<li>测试用例：T01、T02、T03、T04、T05、T12、T13、T17。</li>
+</ul>
+<h3>OP02 展开、浏览、选择及关闭服务器列表</h3>
+<ul class="rule">
+<li>前置条件：初始化完成且当前不在登录中；至少存在一条合法配置。</li>
+<li>操作处理：点击 B01 显示 D00；条目按配置排列。触屏纵向拖动 D03 只浏览列表，拖动结束不触发选服。内容未溢出时不滚动。</li>
+<li>成功结果：点击可用 D07[n] 更新 B01-T、记录上次服务器并关闭 D00；点击外部 D01 只关闭 D00、保持原选择；不播放开关动画。</li>
+<li>失败反馈：不可用项禁选，原选择保持。记忆写入失败用 F00 显示原因，不谎称已保存；本次内存选择可继续使用，重启以实际持久化结果为准。</li>
+<li>异常恢复：展开、滑动和关闭均为本地交互，无网络调用；下次启动重新校验上次服务器是否存在且可用。登录中对 B01 的点击不进入本操作。</li>
+<li>测试用例：T03、T04、T05、T06、T07、T13。</li>
+</ul>
+<h3>OP03 模拟登录与首次建号</h3>
+<ul class="rule">
+<li>前置条件：安装 ID 有效并已保存，已选择可用服务器，当前没有正在处理的尝试。</li>
+<li>操作处理：点击 B02 固定本次安装 ID 和服务器 ID，发起一次本地模拟尝试；收起 D00，B01 和 B02 禁用，B02-T 显示“登录中…”。不得启动真实登录 API。</li>
+<li>成功结果：当前有效尝试成功时，以安装 ID 与服务器 ID 查找或创建模拟账号；持久化成功后显示 M00，并隐藏登录窗口与提示。重复登录同服复用账号，不同服独立。</li>
+<li>失败反馈：模拟失败或本地数据提交失败时不进入 M00；显示准确的 F00 原因提示，恢复当前可用条件下的 B01、B02 和“登录”文案。</li>
+<li>异常恢复：模拟超时结束本次尝试，显示“模拟登录超时，请再次登录”，恢复操作，不自动重试。过期结果和旧页面回调不得建号、跳转或覆盖新选择；进程中断后下次启动重新进入登录窗口。</li>
+<li>测试用例：T08、T09、T10、T11、T14、T15、T16。</li>
+</ul>
+<h3>OP04 原因提示的显示与恢复</h3>
+<ul class="rule">
+<li>前置条件：启动、本地保存或模拟登录产生需要告知玩家的失败／超时原因。</li>
+<li>操作处理：F01 与 F02 从屏幕中间显示，播放 AN01 上飘及消失表现；没有确认、关闭或重试按钮，不接收射线。</li>
+<li>成功结果：提示播放结束后隐藏；底层操作资格由真实状态决定。模拟失败和超时恢复正常操作，不等待提示结束。</li>
+<li>失败反馈：原因使用对应中文类别，不能把超时表现成登录成功，也不能显示虚构的远端认证错误。</li>
+<li>异常恢复：再次产生原因时复用同一提示组件并更新文字；成功进入主界面后清除旧提示，避免跨页面残留。该操作不发起网络或登录重试。</li>
+<li>测试用例：T10、T11、T13、T16。</li>
+</ul>
+<h3>OP05 成功页面显示</h3>
+<ul class="rule">
+<li>前置条件：当前有效尝试已经完成模拟账号的查询／创建及必要持久化。</li>
+<li>操作处理：隐藏 L00、D00、F00，显示 M00；不增加成功弹窗、奖励窗口、返回或注销按钮。</li>
+<li>成功结果：显示“占位主界面”“模拟登录成功”及本次实际服务器名称；下层登录控件不再接收输入。</li>
+<li>失败反馈：本页为同步本地显示，不新增业务失败分支；未成功的登录仍留在登录窗口并遵循 OP03。</li>
+<li>异常恢复：进程重启回到登录窗口，复用已保存的安装 ID、选服及同服账号；不自动登录。</li>
+<li>测试用例：T09、T14、T15、T16。</li>
+</ul>
+</section>
+</section>
+<section id="art">
+<h1>4 美术与表现需求</h1>
+<p>采用清晰、简洁的测试风格。表中“制作”是后续交付范围，不表示本次已经制作资源；“占位”表示本期有意采用的测试表现。</p>
+<table><thead><tr><th>类别／编号</th><th>对应控件</th><th>本期状态</th><th>交付内容及判定</th></tr></thead><tbody>
+<tr><td>登录布局</td><td>L00、L01、L03、B01、B02</td><td>制作</td><td class="rule">依据 3.1 的布局及安全区组装；静态纯色背景，完整版本号，主区域仅选服与登录。背景不需要新增位图。</td></tr>
+<tr><td>测试 ICON</td><td>L02</td><td>制作</td><td class="rule">单个简洁测试标识，沿用线框方形底与 T 形几何标记方向；静态图，透明外缘，1:1，Simple，保证 88×88 设计尺寸下可辨识。不得使用暗示正式品牌授权的图案。</td></tr>
+<tr><td>基础文本按钮</td><td>UI-BUTTON；B01、B02、D07[n]</td><td>制作</td><td class="rule">交付普通、按下及禁用的静态样式；业务文案保持独立 TMP_Text。选服、登录、列表项使用相应变体，不生产重复同类资源。</td></tr>
+<tr><td>服务器单元</td><td>D07[n]、D08[n]、D09[n]</td><td>制作</td><td class="rule">一份条目模板，包含普通、已选择、不可用状态；名称与状态可读，676×80 设计尺寸。</td></tr>
+<tr><td>下拉容器与视图组装</td><td>D00～D05</td><td>制作</td><td class="rule">按实际条目数调整高度；保留裁剪区、Content 与列表引用。程序负责滚动、输入仲裁、绑定与选服保存，美术负责可读布局和状态样式。</td></tr>
+<tr><td>原因提示样式</td><td>F00、F01、F02</td><td>制作</td><td class="rule">横向长条、静态纯色底板与独立原因文字；不含按钮和拦截层。</td></tr>
+<tr><td>提示表现 AN01</td><td>F01 与其子节点 F02</td><td>制作</td><td class="rule">在 OP04 的失败或超时触发时，从屏幕中部出现，上飘并消失；同一提示文字与底板同步运动，不阻塞输入。不新增固定业务时长或位移规则。</td></tr>
+<tr><td>占位主界面</td><td>M00～M04</td><td>占位</td><td class="rule">使用与登录窗口一致的静态纯色背景，独立标题、成功说明和实际服务器文字；不扩展正式主界面资源。</td></tr>
+<tr><td>开关／跳转动画</td><td>登录、下拉、主界面</td><td>本期不需要</td><td class="rule">不制作窗口打开、关闭或成功切换动画；不把 AN01 误记为窗口动画。</td></tr>
+<tr><td>特效</td><td>全部窗口</td><td>本期不需要</td><td class="rule">不制作粒子、登录光效、加载旋转或成功特效。</td></tr>
+<tr><td>按钮音效</td><td>B01、B02、D07[n]</td><td>本期不需要</td><td class="rule">不制作或播放按钮音效。</td></tr>
+</tbody></table>
+<p class="rule">本需求没有奖励道具、奖励框或领奖界面，不产生奖励四层资源。手机底框、刘海、安全区虚线、编号、方向箭头和低保真说明不进入游戏资源清单。</p>
+</section>
+<section id="tests">
+<h1>附录 A：完整测试用例</h1>
+<p>以下 17 项均为尚未执行的计划用例。模拟结果、超时及存储故障由开发测试夹具注入，不在玩家界面新增调试按钮；测试操作使用移动触屏。</p>
+<div class="test"><h3>T01 首次生成与重复启动复用</h3><div class="rule"><p>前置条件：本地安装标识不存在，有合法可用服务器配置。</p><p>操作步骤：启动并记录持久化标识，结束进程后再次启动。</p><p>预期结果：首次生成并保存 ID；再次启动读取完全相同 ID；登录窗口可用，尚未点击时不建号、不自动登录。</p></div></div>
+<div class="test"><h3>T02 标识丢失按新账号处理</h3><div class="rule"><p>前置条件：安装 ID A 在某服已有模拟账号。</p><p>操作步骤：测试环境清除安装 ID，再启动并在同服登录。</p><p>预期结果：生成不同 ID B；成功后创建 B 对应新账号；不自动关联、找回或继承 A 的账号。</p></div></div>
+<div class="test"><h3>T03 选服优先级与配置变更</h3><div class="rule"><p>前置条件：配置中有多个可用服。</p><p>操作步骤：分别测试无上次选择、上次选择仍可用、上次服务器移除、上次服务器变为不可用；每次重启读取配置。</p><p>预期结果：依次选择首个可用服、上次有效服、首个可用服、首个可用服；配置顺序决定回退顺序。</p></div></div>
+<div class="test"><h3>T04 不可用服禁选</h3><div class="rule"><p>前置条件：列表同时包含可用和不可用服，已选可用服。</p><p>操作步骤：展开并点击不可用项，再点击另一可用项。</p><p>预期结果：不可用项不改变选择；可用项更新显示、关闭列表并保存选择，重启后恢复。</p></div></div>
+<div class="test"><h3>T05 无可用服</h3><div class="rule"><p>前置条件：分别准备空列表与非空全不可用列表。</p><p>操作步骤：启动，点击选服及登录区域。</p><p>预期结果：显示“暂无可用服务器”，登录禁用；空列表不能展开，全不可用列表可查看但不能选择；不发起模拟登录。</p></div></div>
+<div class="test"><h3>T06 列表容量、裁剪与手势</h3><div class="rule"><p>前置条件：分别准备 1、4、6 条合法服务器配置。</p><p>操作步骤：展开列表，纵向拖动并滑到首尾；从不可用项起始拖动。</p><p>预期结果：1 或 4 项不产生无效滚动；6 项显示四个完整条目与下一项局部，可滚动至末项；边界钳制、视口外不显示不命中；拖动不误选、不触发登录。</p></div></div>
+<div class="test"><h3>T07 下拉关闭及点击隔离</h3><div class="rule"><p>前置条件：下拉已展开。</p><p>操作步骤：点击面板空白，再点击面板外原登录按钮所在的未被列表覆盖区域。</p><p>预期结果：面板空白吸收点击；外部点击仅关闭下拉层并保留选择，不穿透登录；无开关动画。</p></div></div>
+<div class="test"><h3>T08 登录处理中防重复</h3><div class="rule"><p>前置条件：安装 ID 与选服有效，模拟处理暂不结束。</p><p>操作步骤：点击登录，连续点击登录与选服。</p><p>预期结果：只产生一个有效尝试；按钮显示“登录中…”，选服与登录禁用；本次目标服务器保持，无真实登录 API 调用。</p></div></div>
+<div class="test"><h3>T09 成功建号与主界面</h3><div class="rule"><p>前置条件：当前安装 ID 在选定服务器没有账号，模拟结果为成功。</p><p>操作步骤：点击登录，等待模拟完成。</p><p>预期结果：完成首次建号及保存后进入占位主界面，显示实际服务器名称；登录窗口及提示隐藏，不出现奖励、注册或成功弹窗。</p></div></div>
+<div class="test"><h3>T10 明确失败及手动再次登录</h3><div class="rule"><p>前置条件：测试夹具返回模拟失败。</p><p>操作步骤：点击登录，观察反馈；提示未消失时改选服务器或再次点击登录。</p><p>预期结果：不进入主界面，不提交新账号；原因条从中间出现，上飘消失，无按钮且不阻塞输入；B01、B02 恢复，只有玩家再次点击才产生新尝试。</p></div></div>
+<div class="test"><h3>T11 超时与迟到结果</h3><div class="rule"><p>前置条件：测试夹具让当前模拟尝试超时，并保留旧成功回调。</p><p>操作步骤：登录至超时，改选服务器并手动开启新尝试，再释放旧回调。</p><p>预期结果：显示“模拟登录超时，请再次登录”，恢复操作，不自动重试；旧回调不能建号、跳转、解除新尝试锁定或覆盖当前选择。</p></div></div>
+<div class="test"><h3>T12 版本完整展示且不参与认证</h3><div class="rule"><p>前置条件：配置规定的 32 位示例版本号；另准备异常版本文本与缺失展示信息的测试数据。</p><p>操作步骤：检查正常左上角展示；使用其他版本文本及缺失展示信息分别进行模拟登录。</p><p>预期结果：正常版本 32 位全部显示，无截断或省略；版本内容不触发认证或阻断登录；展示信息缺失时显示“版本信息缺失”，选服和模拟结果仍独立工作。</p></div></div>
+<div class="test"><h3>T13 配置与本地存储异常</h3><div class="rule"><p>前置条件：分别注入重复 ServerId、无效布尔值、非法名称、标识保存失败、选服保存失败及账号保存失败。</p><p>操作步骤：触发启动、选服或登录对应步骤。</p><p>预期结果：服务器配置整体无效或标识不可用时不登录；选服记忆失败不宣称已保存；账号保存失败不进入主界面。各分支显示准确原因条，不伪造认证结果。</p></div></div>
+<div class="test"><h3>T14 同服复用与跨服隔离</h3><div class="rule"><p>前置条件：同一安装 ID，有两个可用服。</p><p>操作步骤：成功登录服一，重启后再次登录服一，再重启并登录服二；通过测试夹具核对各服数据。</p><p>预期结果：服一只建号一次；服二独立建号且不读取服一数据；再次进入对应服复用该服数据。</p></div></div>
+<div class="test"><h3>T15 进程中断与重启</h3><div class="rule"><p>前置条件：分别处于登录处理中及成功页。</p><p>操作步骤：终止进程并重新启动。</p><p>预期结果：重新进入登录窗口，不恢复旧请求、不自动登录；复用已保存安装 ID 及合法上次选服；成功提交过的同服账号不重复创建。</p></div></div>
+<div class="test"><h3>T16 提示复用及页面清理</h3><div class="rule"><p>前置条件：可连续触发不同失败，随后可返回模拟成功。</p><p>操作步骤：连续触发原因提示，再手动登录成功。</p><p>预期结果：同一提示组件显示最新原因并重新播放，不堆叠；成功后旧提示隐藏，迟到反馈不覆盖主界面，主界面无登录按钮命中残留。</p></div></div>
+<div class="test"><h3>T17 安全区、长名称及表现范围</h3><div class="rule"><p>前置条件：具有不同实际安全区的横屏设备；配置最长允许服务器名称。</p><p>操作步骤：逐一查看登录、下拉、处理中、原因提示与占位主界面，并完成触屏选服登录。</p><p>预期结果：关键内容避开刘海及手势区；版本完整、条目和主界面名称可读、ICON 不变形；静态背景无开关动画和按钮音效，仅原因提示按 AN01 上飘消失。</p></div></div>
+</section>
+<section id="sources">
+<h1>附录 B：来源与批准初稿</h1>
+<h2>B.1 来源与授权</h2>
+<p>批准依据由宿主提供：用户先确认“按你的推荐方案确认”；宿主展示完整 v0.5 后，用户明确回复“批准 v0.5”。全部初稿问题已解决，ICON 与其余布局细节授权 Design 完成。</p>
+<p>本次使用对话阶段于 2026-10-09 核实并传入的资料，没有重新浏览或进行竞品调研：</p>
+<ul><li>Android：<a href="https://developer.android.com/identity/user-data-ids?hl=zh-cn">用户数据标识符最佳实践</a>。</li><li>Apple：<a href="https://developer.apple.com/documentation/uikit/uidevice/identifierforvendor">UIDevice.identifierForVendor</a>。</li></ul>
+<p>上述平台标识存在访问或生命周期限制，是采用本地安装 ID 模拟方案的输入依据；本文不将平台标识接口设为本期实现依赖。</p>
+<h2>B.2 已批准 v0.5 全文</h2>
+<blockquote>
+<p>目标：完成模拟登录测试闭环，不接真实登录服务。</p>
+<p>账号：首次安装生成并保存 ID，重复启动复用；数据丢失后视为新账号。首次登录自动建号，各服务器数据独立。</p>
+<p>界面：横屏 1920×1080，适配刘海安全区；左上角显示测试 ICON 和完整的 32 位字母数字版本号。主区域仅有服务器下拉框和登录按钮。</p>
+<p>选服：读取本地配置，记住上次选择，否则选择首个可用服；不可用服禁选，无可用服禁用登录。</p>
+<p>反馈：登录中禁用按钮和选服；成功进入占位主界面；失败或超时显示上飘提示，恢复操作，不自动重试。</p>
+<p>表现：简洁测试风格、静态背景，无开关动画和按钮音效；ICON 与其余布局细节授权 Design 完成。版本号仅展示，不校验。</p>
+<p>待确认：无。</p>
+</blockquote>
+<p class="rule">v0.5 的批准授权本次文档生产，不代表 v1.0 正式 HTML 已获批准。正式文档须由人工在 Track 审批对应完整版本后，才进入后续 PM 流程。</p>
+</section>
+<section id="check">
+<h1>附录 C：文档自检与交付说明</h1>
+<table><thead><tr><th>检查项</th><th>本次实际结果</th></tr></thead><tbody>
+<tr><td>批准范围</td><td>已逐项进行文本核对：本地安装 ID、首次成功建号、跨服隔离、两个主操作、版本完整展示、禁选／禁用条件、失败超时恢复及不自动重试均已覆盖。</td></tr>
+<tr><td>线框与层级</td><td>已核对五类可见线框、窗口树、稳定编号、父节点、相对坐标、Simple 图片属性及绘制顺序；处理中引用登录窗口结构，其他独立视图提供各自结构。</td></tr>
+<tr><td>列表与复用</td><td>已核对 ScrollRect → Viewport／RectMask2D → Content → 单元的完整结构，以及容量、裁剪、非溢出和点击／拖动区分；没有奖励组件。</td></tr>
+<tr><td>配置与状态</td><td>已核对标准 C# 字段类型、配置示例、行顺序、生效时机和运行数据边界；版本号不作为登录校验，未虚构真实登录接口。</td></tr>
+<tr><td>交互与表现</td><td>已核对 OP01～OP05 的前置、处理、成功、失败与恢复；AN01 与提示操作对应；未增加开关动画或按钮音效。</td></tr>
+<tr><td>目录与文档结构</td><td>已进行文本层面的锚点和引用检查；正文四节，配置在操作标准之前，线框单列，内嵌样式及 SVG，无外部资产和可执行脚本。</td></tr>
+<tr><td>测试覆盖</td><td>列出 17 项尚未执行的用例。未运行游戏、程序、配置导入或浏览器测试。</td></tr>
+<tr><td>视觉检查限制</td><td>本次按要求不调用工具，未打开浏览器预览，不能宣称窄窗口与打印效果已实测。宿主保存后仍需完成实际阅读预览检查。</td></tr>
+<tr><td>实际保存与流程</td><td>本次仅返回 HTML 内容。宿主负责在目标工程根目录下的 app/desgin/ 保存实际文件、生成链接并核对位置；本次没有文件路径、哈希或上传成功证据。</td></tr>
+</tbody></table>
+<p class="rule">文档状态为待人工审批。自检不等于人工审批；本文不证明已创建专业任务、已制作资源、已实现程序或已通过测试。</p>
+</section>
+<footer class="footer">设备标识登录界面需求案 · LOGIN-UI-V05 · v1.0 · 待人工审批<br>正式审批状态以 Track 对应文档版本记录为准。</footer>
+</main>
+</body>
+</html>
