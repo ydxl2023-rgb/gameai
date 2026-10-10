@@ -16,7 +16,7 @@ export async function qaScenarios({c,p,w,user,projectKey,servicePool,rows,child,
     await c.query('UPDATE gameai.agents SET auto_execute=true WHERE id=$1',[qaAgent]);
     await c.query("INSERT INTO gameai.fixed_agents VALUES($1,'QA',$2)",[p,qaAgent]);
     await c.query("INSERT INTO gameai.agent_grants(project_id,agent_id,permission_code) VALUES($1,$2,'task.write_assigned')",[p,qaAgent]);
-    await c.query("INSERT INTO gameai.agent_skills(project_id,agent_id,skill_key,is_primary,content_hash) SELECT $1,$2,skill_key,true,content_hash FROM gameai.skills WHERE skill_key='gameai-qa'",[p,qaAgent]);
+    await c.query("INSERT INTO gameai.agent_skills(project_id,agent_id,skill_key,is_primary,content_hash) SELECT $1,$2,skill_key,true,content_hash FROM gameai.skills WHERE skill_key='qa/QAAgent01'",[p,qaAgent]);
     assert.equal((await dispatchTasks(servicePool,projectKey,user,{tasks:[{task_id:qa.id,revision:0}]})).rows[0].ready,false,'QA still requires human dispatch selection');
     await setTaskDispatchSelection(servicePool,projectKey,user,{task_id:qa.id,revision:0,allowed:true});
     const request={tasks:[{task_id:qa.id,revision:1}],auto_continue:true};

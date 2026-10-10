@@ -26,13 +26,12 @@ namespace GameCLI.Agents
         {
             string[] skillNames =
             {
-                "gameai-pm",
-                "gameai-pm/pm-art-breakdown",
-                "gameai-common",
-                "gameai-common/gameai-task-delivery",
-                "gameai-common/gameai-task-writing",
-                "gameai-common/gameai-mobile-requirements",
-                "gameai-common/gameai-cli-development"
+                "pm/PMAgent01",
+                "pm/PMAgent01/pm-art-breakdown",
+                "common",
+                "common/gameai-task-delivery",
+                "common/gameai-task-writing",
+                "common/gameai-mobile-requirements"
             };
             StringBuilder instructions = new();
             foreach (string name in skillNames)

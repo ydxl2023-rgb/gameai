@@ -19,4 +19,4 @@ description: 验收 Unity 项目的指定交付版本。用于Unity 测试专业
 
 ## Unity 验证工具规则
 
-使用 [Unity 验证规则](../../gameai-dev/dev-unity/SKILL.md#unity-validation)，仅加载该验证章节；不执行开发职责。
+使用 [Unity 验证规则](../../../development/JohnCarmack/dev-unity/SKILL.md#unity-validation)，仅加载该验证章节；不执行开发职责。

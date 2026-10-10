@@ -90,13 +90,12 @@ namespace GameCLI.Plugins.PM
                 string skills = values.TryGetValue("--skills", out string? skillPath) ? Path.GetFullPath(skillPath) : FindSkills(project);
                 foreach (string name in new[]
                 {
-                    "gameai-pm",
-                    "gameai-pm/pm-art-breakdown",
-                    "gameai-common",
-                    "gameai-common/gameai-task-delivery",
-                    "gameai-common/gameai-task-writing",
-                    "gameai-common/gameai-mobile-requirements",
-                    "gameai-common/gameai-cli-development"
+                    "pm/PMAgent01",
+                    "pm/PMAgent01/pm-art-breakdown",
+                    "common",
+                    "common/gameai-task-delivery",
+                    "common/gameai-task-writing",
+                    "common/gameai-mobile-requirements"
                 })
                 {
                     if (!File.Exists(Path.Combine(skills, name, "SKILL.md")))

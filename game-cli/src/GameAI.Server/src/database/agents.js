@@ -34,6 +34,8 @@ export async function syncSkillCatalog(pool)
                 UNION ALL SELECT 1 FROM gameai.agent_runs WHERE state IN ('running','unknown') LIMIT 1`);
             if (active.rowCount) throw new AgentInputError('存在执行中或待核实的任务，请结束后迁移技能绑定。');
         }
+        const active = await client.query(`SELECT 1 FROM gameai.agent_runs WHERE state IN ('running','unknown') UNION ALL SELECT 1 FROM gameai.executions WHERE state IN ('assigned','running','unknown') LIMIT 1`);
+        if (active.rowCount) throw new AgentInputError('存在执行中任务，请结束后同步角色技能。');
         await client.query('UPDATE gameai.skills SET enabled=false');
         for (const skill of await discoverSkills())
         {
@@ -44,11 +46,9 @@ export async function syncSkillCatalog(pool)
         }
         for (const [previous, current] of Object.entries(skillRelocations))
         {
-            await client.query(`INSERT INTO gameai.agent_skills(project_id,agent_id,skill_key,content_hash,is_primary)
-                SELECT g.project_id,g.agent_id,s.skill_key,s.content_hash,g.is_primary FROM gameai.agent_skills g
-                JOIN gameai.skills s ON s.skill_key=$2 WHERE g.skill_key=$1
-                ON CONFLICT(agent_id,skill_key) DO NOTHING`, [previous,current]);
-            await client.query('DELETE FROM gameai.agent_skills WHERE skill_key=$1', [previous]);
+            // Update in place to preserve the one-primary-skill invariant during relocation.
+            await client.query(`UPDATE gameai.agent_skills g SET skill_key=s.skill_key,content_hash=s.content_hash
+                FROM gameai.skills s WHERE g.skill_key=$1 AND s.skill_key=$2`, [previous,current]);
             await client.query('DELETE FROM gameai.skills WHERE skill_key=$1', [previous]);
         }
         if (relocating)
@@ -56,6 +56,16 @@ export async function syncSkillCatalog(pool)
             await client.query(`INSERT INTO gameai.audit_events(project_id,actor,event,payload)
                 SELECT id,'local:skill-catalog','公共技能目录及绑定迁移',$1::jsonb FROM gameai.projects`,
                 [JSON.stringify({relocations:skillRelocations})]);
+        }
+        // Shared rules are inherited, not editable role assignments.
+        const bindings = (await client.query(`SELECT g.agent_id,g.skill_key,a.role_code agent_role
+            FROM gameai.agent_skills g JOIN gameai.agents a ON a.id=g.agent_id WHERE NOT g.is_primary`)).rows;
+        for (const binding of bindings)
+        {
+            if (!canUseExtraSkill(binding, binding.agent_role))
+            {
+                await client.query('DELETE FROM gameai.agent_skills WHERE agent_id=$1 AND skill_key=$2', [binding.agent_id,binding.skill_key]);
+            }
         }
         await client.query('COMMIT');
     }
@@ -104,7 +114,7 @@ export async function createAgent(pool, projectKey, raw)
         const worker = (await client.query('SELECT capacity FROM gameai.workers WHERE project_id=$1 AND id=$2', [project.id, input.worker_id])).rows[0];
         if (!worker || input.capacity > worker.capacity) throw new AgentInputError('节点无效，或并发容量超过节点上限。');
         const skills = (await client.query('SELECT * FROM gameai.skills WHERE enabled AND skill_key=ANY($1::text[])', [skillKeys])).rows;
-        if (skills.length !== skillKeys.length || !skills.some(s => s.skill_key === input.primary_skill && isPrimarySkill(s) && s.role_code === input.role) || skills.some(s => s.skill_key !== input.primary_skill && !canUseExtraSkill(s, input.role)))
+        if (skills.length !== skillKeys.length || !skills.some(s => s.skill_key === input.primary_skill && isPrimarySkill(s) && s.role_code === input.role) || skills.some(s => s.skill_key !== input.primary_skill && (!canUseExtraSkill(s, input.role) || !s.skill_key.startsWith(input.primary_skill + '/'))))
         {
             throw new AgentInputError('主技能必须匹配角色，专业技能必须属于本角色，不能使用其他角色的主技能。');
         }
@@ -159,7 +169,7 @@ export async function addAgentSkills(pool,projectKey,raw)
         const missing=parsed.data.skills.filter(key=>!existing.some(s=>s.skill_key===key));
         if(existing.filter(s=>!s.is_primary).length+missing.length>16) throw new AgentInputError('辅助技能最多 16 项。');
         const skills=(await c.query('SELECT * FROM gameai.skills WHERE enabled AND skill_key=ANY($1::text[])',[parsed.data.skills])).rows;
-        if(skills.length!==parsed.data.skills.length || skills.some(s=>!canUseExtraSkill(s,agent.role_code))) throw new AgentInputError('只能添加启用的辅助技能，不能替换角色主技能。');
+        if(skills.length!==parsed.data.skills.length || skills.some(s=>(!canUseExtraSkill(s,agent.role_code) || !s.skill_key.startsWith(existing.find(s=>s.is_primary)?.skill_key + '/')))) throw new AgentInputError('只能添加启用的辅助技能，不能替换角色主技能。');
         for(const skill of skills)
         {
             const bytes=await readSkill(skill.skill_key);

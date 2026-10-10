@@ -150,7 +150,7 @@ test('manual PM gate, idempotency, fixed-run proof, atomic publication and retry
         const artAgent=(await c.query("INSERT INTO gameai.agents(project_id,agent_key,role_code,worker_id,enabled,display_name,capacity) VALUES($1,'art-01','Art',$2,true,'测试 Art',1) RETURNING id",[p,w])).rows[0].id;
         await c.query("INSERT INTO gameai.fixed_agents VALUES($1,'Art',$2)",[p,artAgent]);
         await c.query("INSERT INTO gameai.agent_grants(project_id,agent_id,permission_code) VALUES($2,$1,'task.write_assigned')",[artAgent,p]);
-        await c.query("INSERT INTO gameai.agent_skills(project_id,agent_id,skill_key,is_primary,content_hash) SELECT $2,$1,skill_key,true,content_hash FROM gameai.skills WHERE skill_key='gameai-art'",[artAgent,p]);
+        await c.query("INSERT INTO gameai.agent_skills(project_id,agent_id,skill_key,is_primary,content_hash) SELECT $2,$1,skill_key,true,content_hash FROM gameai.skills WHERE skill_key='art/MasayoshiSuto'",[artAgent,p]);
         await setTaskDispatchSelection(servicePool,projectKey,user,{task_id:artTask.id,revision:0,allowed:true});
         const dispatchInput={tasks:[{task_id:artTask.id,revision:1}]};
         await assert.rejects(dispatchTasks(servicePool,projectKey,outsider,dispatchInput),/人工账户/);
@@ -197,7 +197,7 @@ test('manual PM gate, idempotency, fixed-run proof, atomic publication and retry
         await c.query('UPDATE gameai.agents SET auto_execute=true WHERE id=ANY($1::uuid[])',[[artAgent,devAgent]]);
         await c.query("INSERT INTO gameai.fixed_agents VALUES($1,'Development',$2)",[p,devAgent]);
         await c.query("INSERT INTO gameai.agent_grants(project_id,agent_id,permission_code) VALUES($1,$2,'task.write_assigned')",[p,devAgent]);
-        await c.query("INSERT INTO gameai.agent_skills(project_id,agent_id,skill_key,is_primary,content_hash) SELECT $1,$2,skill_key,true,content_hash FROM gameai.skills WHERE skill_key='gameai-dev'",[p,devAgent]);
+        await c.query("INSERT INTO gameai.agent_skills(project_id,agent_id,skill_key,is_primary,content_hash) SELECT $1,$2,skill_key,true,content_hash FROM gameai.skills WHERE skill_key='development/JohnCarmack'",[p,devAgent]);
         await c.query("UPDATE gameai.tasks SET status='failed' WHERE id=$1",[artTask.id]);
         const extra=(await c.query("INSERT INTO gameai.tasks(project_id,plan_version_id,parent_id,title,role_code) VALUES($1,$2,$3,'未勾选任务','Art') RETURNING id",[p,artTask.plan_version_id,parentTask.id])).rows[0];
         const automatic=await dispatchTasks(servicePool,projectKey,user,{...dispatchInput,auto_continue:true,retry:true},true);

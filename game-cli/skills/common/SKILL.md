@@ -1,5 +1,5 @@
 ---
-name: gameai-common
+name: common
 description: 提供流水线共用的结构化结果、文件哈希与 Trace 约定；用于角色交付和证据整理。
 ---
 
@@ -9,11 +9,11 @@ description: 提供流水线共用的结构化结果、文件哈希与 Trace 约
 
 每个 Agent 仅有一个本角色主技能及本专业子技能，共享契约只提供公共约束。Design 负责规格，PM 负责拆分依赖，Prefab 负责 UI 白模和资源装配，Art 负责资源生成，Development 负责业务实现，QA 负责验收。跨角色参考不得导入对方执行职责；禁止一个 Agent 靠叠加角色主技能完成整条生产链。
 
-## 强制编码规范
+## 角色入口与公共依赖
 
-凡使用 GameCLI 的工程，其自有 C# 代码的后续开发、修改和审查必须严格遵守 [GameCLI 编码规范](gameai-cli-development/SKILL.md)。所有参与编码、编排和验收的角色必须执行该要求，不得将其视为建议或仅限工具仓库的约定。编排器安排开发任务时必须传递此规范，开发交付与 QA 验收必须检查符合性，违规代码不能判定通过。
+每个角色固定一个主目录：Design 使用 design/ShigeruMiyamoto，PM 使用 pm/PMAgent01，Prefab 使用 prefab/PrefabAgent01，Art 使用 art/MasayoshiSuto，Development 使用 development/JohnCarmack，QA 使用 qa/QAAgent01。专业子技能只能来自自己的主目录，不挂载其他角色的执行技能。公共规范由主技能引用继承，不作为人工添加的角色技能。
 
-复制或安装本技能及角色技能时，必须同时携带 `gameai-common/gameai-cli-development`，并在目标工程的 AGENTS.md 或等效 AI 工具入口引用该规范。
+涉及自有 C# 编写或检查时，Development、Prefab、QA 使用 gameai-csharp-standard。策划、PM、美术不加载工程维护规范，也不承担代码实现职责。gameai-cli-development 仅用于维护 GameCLI 工程，生产角色不默认加载。
 
 ## 结果与证据
 
@@ -55,7 +55,7 @@ description: 提供流水线共用的结构化结果、文件哈希与 Trace 约
 - `gameai-task-delivery/SKILL.md`：专业任务依赖及交付核验时使用。
 - `gameai-document-format/SKILL.md`：交付供人阅读的 HTML 文档时使用。
 - `gameai-mobile-requirements/SKILL.md`：设计移动平台需求时使用，以明确批准的平台约束为准。
-- `gameai-cli-development/SKILL.md`：工程开发及 C# 规范检查时使用，遵守上面的强制编码规则。
+- `gameai-csharp-standard/SKILL.md`：涉及自有 C# 编写和检查时使用。
 
 公共入口不默认加载全部子技能。角色主技能引用其必要依赖，执行宿主按所选技能及实际引用加载；复制或安装时保留相对目录结构。
 

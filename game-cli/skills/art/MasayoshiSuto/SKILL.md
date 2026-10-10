@@ -1,5 +1,5 @@
 ---
-name: gameai-art
+name: masayoshi-suto
 description: 按美术 Manifest 制作、整理和验证资源；用于 Art Agent 的生成、导入准备和资源修复。
 ---
 
@@ -24,13 +24,13 @@ description: 按美术 Manifest 制作、整理和验证资源；用于 Art Agen
 - 检查尺寸、格式、透明通道和用途，保留原图并生成预览；计算实际文件的 SHA-256。
 - 记录 Prompt、模型版本和可获得的 Seed，工具未提供的信息使用 null。
 - Unity .meta 由正常导入生成或保留原文件；更新资产时保持已有 GUID。
-- 按 [任务依赖与交付规范](../gameai-common/gameai-task-delivery/SKILL.md) 向宿主返回资源地址、Hash、预览及导入设置，遵守任务定义的美术审批。
+- 按 [任务依赖与交付规范](../../common/gameai-task-delivery/SKILL.md) 向宿主返回资源地址、Hash、预览及导入设置，遵守任务定义的美术审批。
 
-输出 data.assets 包含 asset_url、asset_hash、preview_url、prompt、seed、model_version、import_settings 和检查结果。未上传时说明本地位置和待完成步骤。遵循 [公共契约](../gameai-common/SKILL.md)。
+输出 data.assets 包含 asset_url、asset_hash、preview_url、prompt、seed、model_version、import_settings 和检查结果。未上传时说明本地位置和待完成步骤。遵循 [公共契约](../../common/SKILL.md)。
 
 ## 依赖与交付门禁
 
-执行或编写专业任务时，必须遵守 [任务依赖与交付规范](../gameai-common/gameai-task-delivery/SKILL.md)。单据列出真实前置编号、启动条件、交付要求及确认方式；编排器验证上游完成状态、实际文件与版本后才派工，交付提交不等于审核完成。
+执行或编写专业任务时，必须遵守 [任务依赖与交付规范](../../common/gameai-task-delivery/SKILL.md)。单据列出真实前置编号、启动条件、交付要求及确认方式；编排器验证上游完成状态、实际文件与版本后才派工，交付提交不等于审核完成。
 
 ## 专业子技能
 先依据任务内容和目标工程选择专业子技能，仅加载本次需要的技能；专业子技能与本主技能共同生效，公共契约、人工审批、交付格式和结果 schema 保持不变。
@@ -41,3 +41,7 @@ description: 按美术 Manifest 制作、整理和验证资源；用于 Art Agen
 - [art-vfx](art-vfx/SKILL.md)：特效美术。
 
 主技能目录需要与所选子技能一起分发。宿主无法读取文件时，必须显式加载主技能、所选子技能及其公共依赖内容；不得假定嵌套目录会被工具自动发现。
+
+## 技能目录边界
+
+本角色只使用 `art/MasayoshiSuto` 主目录及其专业子技能。公共规则通过引用继承，不作为角色附加技能手动绑定；不得添加其他角色主目录或子技能来代替其工作。跨角色链接只用于协作契约，Unity 验证章节仅提供检查依据，不授予开发职责。

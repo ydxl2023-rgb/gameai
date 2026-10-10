@@ -32,7 +32,7 @@ test('fixed identity, capacity, lease and conversation recovery', async () =>
         const w = (await c.query("INSERT INTO gameai.workers(project_id,worker_key,name,capacity,enabled) VALUES($1,'test-worker','Test',1,true) RETURNING id",[p])).rows[0].id;
         const a = (await c.query("INSERT INTO gameai.agents(project_id,agent_key,role_code,worker_id,enabled,display_name,capacity) VALUES($1,'design-test','Design',$2,true,'Test',1) RETURNING id",[p,w])).rows[0].id;
         await c.query("INSERT INTO gameai.fixed_agents VALUES($1,'Design',$2)",[p,a]);
-        await c.query("INSERT INTO gameai.agent_skills(project_id,agent_id,skill_key,content_hash,is_primary) SELECT $1,$2,skill_key,content_hash,true FROM gameai.skills WHERE skill_key='gameai-design'",[p,a]);
+        await c.query("INSERT INTO gameai.agent_skills(project_id,agent_id,skill_key,content_hash,is_primary) SELECT $1,$2,skill_key,content_hash,true FROM gameai.skills WHERE skill_key='design/ShigeruMiyamoto'",[p,a]);
         const input = {action:'claim',execution_id:randomUUID().replaceAll('-',''),role:'Design',requirement_key:'TEST-REQ',worker_key:'test-worker',input_hash:'a'.repeat(64)};
         const update = {execution_id:input.execution_id,worker_key:input.worker_key};
         await assert.rejects(call({...input,worker_key:'wrong'}), /节点/);

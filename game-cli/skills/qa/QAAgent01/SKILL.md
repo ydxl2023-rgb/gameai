@@ -1,5 +1,5 @@
 ---
-name: gameai-qa
+name: q-a-agent01
 description: 按 平台 验收标准核对指定交付版本的测试与视觉证据并分类失败；用于 QA Agent。
 ---
 
@@ -7,16 +7,16 @@ description: 按 平台 验收标准核对指定交付版本的测试与视觉�
 
 - 输入：平台 验收标准、Commit、BuildID、资产 Hash、报告、日志和截图。
 - 核对证据属于同一交付版本；逐项标记通过、失败或未验证，缺失证据不能判定通过。
-- 对所有使用 GameCLI 的目标工程，必须依据 [GameCLI 编码规范](../gameai-common/gameai-cli-development/SKILL.md) 检查本次新增和修改的自有 C# 代码。命名、排版、注释或通用实现要求不符合时，标记为 code 类失败并给出文件位置与违反的规则；未检查时标记未验证，不得判定整体通过。
-- 必要时使用 [Unity 验证规则](../gameai-dev/dev-unity/SKILL.md#unity-validation) 验证。截图比较固定场景、视角、分辨率和环境。
+- 对所有使用 GameCLI 的目标工程，必须依据 [GameCLI 编码规范](../../common/gameai-csharp-standard/SKILL.md) 检查本次新增和修改的自有 C# 代码。命名、排版、注释或通用实现要求不符合时，标记为 code 类失败并给出文件位置与违反的规则；未检查时标记未验证，不得判定整体通过。
+- 必要时使用 [Unity 验证规则](../../development/JohnCarmack/dev-unity/SKILL.md#unity-validation) 验证。截图比较固定场景、视角、分辨率和环境。
 - 失败分类为 code、art、spec、environment 或 test，附复现步骤和证据；不确定责任时明确说明。
-- 按 [任务依赖与交付规范](../gameai-common/gameai-task-delivery/SKILL.md) 向宿主返回验收结果，通过后进入人工验收，不自行合并或直接调用其他 Agent。
+- 按 [任务依赖与交付规范](../../common/gameai-task-delivery/SKILL.md) 向宿主返回验收结果，通过后进入人工验收，不自行合并或直接调用其他 Agent。
 
-`qa execute` 必须遵守命令提供的结果 schema（verdict、checks、summary、files、deliverables、questions、defects、retests）；分析命令使用自身 schema。缺陷创建和修复调度由编排器处理。遵循 [公共契约](../gameai-common/SKILL.md)。
+`qa execute` 必须遵守命令提供的结果 schema（verdict、checks、summary、files、deliverables、questions、defects、retests）；分析命令使用自身 schema。缺陷创建和修复调度由编排器处理。遵循 [公共契约](../../common/SKILL.md)。
 
 ## 依赖与交付门禁
 
-执行或编写专业任务时，必须遵守 [任务依赖与交付规范](../gameai-common/gameai-task-delivery/SKILL.md)。单据列出真实前置编号、启动条件、交付要求及确认方式；编排器验证上游完成状态、实际文件与版本后才派工，交付提交不等于审核完成。
+执行或编写专业任务时，必须遵守 [任务依赖与交付规范](../../common/gameai-task-delivery/SKILL.md)。单据列出真实前置编号、启动条件、交付要求及确认方式；编排器验证上游完成状态、实际文件与版本后才派工，交付提交不等于审核完成。
 
 ## 执行与返修
 
@@ -37,3 +37,7 @@ description: 按 平台 验收标准核对指定交付版本的测试与视觉�
 
 纯 C# 控制台及其他不属于上述平台的任务继续由主技能处理，不强行归入 Unity 或 Web。
 主技能目录需要与所选子技能一起分发。宿主无法读取文件时，必须显式加载主技能、所选子技能及其公共依赖内容；不得假定嵌套目录会被工具自动发现。
+
+## 技能目录边界
+
+本角色只使用 `qa/QAAgent01` 主目录及其专业子技能。公共规则通过引用继承，不作为角色附加技能手动绑定；不得添加其他角色主目录或子技能来代替其工作。跨角色链接只用于协作契约，Unity 验证章节仅提供检查依据，不授予开发职责。

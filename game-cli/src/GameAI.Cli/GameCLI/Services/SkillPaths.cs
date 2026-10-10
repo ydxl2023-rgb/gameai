@@ -14,7 +14,7 @@ namespace GameCLI.Services
             for (DirectoryInfo? directory = new(AppContext.BaseDirectory); directory != null; directory = directory.Parent)
             {
                 string candidate = Path.Combine(directory.FullName, "skills");
-                if (File.Exists(Path.Combine(candidate, "gameai-common", "SKILL.md")))
+                if (File.Exists(Path.Combine(candidate, "common", "SKILL.md")))
                 {
                     return candidate;
                 }

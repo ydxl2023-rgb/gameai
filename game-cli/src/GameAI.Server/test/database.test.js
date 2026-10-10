@@ -113,15 +113,15 @@ test('Agent configuration persists skills atomically and rejects mismatched skil
         const key = 'TEST-' + randomUUID();
         const project = (await c.query('INSERT INTO gameai.projects(project_key,name,is_test) VALUES($1,$1,true) RETURNING id', [key])).rows[0].id;
         const worker = (await c.query("INSERT INTO gameai.workers(project_id,worker_key,name,capacity) VALUES($1,'test','事务测试节点',2) RETURNING id", [project])).rows[0].id;
-        const payload = { request_id: randomUUID(), name: '事务测试策划', role: 'Design', worker_id: worker, primary_skill: 'gameai-design', extra_skills: ['gameai-common'], capacity: 2, enabled: true };
+        const payload = { request_id: randomUUID(), name: '事务测试策划', role: 'Design', worker_id: worker, primary_skill: 'design/ShigeruMiyamoto', extra_skills: ['common'], capacity: 2, enabled: true };
         const first = await createAgent(transactionalPool, key, payload);
         assert.equal((await createAgent(transactionalPool, key, payload)).id, first.id);
         assert.equal((await c.query('SELECT count(*)::int count FROM gameai.agent_skills WHERE project_id=$1', [project])).rows[0].count, 2);
         assert.equal((await c.query("SELECT count(*)::int count FROM gameai.agent_grants WHERE project_id=$1 AND permission_code<>'project.read'", [project])).rows[0].count, 0);
         await assert.rejects(createAgent(transactionalPool, key, { ...payload, name: 'changed' }), /请求编号/);
         await assert.rejects(createAgent(transactionalPool, key, { ...payload, request_id: randomUUID() }), /同名/);
-        await assert.rejects(createAgent(transactionalPool, key, { ...payload, request_id: randomUUID(), primary_skill: 'gameai-art' }), /主技能/);
-        await assert.rejects(createAgent(transactionalPool, key, { ...payload, request_id: randomUUID(), extra_skills: ['gameai-art'] }), /主技能/);
+        await assert.rejects(createAgent(transactionalPool, key, { ...payload, request_id: randomUUID(), primary_skill: 'art/MasayoshiSuto' }), /主技能/);
+        await assert.rejects(createAgent(transactionalPool, key, { ...payload, request_id: randomUUID(), extra_skills: ['art/MasayoshiSuto'] }), /主技能/);
         await assert.rejects(createAgent(transactionalPool, key, { ...payload, request_id: randomUUID(), capacity: 3 }), /容量/);
         await assert.rejects(createAgent(transactionalPool, key, { ...payload, request_id: randomUUID(), worker_id: randomUUID() }), /节点/);
         assert.equal((await c.query('SELECT count(*)::int count FROM gameai.agents WHERE project_id=$1', [project])).rows[0].count, 1);
@@ -149,7 +149,7 @@ test('restricted Agent manager can save configuration without granting execution
     {
         const worker = (await c.query("SELECT w.id FROM gameai.workers w JOIN gameai.projects p ON p.id=w.project_id WHERE p.project_key='DEMO' LIMIT 1")).rows[0].id;
         const adapter = { connect: async () => ({ query: (sql, args) => c.query(sql === 'BEGIN' ? 'SAVEPOINT operation' : sql === 'COMMIT' ? 'RELEASE SAVEPOINT operation' : sql === 'ROLLBACK' ? 'ROLLBACK TO SAVEPOINT operation' : sql, args), release() {} }) };
-        const result = await createAgent(adapter, 'DEMO', { request_id: randomUUID(), name: '回滚验证-' + randomUUID(), role: 'Art', worker_id: worker, primary_skill: 'gameai-art', extra_skills: [], capacity: 1, enabled: false });
+        const result = await createAgent(adapter, 'DEMO', { request_id: randomUUID(), name: '回滚验证-' + randomUUID(), role: 'Art', worker_id: worker, primary_skill: 'art/MasayoshiSuto', extra_skills: [], capacity: 1, enabled: false });
         assert.ok(result.id.startsWith('art-'));
         const stored = (await c.query('SELECT display_name,enabled FROM gameai.agents WHERE agent_key=$1', [result.id])).rows[0];
         assert.equal(stored.enabled, false);

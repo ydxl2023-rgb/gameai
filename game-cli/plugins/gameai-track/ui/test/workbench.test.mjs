@@ -473,3 +473,22 @@ test('embedded requirement uses MCP HTML and retains a human login entry without
     }
     finally {dom.window.close();}
 });
+
+test('agent teams retain every member and combine development with prefab', async () =>
+{
+    const {groupAgentTeams}=await moduleBundle('agent-tree');
+    const agents=[
+        {id:'design-01',name:'宫本茂',role:'Design',used:0,capacity:1},
+        {id:'design-02',name:'战斗策划',role:'Design',fixed:false,used:1,capacity:1},
+        {id:'dev-01',role:'Development',used:0,capacity:1},
+        {id:'prefab-01',role:'Prefab',used:1,capacity:1},
+    ];
+    const tree=groupAgentTeams(agents);
+    assert.equal(tree.map(t=>t.name).join(','),'美术,策划,开发,PM,QA');
+    assert.equal(tree[1].children.map(a=>a.id).join(','),'design-01,design-02');
+    assert.equal(tree[2].children.map(a=>a.id).join(','),'dev-01,prefab-01');
+    assert.equal(tree[2].used,1);
+    assert.equal(tree[2].capacity,2);
+    assert.equal(tree[0].children,undefined);
+    assert.equal(agents.some(a=>a.team),false);
+});

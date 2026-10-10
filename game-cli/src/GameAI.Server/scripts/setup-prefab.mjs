@@ -21,10 +21,10 @@ try
         if(a.role_code!=='Prefab') throw new Error('Existing Agent role mismatch');
         await c.query("INSERT INTO gameai.fixed_agents VALUES($1,'Prefab',$2) ON CONFLICT DO NOTHING",[p.id,a.id]);
         await c.query(`INSERT INTO gameai.agent_skills(project_id,agent_id,skill_key,content_hash,is_primary)
-            SELECT $1,$2,skill_key,content_hash,true FROM gameai.skills WHERE skill_key='gameai-prefab' AND enabled
+            SELECT $1,$2,skill_key,content_hash,true FROM gameai.skills WHERE skill_key='prefab/PrefabAgent01' AND enabled
             ON CONFLICT(agent_id,skill_key) DO UPDATE SET content_hash=EXCLUDED.content_hash`,[p.id,a.id]);
         await c.query("INSERT INTO gameai.agent_grants VALUES($1,$2,'project.read'),($1,$2,'task.write_assigned') ON CONFLICT DO NOTHING",[p.id,a.id]);
-        await c.query("INSERT INTO gameai.audit_events(project_id,actor,event,payload) VALUES($1,'local:setup','配置独立 Prefab Agent',$2)",[p.id,{agent:'prefab-01',skill:'gameai-prefab'}]);
+        await c.query("INSERT INTO gameai.audit_events(project_id,actor,event,payload) VALUES($1,'local:setup','配置独立 Prefab Agent',$2)",[p.id,{agent:'prefab-01',skill:'prefab/PrefabAgent01'}]);
         await c.query('COMMIT');
         console.log('Prefab Agent configured; existing automation grants preserved.');
     }

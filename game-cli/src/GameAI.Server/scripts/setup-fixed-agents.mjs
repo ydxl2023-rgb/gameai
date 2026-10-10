@@ -8,7 +8,7 @@ import pg from 'pg';
 const pool = createPool();
 const projectKey = process.env.GAMEAI_PROJECT_KEY ?? 'DEMO';
 const workerKey = hostname().toLowerCase();
-const definitions = [['Design','design-01','策划 Agent 01','gameai-design'],['PM','pm-01','PM Agent 01','gameai-pm'],['Prefab','prefab-01','预制 Agent 01','gameai-prefab'],['Art','art-01','美术 Agent 01','gameai-art'],['Development','dev-01','开发 Agent 01','gameai-dev'],['QA','qa-01','QA Agent 01','gameai-qa']];
+const definitions = [['Design','design-01','策划 Agent 01','design/ShigeruMiyamoto'],['PM','pm-01','PM Agent 01','pm/PMAgent01'],['Prefab','prefab-01','预制 Agent 01','prefab/PrefabAgent01'],['Art','art-01','美术 Agent 01','art/MasayoshiSuto'],['Development','dev-01','开发 Agent 01','development/JohnCarmack'],['QA','qa-01','QA Agent 01','qa/QAAgent01']];
 try
 {
     await syncSkillCatalog(pool);
@@ -35,7 +35,7 @@ try
             await c.query('INSERT INTO gameai.fixed_agents VALUES($1,$2,$3) ON CONFLICT(project_id,role_code) DO UPDATE SET agent_id=EXCLUDED.agent_id',[p.id,role,a.id]);
             await c.query('DELETE FROM gameai.agent_skills WHERE agent_id=$1',[a.id]);
             await c.query(`INSERT INTO gameai.agent_skills(project_id,agent_id,skill_key,content_hash,is_primary)
-                SELECT $1,$2,skill_key,content_hash,skill_key=$3 FROM gameai.skills WHERE skill_key=ANY($4::text[]) AND enabled`,[p.id,a.id,skill,[skill,'gameai-common','gameai-cli-development']]);
+                SELECT $1,$2,skill_key,content_hash,skill_key=$3 FROM gameai.skills WHERE skill_key=ANY($4::text[]) AND enabled`,[p.id,a.id,skill,[skill]]);
             await c.query("INSERT INTO gameai.agent_grants VALUES($1,$2,'project.read') ON CONFLICT DO NOTHING",[p.id,a.id]);
         }
         // Adopt the recorded Design conversation on this same host; do not change approved content.

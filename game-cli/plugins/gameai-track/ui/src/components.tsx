@@ -4,6 +4,7 @@ import type { ColumnsType } from 'antd/es/table';
 import type { Agent, Task } from './model';
 import { groupTaskTree, expandableTaskKeys, type TaskNode } from './task-tree';
 import { ResizableTable } from './ResizableTable';
+import { groupAgentTeams, type AgentNode } from './agent-tree';
 
 const taskColumnDefaults = [160,240,100,108,118,128,90];
 const taskColumnMinimums = [8,120,72,90,105,100,80];
@@ -28,17 +29,17 @@ export function AgentStatusTag({ agent }: { agent:Agent })
 }
 export function AgentTable({ agents, select, addSkills }: { agents: Agent[]; select: (agent: Agent) => void; addSkills?:(agent:Agent)=>void })
 {
-    const defaults=[165,115,235,80,115,85];
-    const minimums=[120,90,160,70,100,75];
-    const columns: ColumnsType<Agent> = [
-        { title: 'Agent', dataIndex: 'id', render: (id, a) => <><Button type="link" title={id} onClick={() => select(a)}>{a.name ?? id}</Button></> },
-        { title: 'Role', dataIndex: 'role' },
-        { title: 'Skills', render: (_, a) => <div className="agent-skills">{a.skills?.map(skill=><div key={skill.key} title={skill.key} className="agent-skill"><span>{skill.key}</span>{skill.primary && <Tag>主</Tag>}</div>)}{!a.skills?.length && <span>未配置</span>}{addSkills && <Button type="link" size="small" disabled={a.used > 0 || ['执行中','待核实'].includes(a.status)} onClick={()=>addSkills(a)}>＋ 添加技能</Button>}</div> },
-        { title: 'Status', render: (_,a) => <Tooltip title={a.status==='待核实' ? '执行状态待核实，仍占用容量' : a.status==='错误中断' ? '最近一次执行失败或中断，等待处理' : a.enabled===false ? '已停用，不参与派发' : a.status==='离线' ? '节点离线' : undefined}><span><AgentStatusTag agent={a} /></span></Tooltip> },
+    const defaults=[210,235,140,115,85];
+    const minimums=[120,160,70,100,75];
+    const columns: ColumnsType<AgentNode> = [
+        { title: 'Agent', dataIndex: 'id', render: (id, a) => a.team ? <strong>{a.name}（{a.children?.length ?? 0}）</strong> : <><Button type="link" title={id} onClick={() => select(a)}>{a.name ?? id}</Button></> },
+
+        { title: 'Skills', render: (_, a) => a.team ? a.skillRoots : <div className="agent-skills">{a.skills?.filter(skill=>!skill.key.startsWith('common')).map(skill=><div key={skill.key} title={skill.key} className="agent-skill"><span>{skill.key.split('/').at(-1)}</span>{skill.primary && <Tag>主</Tag>}</div>)}{!a.skills?.length && <span>未配置</span>}{addSkills && <Button type="link" size="small" disabled={a.used > 0 || ['执行中','待核实'].includes(a.status)} onClick={()=>addSkills(a)}>＋ 添加技能</Button>}</div> },
+        { title: 'Status', render: (_,a) => a.team ? <span>{a.children?.filter(agent=>agentWorkStatus(agent)==='工作').length ?? 0} 工作 · {a.children?.filter(agent=>agentWorkStatus(agent)==='错误中断').length ?? 0} 异常</span> : <Tooltip title={a.status==='待核实' ? '执行状态待核实，仍占用容量' : a.status==='错误中断' ? '最近一次执行失败或中断，等待处理' : a.enabled===false ? '已停用，不参与派发' : a.status==='离线' ? '节点离线' : undefined}><span><AgentStatusTag agent={a} /></span></Tooltip> },
         { title: 'Task', dataIndex: 'task', render: t => t ?? '—' },
         { title: 'Capacity', render: (_, a) => `${a.used} / ${a.capacity}` },
     ];
-    return <ResizableTable<Agent> storageKey="gameai.track.agent-widths.v1" minimumWidths={minimums} size="small" rowKey="id" dataSource={agents} columns={columns.map((column,i)=>({...column,width:defaults[i]}))} pagination={false} locale={{ emptyText: '当前没有符合条件的 Agent' }} />;
+    return <ResizableTable<AgentNode> expandable={{indentSize:18}} storageKey="gameai.track.agent-team-widths.v2" minimumWidths={minimums} size="small" rowKey="id" dataSource={groupAgentTeams(agents)} columns={columns.map((column,i)=>({...column,width:defaults[i]}))} pagination={false} locale={{ emptyText: '当前没有符合条件的 Agent' }} />;
 }
 export function TaskLinks({ ids, tasks, select }: { ids: string[]; tasks: Task[]; select: (task: Task) => void })
 {

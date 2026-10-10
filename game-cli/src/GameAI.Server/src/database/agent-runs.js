@@ -80,7 +80,7 @@ export async function agentRunRequest(pool, projectKey, raw)
             {
                 throw new ReviewError('固定 Agent 缺少对应角色主技能。');
             }
-            if (skills.some(s => !s.is_primary && !canUseExtraSkill(s, input.role)))
+            if (skills.some(s => !s.is_primary && (!canUseExtraSkill(s, input.role) || !s.skill_key.startsWith(skills.find(s=>s.is_primary)?.skill_key + '/'))))
             {
                 throw new ReviewError('固定 Agent 配置了其他角色的专业技能。');
             }

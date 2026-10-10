@@ -3,29 +3,53 @@ import { readFile, readdir, realpath } from 'node:fs/promises';
 import { resolve, relative, dirname, sep, isAbsolute } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const roles = { 'gameai-design': 'Design', 'gameai-pm': 'PM', 'gameai-prefab': 'Prefab', 'gameai-art': 'Art', 'gameai-dev': 'Development', 'gameai-qa': 'QA' };
+const roles = { design:'Design', pm:'PM', prefab:'Prefab', art:'Art', development:'Development', qa:'QA' };
 export const skillRelocations = {
-    'gameai-task-writing': 'gameai-common/gameai-task-writing',
-    'gameai-task-delivery': 'gameai-common/gameai-task-delivery',
-    'gameai-document-format': 'gameai-common/gameai-document-format',
-    'gameai-mobile-requirements': 'gameai-common/gameai-mobile-requirements',
-    'gameai-cli-development': 'gameai-common/gameai-cli-development',
-    'gameai-qa-repair': 'gameai-qa/gameai-qa-repair',
-    'gameai-unity': 'gameai-dev/dev-unity',
-    'gameai-dev/gameai-unity': 'gameai-dev/dev-unity'
+    "gameai-art": "art/MasayoshiSuto",
+    "gameai-common": "common",
+    "gameai-design": "design/ShigeruMiyamoto",
+    "gameai-dev": "development/JohnCarmack",
+    "gameai-pm": "pm/PMAgent01",
+    "gameai-prefab": "prefab/PrefabAgent01",
+    "gameai-qa": "qa/QAAgent01",
+    "gameai-art/art-2d": "art/MasayoshiSuto/art-2d",
+    "gameai-art/art-3d": "art/MasayoshiSuto/art-3d",
+    "gameai-art/art-animation": "art/MasayoshiSuto/art-animation",
+    "gameai-art/art-ui": "art/MasayoshiSuto/art-ui",
+    "gameai-art/art-vfx": "art/MasayoshiSuto/art-vfx",
+    "gameai-art/art-2d/art-2d-itembox": "art/MasayoshiSuto/art-2d/art-2d-itembox",
+    "gameai-common/gameai-cli-development": "common/gameai-cli-development",
+    "gameai-common/gameai-csharp-standard": "common/gameai-csharp-standard",
+    "gameai-common/gameai-document-format": "common/gameai-document-format",
+    "gameai-common/gameai-mobile-requirements": "common/gameai-mobile-requirements",
+    "gameai-common/gameai-task-delivery": "common/gameai-task-delivery",
+    "gameai-common/gameai-task-writing": "common/gameai-task-writing",
+    "gameai-design/design-battle": "design/ShigeruMiyamoto/design-battle",
+    "gameai-design/design-excel": "design/ShigeruMiyamoto/design-excel",
+    "gameai-design/design-system": "design/ShigeruMiyamoto/design-system",
+    "gameai-dev/dev-cocos": "development/JohnCarmack/dev-cocos",
+    "gameai-dev/dev-godot": "development/JohnCarmack/dev-godot",
+    "gameai-dev/dev-unity": "development/JohnCarmack/dev-unity",
+    "gameai-dev/dev-web": "development/JohnCarmack/dev-web",
+    "gameai-pm/pm-art-breakdown": "pm/PMAgent01/pm-art-breakdown",
+    "gameai-qa/gameai-qa-repair": "qa/QAAgent01/gameai-qa-repair",
+    "gameai-qa/qa-cocos": "qa/QAAgent01/qa-cocos",
+    "gameai-qa/qa-godot": "qa/QAAgent01/qa-godot",
+    "gameai-qa/qa-unity": "qa/QAAgent01/qa-unity",
+    "gameai-qa/qa-web": "qa/QAAgent01/qa-web"
 };
 export const skillRoot = fileURLToPath(new URL('../../../../skills/', import.meta.url));
-export const skillKeyPattern = /^[a-z0-9-]+(?:\/[a-z0-9-]+)*$/;
+export const skillKeyPattern = /^[a-zA-Z0-9-]+(?:\/[a-zA-Z0-9-]+)*$/;
 
 export function isPrimarySkill(skill)
 {
-    return !!roles[skill.skill_key];
+    return skill.skill_key.split('/').length === 2 && !!roles[skill.skill_key.split('/')[0]];
 }
 
 export function canUseExtraSkill(skill, role)
 {
-    if (skill.skill_key === 'gameai-dev/dev-unity' && role === 'QA') return true;
-    return !isPrimarySkill(skill) && (skill.role_code === null || skill.role_code === role);
+    const root = Object.keys(roles).find(key => roles[key] === role);
+    return !!root && skill.skill_key.startsWith(root + '/') && skill.skill_key.split('/').length > 2;
 }
 
 export async function readSkill(key, root = skillRoot)
@@ -47,21 +71,28 @@ export async function discoverSkills(root = skillRoot)
         try { bytes = await readSkill(key, root); }
         catch (error)
         {
-            if (error.code === 'ENOENT') return;
+            if (error.code === 'ENOENT')
+            {
+                for (const child of await readdir(resolve(root, key), {withFileTypes:true}))
+                {
+                    if (child.isDirectory() && /^[a-zA-Z0-9-]+$/.test(child.name)) await visit(key + '/' + child.name);
+                }
+                return;
+            }
             throw error;
         }
         const name = /^name:\s*([a-z0-9-]+)\s*$/m.exec(bytes.toString('utf8'))?.[1];
-        if (name !== key.split('/').at(-1)) throw new Error('技能名称与目录不一致：' + key);
-        result.push({ skill_key: key, name, path: 'skills/' + key + '/SKILL.md', role_code: key === 'gameai-qa/gameai-qa-repair' ? null : roles[key.split('/')[0]] ?? null,
+        if (!name) throw new Error('技能名称与目录不一致：' + key);
+        result.push({ skill_key: key, name, path: 'skills/' + key + '/SKILL.md', role_code: key === 'qa/QAAgent01/gameai-qa-repair' ? null : Object.entries(roles).find(([prefix]) => key === prefix || key.startsWith(prefix + '/'))?.[1] ?? null,
             content_hash: createHash('sha256').update(bytes).digest('hex') });
         for (const child of (await readdir(resolve(root, key), { withFileTypes: true })).sort((a,b) => a.name.localeCompare(b.name)))
         {
-            if (child.isDirectory() && /^[a-z0-9-]+$/.test(child.name)) await visit(key + '/' + child.name);
+            if (child.isDirectory() && /^[a-zA-Z0-9-]+$/.test(child.name)) await visit(key + '/' + child.name);
         }
     }
     for (const entry of (await readdir(root, { withFileTypes: true })).sort((a,b) => a.name.localeCompare(b.name)))
     {
-        if (entry.isDirectory() && entry.name.startsWith('gameai-')) await visit(entry.name);
+        if (entry.isDirectory() && ['design','art','development','prefab','pm','qa','common'].includes(entry.name)) await visit(entry.name);
     }
     return result;
 }
@@ -83,7 +114,7 @@ export async function loadSkillInstructions(selected, catalog, root = skillRoot,
         let text = bytes.toString('utf8');
         if (fragment)
         {
-            if (fragment !== 'unity-validation' || key !== 'gameai-dev/dev-unity') throw new Error('不支持的技能章节引用。');
+            if (fragment !== 'unity-validation' || key !== 'development/JohnCarmack/dev-unity') throw new Error('不支持的技能章节引用。');
             const marker = '<a id="unity-validation"></a>';
             const position = text.indexOf(marker);
             if (position < 0) throw new Error('Unity 验证章节缺失。');
@@ -98,14 +129,14 @@ export async function loadSkillInstructions(selected, catalog, root = skillRoot,
             if (!skillKeyPattern.test(dependency)) throw new Error('技能引用超出目录：' + key);
             // Child links are routing choices, not instructions to load every specialty.
             if (dependency.startsWith(key + '/') && !dependency.split('/').at(-1).startsWith('gameai-')) continue;
-            if (key === 'gameai-common' && dependency.startsWith(key + '/') && dependency !== 'gameai-common/gameai-cli-development') continue;
+            if (key === 'common' && dependency.startsWith(key + '/')) continue;
             // Cross-role links describe collaboration; they must not import another role's execution instructions.
             const owner = role ?? selected.find(s => s.role_code)?.role_code;
-            const dependencyRole = registered.get(dependency)?.role_code;
+            const dependencyRole = registered.get(dependency)?.role_code ?? Object.entries(roles).find(([prefix]) => dependency === prefix || dependency.startsWith(prefix + '/'))?.[1];
             if (owner && dependencyRole && dependencyRole !== owner && section !== 'unity-validation') continue;
             await load(dependency, section ?? null);
         }
     }
-    for (const skill of selected) await load(skill.skill_key, role === 'QA' && skill.skill_key === 'gameai-dev/dev-unity' ? 'unity-validation' : null);
+    for (const skill of selected) await load(skill.skill_key, role === 'QA' && skill.skill_key === 'development/JohnCarmack/dev-unity' ? 'unity-validation' : null);
     return output.join('\n\n');
 }

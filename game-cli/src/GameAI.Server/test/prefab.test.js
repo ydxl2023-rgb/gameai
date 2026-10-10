@@ -16,14 +16,14 @@ test('UI production graph supports whitebox, art, assembly and prefab QA without
 test('Prefab skill chain cannot import other roles and PM references do not import Design execution rules',async()=>
 {
     const catalog=(await discoverSkills()).map(s=>({...s,enabled:true}));
-    const prefab=catalog.find(s=>s.skill_key==='gameai-prefab');
+    const prefab=catalog.find(s=>s.skill_key==='prefab/PrefabAgent01');
     assert.equal(prefab.role_code,'Prefab');
-    assert.equal(canUseExtraSkill(catalog.find(s=>s.skill_key==='gameai-art/art-2d'),'Prefab'),false);
-    for(const key of ['gameai-prefab','gameai-pm'])
+    assert.equal(canUseExtraSkill(catalog.find(s=>s.skill_key==='art/MasayoshiSuto/art-2d'),'Prefab'),false);
+    for(const key of ['prefab/PrefabAgent01','pm/PMAgent01'])
     {
         const text=await loadSkillInstructions([catalog.find(s=>s.skill_key===key)],catalog);
-        assert.equal(text.includes('技能来源：skills/gameai-design/SKILL.md'),false);
-        assert.equal(text.includes('技能来源：skills/gameai-dev/SKILL.md'),false);
+        assert.equal(text.includes('技能来源：skills/design/ShigeruMiyamoto/SKILL.md'),false);
+        assert.equal(text.includes('技能来源：skills/development/JohnCarmack/SKILL.md'),false);
     }
 });
 
