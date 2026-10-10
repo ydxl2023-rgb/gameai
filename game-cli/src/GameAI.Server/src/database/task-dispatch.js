@@ -81,7 +81,11 @@ export async function dispatchTasks(pool,projectKey,userId,raw,commit=false,auto
             if (!commit) continue;
             const executionId=randomUUID();
             const approvedDocument=await prepareApprovedDocument(t.version_id,doc.sha256,doc.bytes.toString('utf8'));
-            const prompt=JSON.stringify({approved_document:approvedDocument,platform_context:{authoritative:true,validated_at:new Date().toISOString(),requirement_version_id:t.version_id,plan_version_id:t.plan_version_id,approval:'approved',dispatch_allowed:true,executor:'GameCLIServer'},task:t.task_key,title:t.title,description:t.description,criteria:t.delivery_criteria,source_refs:t.source_refs,dependencies,repair:context.repair,retests:context.retests,approved_html:doc.bytes.toString('utf8')});
+            const taskDoc = t.role_code === 'Prefab' ? (await c.query(`SELECT a.storage_key,a.sha256,d.bytes FROM gameai.artifact_links l
+                JOIN gameai.artifacts a ON a.id=l.artifact_id JOIN gameai.document_contents d ON d.artifact_id=a.id
+                WHERE l.task_id=$1 AND a.storage_key LIKE 'deliveries/%/task-%.html' ORDER BY a.verified_at DESC LIMIT 1`,[t.id])).rows[0] : null;
+            if (taskDoc && createHash('sha256').update(taskDoc.bytes).digest('hex') !== taskDoc.sha256) throw new ReviewError('预制任务 HTML 校验失败。');
+            const prompt=JSON.stringify({task_document:taskDoc ? {path:taskDoc.storage_key,sha256:taskDoc.sha256,html:taskDoc.bytes.toString('utf8')} : null,approved_document:approvedDocument,platform_context:{authoritative:true,validated_at:new Date().toISOString(),requirement_version_id:t.version_id,plan_version_id:t.plan_version_id,approval:'approved',dispatch_allowed:true,executor:'GameCLIServer'},task:t.task_key,title:t.title,description:t.description,criteria:t.delivery_criteria,source_refs:t.source_refs,dependencies,repair:context.repair,retests:context.retests,approved_html:doc.bytes.toString('utf8')});
             const inputHash=createHash('sha256').update(prompt).digest('hex');
             await c.query(`INSERT INTO gameai.executions(id,project_id,task_id,agent_id,state,started_at) VALUES($1,$2,$3,$4,'assigned',clock_timestamp())`,[executionId,project.id,t.id,a.id]);
             await c.query(`INSERT INTO gameai.task_dispatch_jobs(execution_id,project_id,requested_by,requirement_key,input_hash,context) VALUES($1,$2,$3,$4,$5,$6)`,[executionId,project.id,userId,t.requirement_key,inputHash,JSON.stringify(context)]);

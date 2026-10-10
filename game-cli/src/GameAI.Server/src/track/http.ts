@@ -19,7 +19,7 @@ export function createMcpServer(html: string)
         contents: [{ uri: resourceUri, mimeType, text: html, _meta: { 'openai/ui': { availableDisplayModes: ['inline', 'fullscreen'] }, ui: { prefersBorder: true, csp: { connectDomains: [], resourceDomains: [] } } } }]
     }));
     const annotations = { readOnlyHint: true, destructiveHint: false, openWorldHint: false };
-    const reply = async (input: { document_version?: string } = {}) =>
+    const reply = async (input: { document_version?: string; document_artifact?: string } = {}) =>
     {
         try
         {
@@ -28,8 +28,8 @@ export function createMcpServer(html: string)
             {
                 const rows = 'requirements' in snapshot.workbench ? snapshot.workbench.requirements : [];
                 const taskRows = 'tasks' in snapshot.workbench ? snapshot.workbench.tasks : [];
-                const linkedTasks = taskRows.map((task: any) => ({ version_id: task.requirement_version_id, document_url: task.document_url }));
-                const row = [...rows, ...linkedTasks].find((item: {version_id: string; document_url?: string | null}) => item.version_id === input.document_version);
+                const linkedTasks = taskRows.flatMap((task: any) => [task.document_url,task.task_document_url].filter(Boolean).map(url => ({version_id:task.requirement_version_id,document_url:url})));
+                const row = [...rows, ...linkedTasks].find((item: {version_id: string; document_url?: string | null}) => item.version_id === input.document_version && (!input.document_artifact || item.document_url?.endsWith("/"+input.document_artifact)));
                 const artifactId = row?.document_url ? /\/documents\/([0-9a-f-]{36})$/i.exec(row.document_url)?.[1] : null;
                 const bytes = artifactId ? await readDocument(artifactId) : null;
                 if (!bytes) throw new Error('未找到关联的 HTML 文档。');
@@ -49,7 +49,7 @@ export function createMcpServer(html: string)
     }, reply);
     server.registerTool('gameai_track_snapshot', {
         description: '刷新 GameAI Track 数据库或演示快照，返回数据来源及测试数据标记。',
-        inputSchema: { document_version: z.uuid().optional() }, annotations
+        inputSchema: { document_version: z.uuid().optional(), document_artifact:z.uuid().optional() }, annotations
     }, reply);
     server.registerTool('gameai_agent_history', {
         description: '读取当前项目 Agent 已绑定会话的用户消息与公开回复，不启动或恢复任务。',

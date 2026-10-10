@@ -63,7 +63,7 @@ export async function readLinkedHtml(pool, projectKey, artifactId)
 {
     const artifact = (await pool.query(`SELECT a.* FROM gameai.artifacts a JOIN gameai.projects p ON p.id=a.project_id
         WHERE p.project_key=$1 AND a.id=$2 AND a.media_type='text/html'
-        AND EXISTS(SELECT 1 FROM gameai.artifact_links l WHERE l.artifact_id=a.id AND l.requirement_version_id IS NOT NULL)`, [projectKey, artifactId])).rows[0];
+        AND EXISTS(SELECT 1 FROM gameai.artifact_links l WHERE l.artifact_id=a.id AND (l.requirement_version_id IS NOT NULL OR l.task_id IS NOT NULL))`, [projectKey, artifactId])).rows[0];
     if (!artifact) return null;
     const uploaded = (await pool.query('SELECT bytes FROM gameai.document_contents WHERE artifact_id=$1', [artifact.id])).rows[0];
     const result = uploaded ? { bytes: uploaded.bytes, hash: createHash('sha256').update(uploaded.bytes).digest('hex') } : await readDesignHtml(artifact.storage_key);

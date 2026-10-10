@@ -1,3 +1,4 @@
+import {storePrefabTaskHtml} from './prefab-task-document.js';
 import { createHash, randomUUID } from 'node:crypto';
 import { hostname } from 'node:os';
 import { z } from 'zod';
@@ -200,6 +201,11 @@ export async function publishPmPlan(pool, projectKey, job, result)
             const criteria = Object.entries(task.acceptance).map(([kind,value]) => ({kind,text:value}));
             const row = (await client.query(`INSERT INTO gameai.tasks(project_id,plan_version_id,parent_id,title,role_code,description,source_refs,delivery_criteria,status)
                 VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING id`,[version.project_id,pv.id,root.id,task.title,task.role,task.description,JSON.stringify(task.source_refs),JSON.stringify(criteria),task.depends_on.length ? 'blocked' : 'pending'])).rows[0];
+            if (task.role === "Prefab")
+            {
+                const stored = (await client.query("SELECT * FROM gameai.tasks WHERE id=$1",[row.id])).rows[0];
+                await storePrefabTaskHtml(client,stored,version.html,job.document_hash);
+            }
             ids.set(task.id,row.id);
             for (const dependency of task.depends_on)
             {

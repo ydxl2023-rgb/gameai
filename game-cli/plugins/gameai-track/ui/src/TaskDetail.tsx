@@ -73,11 +73,11 @@ export function TaskDetail({task, tasks, bridge, select, dispatch, dispatchDisab
         setLoading(false);
         if (!task.requirement_version_id || !bridge) return;
         setLoading(true);
-        void bridge.document(task.requirement_version_id, task.document_url).then(html => {
-            if (active) setWire(taskWireframes(html, JSON.parse(references)));
+        void bridge.document(task.requirement_version_id, task.task_document_url ?? task.document_url).then(html => {
+            if (active) setWire(task.task_document_url ? {html,count:1,fallback:false} : taskWireframes(html, JSON.parse(references)));
         }).catch(e => {if (active) setError(e.message);}).finally(()=>{if(active)setLoading(false);});
         return () => {active=false;};
-    }, [task.id, task.requirement_version_id, task.document_url, references, bridge]);
+    }, [task.id, task.requirement_version_id, task.document_url, task.task_document_url, references, bridge]);
     const description = taskDescription(task.description);
     return <div className="task-detail">
         {!editable && editReason && <Alert className="task-edit-notice" type="info" title={editReason} action={requestLogin && <Button size="small" onClick={requestLogin}>登录后编辑</Button>}/>}
@@ -95,7 +95,7 @@ export function TaskDetail({task, tasks, bridge, select, dispatch, dispatchDisab
         <Typography.Title level={5}>任务说明</Typography.Title>
         {textRows(description.details)}
         <details className="task-source"><summary>原始需求来源</summary>{(task.source_refs??[]).map((ref,i)=><div key={i}>{ref}</div>)}</details>
-        <Typography.Title level={5}>关联线框</Typography.Title>
+        <Typography.Title level={5}>{task.task_document_url ? "预制任务原始需求 HTML" : "关联线框"}</Typography.Title>
         {loading && <Spin tip="加载原始需求线框"><div style={{height:60}}/></Spin>}
         {error && <Alert type="warning" title={error}/>}
         {!loading && !error && !wire?.count && <Typography.Paragraph type="secondary">{task.requirement_version_id ? '原始需求未提供可展示的线框。' : '该任务尚未关联原始需求 HTML。'}</Typography.Paragraph>}

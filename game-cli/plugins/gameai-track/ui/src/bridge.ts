@@ -101,7 +101,7 @@ export class TrackBridge
             if (!response.ok) throw new Error('文档读取失败：HTTP ' + response.status);
             return response.text();
         }
-        const result = await this.rpc('tools/call', { name: 'gameai_track_snapshot', arguments: { document_version: version } });
+        const result = await this.rpc('tools/call', { name: 'gameai_track_snapshot', arguments: { document_version: version, document_artifact: url ? /\/documents\/([0-9a-f-]{36})$/i.exec(url)?.[1] : undefined } });
         if (result?.isError) throw new Error(result.content?.[0]?.text ?? '文档读取失败。');
         if (result?.structuredContent?.document?.version_id !== version || typeof result?.structuredContent?.document?.html !== 'string') throw new Error('文档响应不匹配，请重新连接 Track 插件。');
         return result.structuredContent.document.html as string;
