@@ -1,0 +1,48 @@
+[
+  {
+    "case": "overwrite-rejected",
+    "passed": true,
+    "message": "Prefab exists. Use --replace explicitly to update it.",
+    "exitCode": 1
+  },
+  {
+    "case": "traversal-rejected",
+    "passed": true,
+    "message": "Output must be a .prefab under Assets without traversal.",
+    "exitCode": 1
+  },
+  {
+    "case": "duplicate-id-rejected",
+    "passed": true,
+    "message": "Invalid/duplicate node ID or excessive depth/node count.",
+    "exitCode": 1
+  },
+  {
+    "case": "invalid-size-rejected",
+    "passed": true,
+    "message": "F01_Background: invalid type, rect, color or scrolling direction.",
+    "exitCode": 1
+  },
+  {
+    "case": "unknown-field-rejected",
+    "passed": true,
+    "message": "Could not find member 'unknown' on object of type 'Layout'. Path 'unknown', line 1, position 580.",
+    "exitCode": 1
+  },
+  {
+    "case": "scrollrect-valid",
+    "passed": true,
+    "message": "Task prefab dry-run passed.",
+    "exitCode": 0
+  },
+  {
+    "case": "scrollrect-missing-viewport",
+    "passed": true,
+    "message": "Rewards: require ScrollRect -> Viewport -> Content Container.",
+    "exitCode": 1
+  },
+  {
+    "case": "generated-prefab-inspection",
+    "passed": true
+  }
+]

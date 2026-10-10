@@ -29,3 +29,7 @@ Unity 由外部 Unity CLI 操作。Prefab/Development/QA 必须使用目标工�
 ## 生产中间文件
 
 `game-cli/temp/` 保存 PM/任务执行输入、诊断日志、Agent 临时结果、Design 提交载荷与回执，按执行编号隔离并默认忽略 Git。正式策划 HTML 仍在 `app/desgin/`，最终交付不作为临时文件清理。`.gamecli/client.json` 仍为目标工程连接配置。平台默认目标工程是 `game-cli/` 的父目录，可通过 `GAMEAI_PROJECT_ROOT` 指定其他工程。
+
+## PM 客户端范围
+
+PM 仅拆分客户端预制、美术、程序与验收任务。服务端接口实现、数据库和部署不建单，只作为外部依赖记录；客户端接口调用与已批准的本地模拟可以建单。缺少必要接口契约时报告阻塞，不虚构服务端任务依赖。该范围不改变 GameAI 编排服务器的运行职责。

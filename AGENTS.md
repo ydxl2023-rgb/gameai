@@ -45,3 +45,5 @@ Design document artifacts must be saved under `app/desgin/` relative to this rep
 UI production uses a separate Prefab role and gameai-prefab skill: whitebox prefab -> Art resources -> final prefab assembly. Business Development may start from stable whitebox bindings; final QA depends on assembled UI and business delivery. Keep one responsibility chain per Agent and preserve per-role automatic-execution consent.
 
 Store production intermediate files under `game-cli/temp/`, grouped by execution ID. Keep final requirements and deliverables in their established locations; do not move connection credentials into temp.
+
+PM business plans target client-side delivery only. Treat backend implementation, databases, administration and deployment as external dependencies, never scheduled tasks. Client integration and explicitly approved local mocks remain in scope; this does not prohibit maintaining the GameAI orchestration service.
