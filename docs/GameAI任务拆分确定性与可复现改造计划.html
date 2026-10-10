@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GameAI 任务拆分确定性与可复现改造计划</title>
+<style>
+  :root {
+    --bg: #ffffff;
+    --fg: #1f2328;
+    --muted: #57606a;
+    --border: #d0d7de;
+    --code-bg: #f6f8fa;
+    --accent: #0969da;
+    --accent-soft: #ddf4ff;
+    --warn: #bf8700;
+    --warn-soft: #fff8c5;
+    --ok: #1a7f37;
+    --ok-soft: #dafbe1;
+    --err: #cf222e;
+    --err-soft: #ffebe9;
+    --rule-color: #b42318;
+  }
+
+  * { box-sizing: border-box; }
+
+  .rule, .rule * { color: var(--rule-color) !important; }
+  svg .rule, svg .rule * { fill: var(--rule-color); }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: #f6f8fa;
+    color: var(--fg);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+                 "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue",
+                 Arial, sans-serif;
+    font-size: 14px;
+    line-height: 1.7;
+  }
+
+  .page {
+    max-width: 900px;
+    margin: 0 auto;
+    background: var(--bg);
+    padding: 60px 70px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+  }
+
+  /* 封面 */
+  .cover {
+    text-align: center;
+    padding: 80px 0 60px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 48px;
+  }
+  .cover h1 {
+    font-size: 34px;
+    margin: 0 0 16px;
+    letter-spacing: 1px;
+  }
+  .cover .subtitle {
+    font-size: 16px;
+    color: var(--muted);
+    margin-bottom: 30px;
+  }
+  .cover .meta {
+    display: inline-block;
+    text-align: left;
+    font-size: 13px;
+    color: var(--muted);
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    padding: 12px 30px;
+  }
+  .cover .meta span { display: inline-block; min-width: 90px; color: var(--fg); }
+
+  /* 标题 */
+  h1 { font-size: 26px; margin: 48px 0 16px; padding-bottom: 8px; border-bottom: 2px solid var(--fg); }
+  h2 { font-size: 20px; margin: 36px 0 12px; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
+  h3 { font-size: 16px; margin: 24px 0 8px; color: #24292f; }
+  h4 { font-size: 14px; margin: 16px 0 6px; color: var(--muted); }
+
+  p { margin: 8px 0; }
+
+  /* 代码 */
+  code {
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    background: var(--code-bg);
+    padding: 2px 5px;
+    border-radius: 4px;
+    font-size: 12.5px;
+  }
+  pre {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 14px 16px;
+    overflow-x: auto;
+    font-size: 12px;
+    line-height: 1.6;
+    margin: 12px 0;
+  }
+  pre code {
+    background: none;
+    padding: 0;
+    font-size: 12px;
+  }
+
+  /* 表格 */
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 14px 0;
+    font-size: 13px;
+  }
+  th, td {
+    border: 1px solid var(--border);
+    padding: 8px 10px;
+    text-align: left;
+    vertical-align: top;
+  }
+  th { background: #f6f8fa; font-weight: 600; }
+  tr:nth-child(even) td { background: #fafbfc; }
+
+  /* 引用 */
+  blockquote {
+    border-left: 4px solid var(--accent);
+    margin: 12px 0;
+    padding: 6px 14px;
+    background: var(--accent-soft);
+    border-radius: 0 6px 6px 0;
+    color: #0a3069;
+    font-size: 13.5px;
+  }
+
+  /* 提示框 */
+  .callout {
+    padding: 12px 16px;
+    border-radius: 6px;
+    margin: 14px 0;
+    font-size: 13.5px;
+    border-left: 4px solid;
+  }
+  .callout.info { background: var(--accent-soft); border-color: var(--accent); }
+  .callout.warn { background: var(--warn-soft); border-color: var(--warn); }
+  .callout.ok   { background: var(--ok-soft);   border-color: var(--ok); }
+  .callout.err  { background: var(--err-soft);  border-color: var(--err); }
+
+  /* 列表 */
+  ul, ol { padding-left: 24px; margin: 8px 0; }
+  li { margin: 4px 0; }
+
+  /* 图表容器 */
+  .diagram {
+    margin: 24px 0;
+    padding: 20px;
+    background: #fafbfc;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow-x: auto;
+    text-align: center;
+  }
+  .diagram svg { max-width: 100%; height: auto; }
+  .diagram .caption {
+    font-size: 12.5px;
+    color: var(--muted);
+    margin-top: 10px;
+    font-style: italic;
+  }
+
+  /* 目录 */
+  .toc {
+    background: #fafbfc;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px 28px;
+    margin: 24px 0 40px;
+  }
+  .toc h3 { margin-top: 0; }
+  .toc ol { margin: 0; padding-left: 20px; }
+  .toc a { color: var(--accent); text-decoration: none; }
+  .toc a:hover { text-decoration: underline; }
+
+  /* 打印 */
+  @page {
+    size: A4;
+    margin: 18mm 16mm;
+  }
+  @media print {
+    html, body { background: #fff; font-size: 11.5pt; }
+    .page { box-shadow: none; padding: 0; max-width: 100%; }
+    h1 { page-break-before: auto; }
+    h2 { page-break-after: avoid; }
+    pre, table, .diagram { page-break-inside: avoid; }
+    .cover { page-break-after: always; }
+    .no-print { display: none; }
+    a { color: var(--fg); text-decoration: none; }
+  }
+
+  /* 页脚 */
+  .footer {
+    margin-top: 60px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border);
+    text-align: center;
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  .print-btn {
+    position: fixed;
+    right: 24px;
+    bottom: 24px;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 999px;
+    padding: 12px 22px;
+    font-size: 14px;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(9,105,218,0.35);
+    z-index: 100;
+  }
+  .print-btn:hover { background: #0860ca; }
+
+.page { overflow-wrap: anywhere; }
+@media screen and (max-width: 700px) { .page { padding: 24px 18px; } .cover { padding: 30px 0; } .cover h1 { font-size: 26px; } .toc { padding: 16px; } }
+.wire-gallery { display: flex; flex-direction: column; gap: 24px; }
+.wire-step { width: 100%; }
+</style>
+</head>
+<body>
+<button class="print-btn no-print" onclick="window.print()">打印 / 导出文档</button>
+<main class="page">
+<header class="cover">
+<h1>GameAI 任务拆分确定性与可复现改造计划</h1>
+<div class="subtitle">未来优化依据 · 单 PM UI 制作闭环</div>
+<div class="meta">版本 v1.1 · 2026-10-10 · 状态：第一阶段已实现；第二、三阶段待实施</div>
+</header>
+<nav class="toc" aria-label="目录"><h3>目录</h3><ol><li><a href="#goal">1. 目标与范围</a></li><li><a href="#baseline">2. 当前基础与差距</a></li><li><a href="#phase1">3. 第一阶段：固定任务骨架</a></li><li><a href="#phase2">4. 第二阶段：执行快照与离线重放</a></li><li><a href="#phase3">5. 第三阶段：重试与发布一致性</a></li><li><a href="#owners">6. 职责与实施顺序</a></li></ol></nav>
+<section id="goal"><h2>1. 目标与范围</h2><p>让已批准需求的任务拆分可追溯、可验证、可重放。本文记录未来改造计划，不表示这些能力已经实现，也不授权执行现有需求。</p><p>当前采用单 PM RodFergusson，内部 UI、Art 模块共同规划；Program 暂不启用。先验证一个独立窗口的白模、图片资源包、最终装配三项交付。</p><p class="rule">确定性目标：同一份批准清单、已保存的 Agent 输出，在同版本处理规则下得到同一份规范化计划。重新调用模型属于新尝试，不保证推理结果相同。</p></section><section id="baseline"><h2>2. 当前基础与差距</h2><p>基线日期：2026-10-10。以下依据本次讨论及已完成实现归纳；未来开始开发前应再次核对代码和数据库状态。</p><table><thead><tr><th>环节</th><th>已有基础</th><th>尚需改造</th></tr></thead><tbody><tr><td>批准输入</td><td>HTML、版本、哈希与人工审批</td><td>解析并校验内嵌交付清单</td></tr><tr><td>任务生成</td><td>Agent 输出结构化计划，限定当前专业范围</td><td>代码生成任务数量、身份及依赖，模型仅补充内容</td></tr><tr><td>技能</td><td>目录绑定及内容哈希校验</td><td>保存每次实际加载的完整技能快照</td></tr><tr><td>执行记录</td><td>提示词、输出、执行状态与诊断记录</td><td>统一执行清单及版本关联</td></tr><tr><td>发布</td><td>批准版本、基础字段与依赖检查，重复发布保护，事务建单</td><td>规范化计划哈希及请求内容一致性约束</td></tr><tr><td>重放</td><td>尚无完整离线入口</td><td>不调用模型、不写业务库的重放与差异报告</td></tr></tbody></table><p class="rule">技能中已规定 ui-delivery-manifest，不代表服务器已经实现对它的确定性校验。</p></section><section id="phase1"><h2>3. 第一阶段：固定任务骨架</h2><p class="rule">实施更新：已接入批准清单解析、固定骨架、PM 内容补全、事务发布前复核及逻辑编号映射。结构校验不能证明自然语言与线框的所有语义一致，仍需 Design/PM 审查。无清单旧文档需修订后重新审批。</p><ol><li>读取批准 HTML 中唯一的 ui-delivery-manifest，校验严格 JSON、版本、范围和必填项。</li><li>检查独立窗口、内部区域归属、控件和资源编号、HTML 锚点、资源映射，以及阶段依赖。</li><li>按独立窗口生成固定骨架，内部控件不增加任务。每窗口对应白模、图片资源包、最终装配三项。</li><li>向 RodFergusson 提供固定骨架与完整窗口上下文，仅允许补充任务说明、交付内容和验收标准。</li><li>对模型输出与骨架进行逐项对照，编排器复核后才原子建单。</li></ol><table><tr><th>逻辑编号</th><th>执行角色</th><th>前置依赖</th></tr><tr><td>W01-WHITEBOX</td><td>Prefab</td><td>无任务依赖；需求须已批准</td></tr><tr><td>W01-ART</td><td>Art</td><td>W01-WHITEBOX</td></tr><tr><td>W01-ASSEMBLY</td><td>Prefab</td><td>W01-WHITEBOX、W01-ART</td></tr></table><p class="rule">窗口编号、角色、交付阶段、来源锚点及依赖不可由模型改动。缺少清单、清单与正文冲突或存在未决边界时必须停止，不按线框张数猜测，不静默修补已批准文档。</p><p>骨架使用稳定逻辑编号；数据库公开任务编号由发布时分配，两者保存映射。当前不生成程序或 QA 任务。无新增图片时按批准清单交付资源核对与映射，不虚构生图。</p><p><strong>验收：</strong>一个窗口得到三项，两个窗口得到六项；控件增加不增加任务；新增、漏项、重复、改角色、改依赖、失效锚点均被拒绝；无效计划不产生任何任务。</p></section><section id="phase2"><h2>4. 第二阶段：执行快照与离线重放</h2><p>统一执行包记录批准文档、清单、实际技能、提示词、Agent 原始输出、规范化结果与校验报告。保存执行编号、尝试编号、输入哈希、CLI 与校验器版本、schema 版本、可获取的模型配置、时间和工具结果；不可获取的信息明确缺失，不伪造。</p><pre>game-cli/temp/pm-jobs/&lt;execution-id&gt;/
+  manifest.json
+  requirement.html
+  skills/
+  prompt.txt
+  skeleton.json
+  agent-output.json
+  plan.json
+  validation.json</pre><p>以上目录是工作区示意。需要长期重放的完整执行包必须另行保存至有保留策略的正式产物存储，不能只依赖会被清理的 temp；平台记录其位置和哈希。</p><p class="rule">先固化输入，后执行；真正传入模型的技能必须来自该快照。原始输出不可覆盖，规范化结果单独保存。记录不得包含令牌、密码或数据库凭据。</p><p>离线重放读取执行包，以指定版本规则重新生成骨架并验证保存的输出，不调用模型、不建单、不改审批状态。规范化明确对象键序、任务与依赖排序、UTF-8 编码等哈希规则，不擅自改变描述正文语义。</p><p><strong>验收：</strong>相同包重复重放产生相同计划哈希；源文件或技能被修改不影响旧包；篡改内容可检测；缺少依赖版本明确失败；不支持的 schema 不静默按新版解释。</p></section><section id="phase3"><h2>5. 第三阶段：重试与发布一致性</h2><ul><li>传输或发布失败：重新提交保存的同一计划，不重新调用模型。</li><li>需要重新推理：创建新尝试，保留旧输入输出和失败原因。</li><li>相同发布请求与相同计划哈希：返回原发布结果及任务编号映射。</li><li>相同请求但内容哈希不同：明确拒绝。</li><li>发布前再次核对当前批准版本、权限及任务计划；旧版本失效则停止。</li><li>所有任务通过才在一个事务内创建；超时、并发或服务恢复时先查询既有结果，不盲目重建。</li></ul><p><strong>验收：</strong>重复提交、并发提交、响应丢失后的重试均只产生一套任务；部分写入失败全部回滚；旧版本不能覆盖新审批；新尝试与原尝试可分别追踪。</p></section><section id="owners"><h2>6. 职责与实施顺序</h2><table><tr><th>部分</th><th>职责</th></tr><tr><td>策划</td><td>提供人类可读内容与一致的机器清单，提前解决窗口边界</td></tr><tr><td>RodFergusson</td><td>补充固定骨架的说明与验收内容，报告缺口，不控制发布</td></tr><tr><td>GameCLI</td><td>固化输入、调用模型、保存原始结果、执行本地预检查与离线重放</td></tr><tr><td>云编排器</td><td>权威审批核对、骨架与结果校验、幂等发布、事务和状态管理</td></tr><tr><td>共享契约</td><td>统一版本化 schema、规范化规则和测试样例；避免 C# 与 Node.js 规则漂移</td></tr></table><p class="rule">GameCLI 不成为第二套业务编排器；模型输出不是执行授权，本地预检查不能替代服务端校验。</p><p>推荐顺序：先完成第一阶段并用一个窗口验证，再实施快照与重放，最后强化发布重试。第一阶段稳定前不扩展程序任务、多 PM 或全专业并行。后续每阶段交付都应标明实际实现、验证证据及剩余限制。</p></section>
+<footer class="footer">GameAI · 本文为后续开发指导，不改变现有需求批准状态</footer>
+</main>
+</body>
+</html>

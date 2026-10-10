@@ -11,7 +11,7 @@ description: 提供流水线共用的结构化结果、文件哈希与 Trace 约
 
 ## 角色入口与公共依赖
 
-每个角色固定一个主目录：Design 使用 design/ShigeruMiyamoto，PM 使用 pm/PMAgent01，Prefab 使用 prefab/PrefabAgent01，Art 使用 art/MasayoshiSuto，Development 使用 development/JohnCarmack，QA 使用 qa/QAAgent01。专业子技能只能来自自己的主目录，不挂载其他角色的执行技能。公共规范由主技能引用继承，不作为人工添加的角色技能。
+每个角色固定一个主目录：Design 使用 design/ShigeruMiyamoto，PM 使用 pm/RodFergusson，Prefab 使用 prefab/PrefabAgent01，Art 使用 art/MasayoshiSuto，Development 使用 development/JohnCarmack，QA 使用 qa/QAAgent01。专业子技能只能来自自己的主目录，不挂载其他角色的执行技能。公共规范由主技能引用继承，不作为人工添加的角色技能。
 
 涉及自有 C# 编写或检查时，Development、Prefab、QA 使用 gameai-csharp-standard。策划、PM、美术不加载工程维护规范，也不承担代码实现职责。gameai-cli-development 仅用于维护 GameCLI 工程，生产角色不默认加载。
 

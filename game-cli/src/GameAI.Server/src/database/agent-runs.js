@@ -89,7 +89,7 @@ export async function agentRunRequest(pool, projectKey, raw)
             try { instructions = await loadSkillInstructions(skills, catalog, undefined, input.role); }
             catch (error) { throw new ReviewError(error.message); }
             const session = (await c.query(`INSERT INTO gameai.agent_conversations(project_id,requirement_key,role_code,agent_id,worker_id)
-                VALUES($1,$2,$3,$4,$5) ON CONFLICT(project_id,requirement_key,role_code) DO UPDATE SET requirement_key=EXCLUDED.requirement_key RETURNING *`,
+                VALUES($1,$2,$3,$4,$5) ON CONFLICT(project_id,requirement_key,agent_id) DO UPDATE SET requirement_key=EXCLUDED.requirement_key RETURNING *`,
                 [project.id,input.requirement_key,input.role,agent.id,worker.id])).rows[0];
             if (session.agent_id !== agent.id || session.worker_id !== worker.id)
             {

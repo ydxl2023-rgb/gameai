@@ -2,8 +2,8 @@ import {storePrefabTaskHtml} from './prefab-task-document.js';
 import { createHash, randomUUID } from 'node:crypto';
 import { hostname } from 'node:os';
 import { z } from 'zod';
-import {ensureQaTasks} from './qa-context.js';
 import { ReviewError } from './requirements.js';
+import { buildUiDeliverySkeleton, validateUiDeliveryPlan } from './ui-delivery-plan.js';
 
 const requestSchema = z.object({ version_id:z.uuid(), revision:z.string().regex(/^[0-9a-f]{64}$/), document_hash:z.string().regex(/^[0-9a-f]{64}$/) }).strict();
 const text = z.string().trim().min(1).max(12000);
@@ -121,6 +121,7 @@ export async function startPmJob(pool, projectKey, userId, raw)
     return transaction(pool, async client =>
     {
         const version = await approvedDocument(client,projectKey,input);
+        buildUiDeliverySkeleton(version.html,version.version);
         const permission = await client.query(`SELECT 1 FROM gameai.users u JOIN gameai.user_roles ur ON ur.user_id=u.id
             JOIN gameai.role_permissions rp ON rp.role_code=ur.role_code WHERE u.id=$1 AND u.enabled AND ur.project_id=$2
             AND rp.permission_code='requirement.approve'`,[userId,version.project_id]);
@@ -165,10 +166,13 @@ export async function startPmJob(pool, projectKey, userId, raw)
 
 export async function publishPmPlan(pool, projectKey, job, result)
 {
-    const plan = validatePmPlan(result.plan);
+    const proposal = validatePmPlan(result.plan);
     return transaction(pool,async client =>
     {
         const version = await approvedDocument(client,projectKey,{version_id:job.requirement_version_id,revision:job.revision,document_hash:job.document_hash});
+        // Reconstruct from authoritative bytes inside the publication transaction, never trust a caller's scope.
+        const skeleton = buildUiDeliverySkeleton(version.html,version.version);
+        const plan = validateUiDeliveryPlan(proposal,skeleton);
         const current = (await client.query('SELECT * FROM gameai.pm_jobs WHERE id=$1 FOR UPDATE',[job.id])).rows[0];
         if (current.execution_id !== job.execution_id)
         {
@@ -190,6 +194,11 @@ export async function publishPmPlan(pool, projectKey, job, result)
         {
             throw new ReviewError('结果不是该需求固定 PM 的已完成执行。');
         }
+        const stages=(await client.query('SELECT stage,state FROM gameai.pm_stages WHERE parent_execution_id=$1',[job.execution_id])).rows;
+        if (stages.length && (stages.length!==4 || stages.some(s=>s.state!=='completed')))
+        {
+            throw new ReviewError('专业 PM 阶段尚未全部完成，禁止发布部分计划。');
+        }
         const parent = (await client.query('INSERT INTO gameai.plans(project_id,requirement_id) VALUES($1,$2) RETURNING id',[version.project_id,version.requirement_id])).rows[0];
         const pv = (await client.query("INSERT INTO gameai.plan_versions(project_id,plan_id,requirement_version_id,version,state) VALUES($1,$2,$3,1,'published') RETURNING id",[version.project_id,parent.id,version.id])).rows[0];
         // The database allocates role-prefixed public numbers; model IDs only resolve this proposal's edges.
@@ -201,18 +210,21 @@ export async function publishPmPlan(pool, projectKey, job, result)
             const criteria = Object.entries(task.acceptance).map(([kind,value]) => ({kind,text:value}));
             const row = (await client.query(`INSERT INTO gameai.tasks(project_id,plan_version_id,parent_id,title,role_code,description,source_refs,delivery_criteria,status)
                 VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING id`,[version.project_id,pv.id,root.id,task.title,task.role,task.description,JSON.stringify(task.source_refs),JSON.stringify(criteria),task.depends_on.length ? 'blocked' : 'pending'])).rows[0];
-            if (task.role === "Prefab")
+            if (["Prefab","Art"].includes(task.role))
             {
                 const stored = (await client.query("SELECT * FROM gameai.tasks WHERE id=$1",[row.id])).rows[0];
                 await storePrefabTaskHtml(client,stored,version.html,job.document_hash);
             }
             ids.set(task.id,row.id);
+            const identity = skeleton.tasks.find(item => item.id === task.id);
+            await client.query('UPDATE gameai.tasks SET logical_id=$2,window_id=$3,delivery_phase=$4 WHERE id=$1',
+                [row.id,identity.id,identity.window_id,identity.phase]);
             for (const dependency of task.depends_on)
             {
                 await client.query('INSERT INTO gameai.task_dependencies(project_id,task_id,depends_on_id) VALUES($1,$2,$3)',[version.project_id,row.id,ids.get(dependency)]);
             }
         }
-        const qaTasks=await ensureQaTasks(client,pv.id);
+        const qaTasks = [];
         const automatic=(await client.query("SELECT * FROM gameai.approval_workflows WHERE version_id=$1 AND state IN ('pm','manual_pm')",[version.id])).rows[0];
         if (automatic)
         {
@@ -223,7 +235,7 @@ export async function publishPmPlan(pool, projectKey, job, result)
         }
         const taskCount=plan.tasks.length+qaTasks.length;
         const completed = (await client.query("UPDATE gameai.pm_jobs SET state='completed',plan_version_id=$2,task_count=$3,finished_at=now() WHERE id=$1 RETURNING *",[job.id,pv.id,taskCount])).rows[0];
-        await client.query("INSERT INTO gameai.audit_events(project_id,actor,event,payload) VALUES($1,'agent:PM','PM 已发布美术、程序与 QA 子任务',$2)",[version.project_id,{execution_id:job.execution_id,plan_version_id:pv.id,task_count:taskCount}]);
+        await client.query("INSERT INTO gameai.audit_events(project_id,actor,event,payload) VALUES($1,'agent:PM','PM 已发布 UI 白模、美术资源与装配任务',$2)",[version.project_id,{execution_id:job.execution_id,plan_version_id:pv.id,task_count:taskCount}]);
         return completed;
     });
 }
@@ -231,7 +243,7 @@ export async function publishPmPlan(pool, projectKey, job, result)
 export async function failPmJob(pool, job, error)
 {
     // An uncertain live lease must never be made retryable by a process timeout.
-    await pool.query(`WITH failed AS (UPDATE gameai.pm_jobs SET state=CASE WHEN EXISTS(SELECT 1 FROM gameai.agent_runs WHERE execution_id=$2 AND state IN ('running','unknown')) THEN 'unknown' ELSE 'failed' END,
+    await pool.query(`WITH failed AS (UPDATE gameai.pm_jobs SET state=CASE WHEN EXISTS(SELECT 1 FROM gameai.agent_runs WHERE (execution_id=$2 OR execution_id IN (SELECT execution_id FROM gameai.pm_stages WHERE parent_execution_id=$2)) AND state IN ('running','unknown')) THEN 'unknown' ELSE 'failed' END,
         error=$3,finished_at=now() WHERE id=$1 AND execution_id=$2 AND state='running' RETURNING *)
         INSERT INTO gameai.audit_events(project_id,actor,event,payload)
         SELECT project_id,'agent:PM','PM 拆分失败或待核实',jsonb_build_object('execution_id',execution_id,'version_id',requirement_version_id,'state',state,'error',error) FROM failed`,[job.id,job.execution_id,error.slice(0,2000)]);

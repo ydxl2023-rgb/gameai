@@ -19,7 +19,7 @@ test('Prefab skill chain cannot import other roles and PM references do not impo
     const prefab=catalog.find(s=>s.skill_key==='prefab/PrefabAgent01');
     assert.equal(prefab.role_code,'Prefab');
     assert.equal(canUseExtraSkill(catalog.find(s=>s.skill_key==='art/MasayoshiSuto/art-2d'),'Prefab'),false);
-    for(const key of ['prefab/PrefabAgent01','pm/PMAgent01'])
+    for(const key of ['prefab/PrefabAgent01','pm/RodFergusson'])
     {
         const text=await loadSkillInstructions([catalog.find(s=>s.skill_key===key)],catalog);
         assert.equal(text.includes('技能来源：skills/design/ShigeruMiyamoto/SKILL.md'),false);

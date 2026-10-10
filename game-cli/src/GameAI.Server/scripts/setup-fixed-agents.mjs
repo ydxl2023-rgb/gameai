@@ -8,7 +8,7 @@ import pg from 'pg';
 const pool = createPool();
 const projectKey = process.env.GAMEAI_PROJECT_KEY ?? 'DEMO';
 const workerKey = hostname().toLowerCase();
-const definitions = [['Design','design-01','策划 Agent 01','design/ShigeruMiyamoto'],['PM','pm-01','PM Agent 01','pm/PMAgent01'],['Prefab','prefab-01','预制 Agent 01','prefab/PrefabAgent01'],['Art','art-01','美术 Agent 01','art/MasayoshiSuto'],['Development','dev-01','开发 Agent 01','development/JohnCarmack'],['QA','qa-01','QA Agent 01','qa/QAAgent01']];
+const definitions = [['Design','design-01','策划 Agent 01','design/ShigeruMiyamoto'],['PM','pm-01','PM Agent 01','pm/RodFergusson'],['Prefab','prefab-01','预制 Agent 01','prefab/PrefabAgent01'],['Art','art-01','美术 Agent 01','art/MasayoshiSuto'],['Development','dev-01','开发 Agent 01','development/JohnCarmack'],['QA','qa-01','QA Agent 01','qa/QAAgent01']];
 try
 {
     await syncSkillCatalog(pool);
@@ -44,7 +44,7 @@ try
             FROM gameai.requirements r JOIN gameai.requirement_versions v ON v.requirement_id=r.id
             JOIN gameai.fixed_agents f ON f.project_id=r.project_id AND f.role_code='Design'
             WHERE r.project_id=$1 AND v.content->>'thread_id' IS NOT NULL ORDER BY r.id,v.ordinal DESC
-            ON CONFLICT(project_id,requirement_key,role_code) DO NOTHING`,[p.id,w.id]);
+            ON CONFLICT(project_id,requirement_key,agent_id) DO NOTHING`,[p.id,w.id]);
         const config = parseEnv(await readFile(new URL('../.env.workflow',import.meta.url),'utf8'));
         const writer = pg.escapeIdentifier(config.PGUSER);
         await c.query('GRANT SELECT ON gameai.fixed_agents,gameai.agent_conversations,gameai.agent_runs TO '+writer);

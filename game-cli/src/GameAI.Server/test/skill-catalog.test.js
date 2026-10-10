@@ -40,11 +40,20 @@ test('nested specialists inherit roles; loading includes parents and shared rule
 
 test('roles exclude platform maintenance', async () => {
  const skills = (await discoverSkills()).map(s=>({...s,enabled:true}));
- for (const [key,role] of [['design/ShigeruMiyamoto','Design'],['pm/PMAgent01','PM'],['art/MasayoshiSuto','Art'],['prefab/PrefabAgent01','Prefab'],['development/JohnCarmack','Development'],['qa/QAAgent01','QA']]) {
+ for (const [key,role] of [['design/ShigeruMiyamoto','Design'],['pm/RodFergusson','PM'],['art/MasayoshiSuto','Art'],['prefab/PrefabAgent01','Prefab'],['development/JohnCarmack','Development'],['qa/QAAgent01','QA']]) {
  const text = await loadSkillInstructions([skills.find(s=>s.skill_key===key)],skills,undefined,role);
  assert.ok(text.includes('技能来源：skills/common/SKILL.md'));
  assert.ok(!text.includes('技能来源：skills/common/gameai-cli-development/SKILL.md'));
  assert.equal(text.includes('技能来源：skills/common/gameai-csharp-standard/SKILL.md'), ['Development','Prefab','QA'].includes(role));
  assert.equal(canUseExtraSkill(skills.find(s=>s.skill_key==='common'),role),false);
  }
+});
+
+test('single PM inherits UI and Art but does not load Program', async () => {
+ const catalog=(await discoverSkills()).map(s=>({...s,enabled:true}));
+ const text=await loadSkillInstructions([catalog.find(s=>s.skill_key==='pm/RodFergusson')],catalog,undefined,'PM');
+ assert.ok(text.includes('技能来源：skills/pm/RodFergusson/ui/SKILL.md'));
+ assert.ok(text.includes('技能来源：skills/pm/RodFergusson/art/SKILL.md'));
+ assert.ok(!text.includes('技能来源：skills/pm/RodFergusson/program/SKILL.md'));
+ assert.ok(!catalog.some(s=>['pm/Mr.Art','pm/Mr.UI','pm/Mr.Program'].includes(s.skill_key)));
 });

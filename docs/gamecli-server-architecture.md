@@ -138,3 +138,16 @@ PM 和专业任务启动前，服务读取并核验数据库中的批准原文�
 Codex MCP UI 通过只读 gameai_track_snapshot 的 document_version 参数读取当前项目关联的原始 HTML，由服务校验文档关联及哈希。内嵌页面使用 sandbox 的 srcDoc 显示原文，读取失败展示错误，不向宿主域发起相对 HTTP 请求。
 
 内嵌面板保持人工审批只读，通过“审批人登录”按钮及宿主 ui/open-link 打开本机 Track 登录页面；账户登录和审批仍使用该页面的人工会话与 CSRF。内嵌页面不持有账户密码或审批令牌。HTTP 页面继续保留原有登录与审批流程。
+
+
+## 单 PM 与专业规则模块
+
+仅 RodFergusson 执行拆分。pm/RodFergusson/SKILL.md 引用 ui、art、program 三个独立模块；当前只加载 ui/art，同一次执行读取完整批准 HTML，统一规划依赖与建单。按独立窗口生成白模 Prefab → 图片资源包 Art → 最终装配 Prefab，不按普通控件拆分，不生成程序或 QA 任务。发布仍校验审批、版本和无环依赖。旧 pm_stages 表仅保留历史，不再创建阶段或调度专业 PM。
+
+## UI 确定性拆分第一阶段（2026-10-10）
+
+本节优先于上述历史 PM 描述。startPmJob 在创建作业前校验批准 HTML 内唯一 ui-delivery-manifest v1；dispatchPmJob 保存 skeleton.json 并提供完整原文给单 PM。RodFergusson 仅补充标题、说明及六项验收内容，不能改变任务身份、角色、来源、依赖。publishPmPlan 在事务中从数据库批准原文重建骨架再次核验，不接受调用者用 scope 绕过验证。
+
+每独立窗口固定 WHITEBOX/ART/ASSEMBLY 三项；内部区域和控件不拆单，不生成 Development/QA。跨窗口资源复用显式给 assembly 加 owner-ART 前置。tasks.logical_id/window_id/delivery_phase 保存稳定逻辑身份，与数据库公开编号分别管理。三阶段任务都生成完整窗口原始 HTML 附件，沿用人工审批和各 Agent 自动授权。
+
+校验入口：src/database/ui-delivery-plan.js。测试：test/ui-delivery-plan.test.js、test/pm-plans.test.js、test/prefab-task-document.test.js。新迁移 018_ui_delivery_identity.sql 与 019_ui_delivery_identity_required.sql 只加字段/约束，不改历史业务数据。旧文档没有清单明确阻塞；任意自然语言与线框语义一致性仍需 Design/PM 审查。执行快照离线重放及计划哈希幂等属于第二、三阶段，尚未完成。

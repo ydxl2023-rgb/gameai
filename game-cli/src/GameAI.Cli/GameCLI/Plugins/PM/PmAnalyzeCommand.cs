@@ -90,8 +90,9 @@ namespace GameCLI.Plugins.PM
                 string skills = values.TryGetValue("--skills", out string? skillPath) ? Path.GetFullPath(skillPath) : FindSkills(project);
                 foreach (string name in new[]
                 {
-                    "pm/PMAgent01",
-                    "pm/PMAgent01/pm-art-breakdown",
+                    "pm/RodFergusson",
+                    "pm/RodFergusson/ui",
+                "pm/RodFergusson/art",
                     "common",
                     "common/gameai-task-delivery",
                     "common/gameai-task-writing",

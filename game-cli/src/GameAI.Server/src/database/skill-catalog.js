@@ -5,11 +5,27 @@ import { fileURLToPath } from 'node:url';
 
 const roles = { design:'Design', pm:'PM', prefab:'Prefab', art:'Art', development:'Development', qa:'QA' };
 export const skillRelocations = {
+    "pm/Mr.Leader": "pm/RodFergusson",
+    "pm/Mr.Leader/ui": "pm/RodFergusson/ui",
+    "pm/Mr.Leader/art": "pm/RodFergusson/art",
+    "pm/Mr.Leader/program": "pm/RodFergusson/program",
+
+    "pm/Mr.UI": "pm/RodFergusson/ui",
+    "pm/Mr.Art": "pm/RodFergusson/art",
+    "pm/Mr.Program": "pm/RodFergusson/program",
+    "pm/PMLead": "pm/RodFergusson",
+    "pm/PMUI": "pm/Mr.UI",
+    "pm/PMArt": "pm/Mr.Art",
+    "pm/PMDevelopment": "pm/Mr.Program",
+    "pm/PMLead/pm-art-breakdown": "pm/RodFergusson/art",
+
+    "pm/PMAgent01": "pm/RodFergusson",
+    "pm/PMAgent01/pm-art-breakdown": "pm/RodFergusson/art",
     "gameai-art": "art/MasayoshiSuto",
     "gameai-common": "common",
     "gameai-design": "design/ShigeruMiyamoto",
     "gameai-dev": "development/JohnCarmack",
-    "gameai-pm": "pm/PMAgent01",
+    "gameai-pm": "pm/RodFergusson",
     "gameai-prefab": "prefab/PrefabAgent01",
     "gameai-qa": "qa/QAAgent01",
     "gameai-art/art-2d": "art/MasayoshiSuto/art-2d",
@@ -31,7 +47,7 @@ export const skillRelocations = {
     "gameai-dev/dev-godot": "development/JohnCarmack/dev-godot",
     "gameai-dev/dev-unity": "development/JohnCarmack/dev-unity",
     "gameai-dev/dev-web": "development/JohnCarmack/dev-web",
-    "gameai-pm/pm-art-breakdown": "pm/PMAgent01/pm-art-breakdown",
+    "gameai-pm/pm-art-breakdown": "pm/RodFergusson/art",
     "gameai-qa/gameai-qa-repair": "qa/QAAgent01/gameai-qa-repair",
     "gameai-qa/qa-cocos": "qa/QAAgent01/qa-cocos",
     "gameai-qa/qa-godot": "qa/QAAgent01/qa-godot",
@@ -39,7 +55,7 @@ export const skillRelocations = {
     "gameai-qa/qa-web": "qa/QAAgent01/qa-web"
 };
 export const skillRoot = fileURLToPath(new URL('../../../../skills/', import.meta.url));
-export const skillKeyPattern = /^[a-zA-Z0-9-]+(?:\/[a-zA-Z0-9-]+)*$/;
+export const skillKeyPattern = /^[a-zA-Z0-9][a-zA-Z0-9.-]*(?:\/[a-zA-Z0-9][a-zA-Z0-9.-]*)*$/;
 
 export function isPrimarySkill(skill)
 {
@@ -75,7 +91,7 @@ export async function discoverSkills(root = skillRoot)
             {
                 for (const child of await readdir(resolve(root, key), {withFileTypes:true}))
                 {
-                    if (child.isDirectory() && /^[a-zA-Z0-9-]+$/.test(child.name)) await visit(key + '/' + child.name);
+                    if (child.isDirectory() && /^[a-zA-Z0-9.-]+$/.test(child.name)) await visit(key + '/' + child.name);
                 }
                 return;
             }
@@ -87,7 +103,7 @@ export async function discoverSkills(root = skillRoot)
             content_hash: createHash('sha256').update(bytes).digest('hex') });
         for (const child of (await readdir(resolve(root, key), { withFileTypes: true })).sort((a,b) => a.name.localeCompare(b.name)))
         {
-            if (child.isDirectory() && /^[a-zA-Z0-9-]+$/.test(child.name)) await visit(key + '/' + child.name);
+            if (child.isDirectory() && /^[a-zA-Z0-9.-]+$/.test(child.name)) await visit(key + '/' + child.name);
         }
     }
     for (const entry of (await readdir(root, { withFileTypes: true })).sort((a,b) => a.name.localeCompare(b.name)))
@@ -128,7 +144,8 @@ export async function loadSkillInstructions(selected, catalog, root = skillRoot,
             const dependency = relative(root, dirname(target)).split(sep).join('/');
             if (!skillKeyPattern.test(dependency)) throw new Error('技能引用超出目录：' + key);
             // Child links are routing choices, not instructions to load every specialty.
-            if (dependency.startsWith(key + '/') && !dependency.split('/').at(-1).startsWith('gameai-')) continue;
+            if (key === 'pm/RodFergusson' && dependency === key + '/program') continue;
+            if (dependency.startsWith(key + '/') && !dependency.split('/').at(-1).startsWith('gameai-') && !(key === 'pm/RodFergusson' && ['ui','art'].includes(dependency.split('/').at(-1)))) continue;
             if (key === 'common' && dependency.startsWith(key + '/')) continue;
             // Cross-role links describe collaboration; they must not import another role's execution instructions.
             const owner = role ?? selected.find(s => s.role_code)?.role_code;

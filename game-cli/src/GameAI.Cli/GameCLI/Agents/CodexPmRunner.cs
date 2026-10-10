@@ -26,8 +26,9 @@ namespace GameCLI.Agents
         {
             string[] skillNames =
             {
-                "pm/PMAgent01",
-                "pm/PMAgent01/pm-art-breakdown",
+                "pm/RodFergusson",
+                "pm/RodFergusson/ui",
+                "pm/RodFergusson/art",
                 "common",
                 "common/gameai-task-delivery",
                 "common/gameai-task-writing",
