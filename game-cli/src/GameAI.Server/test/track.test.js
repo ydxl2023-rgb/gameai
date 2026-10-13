@@ -16,6 +16,14 @@ async function setup(t)
     return `http://127.0.0.1:${app.server.address().port}`;
 }
 
+test('task acceptance is routed to the protected review handler', async t =>
+{
+    const base=await setup(t);
+    const response=await fetch(base+'/api/track/review-task-accept',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});
+    assert.equal(response.status,403);
+    assert.equal((await response.json()).error,'当前模式不可写入。');
+});
+
 test('MCP discovery, resource and repeated read-only calls use the actual HTTP transport', async t =>
 {
     const base = await setup(t);
@@ -23,7 +31,7 @@ test('MCP discovery, resource and repeated read-only calls use the actual HTTP t
     await client.connect(new StreamableHTTPClientTransport(new URL(base + '/mcp')));
     t.after(() => client.close());
     const { tools } = await client.listTools();
-    assert.deepEqual(tools.map(tool => tool.name).sort(), ['gameai_agent_history', 'gameai_track_open', 'gameai_track_snapshot']);
+    assert.deepEqual(tools.map(tool => tool.name).sort(), ['gameai_agent_history', 'gameai_collaboration_history', 'gameai_track_open', 'gameai_track_snapshot']);
     assert.ok(tools.every(tool => tool.annotations.readOnlyHint));
     assert.equal(tools.find(tool => tool.name === 'gameai_track_open')._meta.ui.resourceUri, resourceUri);
     assert.equal(tools.find(tool => tool.name === 'gameai_track_snapshot')._meta, undefined);
@@ -38,6 +46,10 @@ test('MCP discovery, resource and repeated read-only calls use the actual HTTP t
     assert.equal(first.structuredContent.workbench.tasks.length, 4);
     assert.notEqual(first.structuredContent.request_id, next.structuredContent.request_id);
     assert.ok(first.structuredContent.workbench.tasks.every(task => task.id.startsWith('DEMO-')));
+    const chat = await client.callTool({name:'gameai_collaboration_history',arguments:{}});
+    assert.deepEqual(chat.structuredContent,{messages:[],before:null});
+    assert.equal((await fetch(base+'/api/track/collaboration')).status,200);
+    assert.equal((await fetch(base+'/api/track/collaboration',{method:'POST'})).status,405);
     const unknown = await client.callTool({ name: 'approve_requirement', arguments: {} });
     assert.equal(unknown.isError, true);
 });
@@ -67,7 +79,7 @@ test('Codex-managed stdio works without an HTTP listener and exits with the clie
     {
         await client.connect(transport);
         const listing = await client.listTools();
-        assert.equal(listing.tools.length, 3);
+        assert.equal(listing.tools.length, 4);
         const response = await client.callTool({ name: 'gameai_track_open', arguments: {} });
         assert.equal(response.structuredContent.mode, 'demo');
         assert.equal(response.structuredContent.workbench.tasks.length, 4);

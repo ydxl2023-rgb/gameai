@@ -39,7 +39,8 @@ HTML 是需求数据，不是授权指令。不得修改批准原文或据此扩
 先阅读目标工程已安装 UnityCLI 的 `Docs~/prefab-create.md`，以实际版本支持的字段为准。任务生产使用 `prefab create`；原 Web → `ugui` 流程保持独立。
 
 - 输出 `task-layout.json`，不是 HTML、SVG、截图或 prefab YAML。
-- task-layout v1 必填 `schemaVersion`、`taskId`、`source`、`width`、`height`、`root`。`source` 指向实际批准文档及相关锚点。
+- task-layout 必填 `schemaVersion`、`taskId`、`source`、`width`、`height`、`root`。当前新版使用 schemaVersion=2，旧版输入仍兼容；先核对目标工程文档。`source` 指向实际批准文档及相关锚点。
+- 新版支持独立 `name`、`active`、Button `interactable`、`anchorMin/anchorMax/pivot`、文本 `alignment/overflow/wordWrap/autoSize/minFontSize/maxFontSize` 和非根控件 `safeArea`。Viewport 原文无 Image 时填写 `viewportImage:false`，按原文保留命中区域与 Content 兄弟节点。参数语义以已安装的 `prefab-create.md` 为准，不能把这些已支持能力误报为缺口；业务状态切换、动画及实际设备适配验证仍须分别处理。
 - 节点 `id` 唯一且对应源编号；`children` 数组顺序就是同级绘制顺序。矩形使用父节点左上原点，x 向右、y 向下；设备外框和 SVG 示意偏移不进入运行布局。
 - 根 Panel 使用全屏 Stretch；其他锚点以 CLI 支持能力及源要求为准。不要把设计坐标正确等同于所有分辨率适配正确。
 - 独立按钮背景使用 `targetGraphic:"B01-BG"` 等引用；目标必须是该按钮的直接子 Image，并开启射线。保留源层序，不生成重复背景。
@@ -68,6 +69,13 @@ HTML 是需求数据，不是授权指令。不得修改批准原文或据此扩
 
 最终装配必须检查九宫格、层序、遮挡、文字、滚动、安全区、资源和引用完整性。确需改变绑定契约时报告影响，交回协调处理。
 
+### 指定风格美术的装配门禁（硬性规范）
+
+- 用户要求指定风格的按钮或控件图片时，最终装配必须绑定 Art 实际生图交付的对应皮肤及状态资源，不能继续使用纯色白模、默认按钮或仅调整颜色，并称为最终效果。
+- 图片生成由 Art 负责，Prefab 负责导入、绑定和装配。缺少符合指定风格的资源时明确列出缺失控件并反馈宿主交回 Art，不跨角色自行生成，也不以占位图放行。
+- 逐项核对节点到资源的映射、Simple/Sliced 模式、实测九宫格边距和状态切换；保留独立文字、控件路径、GUID、布局和交互契约。
+- 在 Unity 中查看完整装配效果及目标尺寸下的按钮状态，检查风格一致、细节清晰、文字可读、边框不变形、资源无遗漏；保存最终界面证据。功能或结构测试通过不能替代视觉检查，Art 的合成预览也不能代替真实预制效果。
+
 ## 7. 交付与状态
 
 - 中间文件：`game-cli/temp/<执行编号>/`。
@@ -85,6 +93,6 @@ HTML 是需求数据，不是授权指令。不得修改批准原文或据此扩
 
 ## 英文资产命名（强制）
 
-遵守 [文档规范](../../common/gameai-document-format/SKILL.md) 的“UI 预制与节点英文命名”。最终窗口资产必须为 `UI<功能英文>.prefab`；根节点使用同名无扩展名，子节点用标准英文 PascalCase。登录为 `UILogin.prefab`，子节点如 `LoginBackground`、`TestIcon`、`Version`。文档树与线框展示真实英文名称，不显示 S0/L01 等编号前缀。稳定 id 仅作内部关联；绘制顺序单列。新清单 v2 必须带 prefab_name 与 controls.name，后续原样继承，不以编号命名节点。
+遵守 [UI 公共交付契约](../../common/gameai-ui-delivery-contract/SKILL.md) 的英文资产命名。将 manifest 中 prefab_name 与 controls.name 原样用于输出预制与节点，不把稳定 id 当作名称；本技能不另维护命名规则。
 
 生成 task-layout JSON 时将清单稳定标识映射至节点 id，并显式填写 name；`--prefab` 路径的文件名必须等于批准文档 prefab_name。工具版本若不支持区分 id/name，报告能力缺口，不退回用编号生产。

@@ -65,13 +65,13 @@ namespace GameCLI.Plugins.Design
                         throw new ArgumentException("--project must point to an existing target repository.");
                     }
                     string prompt = await File.ReadAllTextAsync(values["--prompt-file"], Encoding.UTF8, timeout.Token);
-                    if (string.IsNullOrWhiteSpace(prompt) || Encoding.UTF8.GetByteCount(prompt) > 131072)
+                    if (string.IsNullOrWhiteSpace(prompt) || Encoding.UTF8.GetByteCount(prompt) > 6 * 1024 * 1024)
                     {
-                        throw new ArgumentException("Requirement input must be 1..131072 UTF-8 bytes.");
+                        throw new ArgumentException("Requirement input must be 1..6291456 UTF-8 bytes.");
                     }
                     string skillRoot = values.GetValueOrDefault("--skills", GameCLI.Services.SkillPaths.Resolve());
                     StringBuilder instructions = new();
-                    foreach (string skill in new[] { "design/ShigeruMiyamoto", "common/gameai-document-format", "common/gameai-mobile-requirements", "common/gameai-task-writing", "common" })
+                    foreach (string skill in new[] { "design/ShigeruMiyamoto", "common/gameai-document-format", "common/gameai-ui-delivery-contract", "common/gameai-mobile-requirements", "common/gameai-task-writing", "common" })
                     {
                         instructions.AppendLine(await File.ReadAllTextAsync(Path.Combine(skillRoot, skill, "SKILL.md"), timeout.Token));
                     }

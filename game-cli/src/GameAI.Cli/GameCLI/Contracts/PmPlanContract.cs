@@ -8,8 +8,12 @@ namespace GameCLI.Contracts
         public static JsonElement Schema
         { get; } = JsonDocument.Parse("""
             {
-              "type":"object","additionalProperties":false,"required":["summary","tasks"],
+              "type":"object","additionalProperties":false,"required":["outcome","issues","summary","tasks"],
               "properties":{
+                "outcome":{"type":"string","enum":["ready","revision_required","needs_input","execution_error"]},
+                "issues":{"type":"array","items":{"type":"object","additionalProperties":false,
+                  "required":["section","evidence","impact","suggestion"],"properties":{
+                    "section":{"type":"string"},"evidence":{"type":"string"},"impact":{"type":"string"},"suggestion":{"type":"string"}}}},
                 "summary":{"type":"string"},
                 "tasks":{"type":"array","items":{
                   "type":"object","additionalProperties":false,

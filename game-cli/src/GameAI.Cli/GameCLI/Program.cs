@@ -13,6 +13,9 @@ namespace GameCLI
     {
         private static Task<int> Main(string[] args)
         {
+            // The server decodes redirected stdout and stderr as UTF-8 on every host.
+            Console.InputEncoding = new System.Text.UTF8Encoding(false);
+            Console.OutputEncoding = new System.Text.UTF8Encoding(false);
             ICLIPlugin[] plugins =
             {
                 new DesignPlugin(),

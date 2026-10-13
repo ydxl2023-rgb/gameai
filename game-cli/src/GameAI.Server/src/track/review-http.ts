@@ -1,3 +1,5 @@
+import {resumeRequirementRevisions} from './requirement-revision-flow.js';
+import {acceptTask} from '../database/task-acceptance.js';
 import {canEditTasks,editTaskField} from '../database/task-edits.js';
 import { clearProjectTasks } from '../database/task-clear.js';
 import {setAgentAutomation} from '../database/agent-automation.js';
@@ -44,6 +46,10 @@ export async function handleReviewRequest(request: IncomingMessage, response: Se
                 throw new Error('Configuration missing');
             }
             writer = createPool({ user:config.PGUSER,password:config.PGPASSWORD });
+            const revisionWriter=writer;
+            const pump=()=>void resumeRequirementRevisions(revisionWriter).catch(error=>console.error('需求修订调度失败',error.message));
+            setInterval(pump,10000).unref();
+            pump();
             void resumeApprovalWorkflows(writer).catch(() => console.error('审批后自动执行恢复失败。'));
             void resumeTaskFlows(writer).catch(() => console.error('自动推进恢复失败，等待核实。'));
         }
@@ -204,6 +210,12 @@ export async function handleReviewRequest(request: IncomingMessage, response: Se
         if (path === '/api/track/review-task-clear')
         {
             reply(response,200,await clearProjectTasks(writer,project,session!.user));
+            return;
+        }
+        if (path === '/api/track/review-task-accept')
+        {
+            reply(response,200,await acceptTask(writer,project,session!.user,input));
+            void resumeTaskFlows(writer).catch(()=>console.error('验收后调度失败，等待恢复。'));
             return;
         }
         if (path === '/api/track/review-task-edit')

@@ -1,3 +1,5 @@
+import {collaborationHistory} from './collaboration.js';
+import {collaborationQuery} from '../database/collaboration.js';
 import { handleReviewRequest } from './review-http.js';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { readFile } from 'node:fs/promises';
@@ -30,7 +32,7 @@ export function createMcpServer(html: string)
                 const taskRows = 'tasks' in snapshot.workbench ? snapshot.workbench.tasks : [];
                 const linkedTasks = taskRows.flatMap((task: any) => [task.document_url,task.task_document_url].filter(Boolean).map(url => ({version_id:task.requirement_version_id,document_url:url})));
                 const row = [...rows, ...linkedTasks].find((item: {version_id: string; document_url?: string | null}) => item.version_id === input.document_version && (!input.document_artifact || item.document_url?.endsWith("/"+input.document_artifact)));
-                const artifactId = row?.document_url ? /\/documents\/([0-9a-f-]{36})$/i.exec(row.document_url)?.[1] : null;
+                const artifactId = input.document_artifact ?? (row?.document_url ? /\/documents\/([0-9a-f-]{36})$/i.exec(row.document_url)?.[1] : null);
                 const bytes = artifactId ? await readDocument(artifactId) : null;
                 if (!bytes) throw new Error('未找到关联的 HTML 文档。');
                 return { content: [], structuredContent: { ...snapshot, document: { version_id: input.document_version, html: bytes.toString('utf8') } } };
@@ -66,6 +68,14 @@ export function createMcpServer(html: string)
             return { isError: true, content: [{ type: 'text' as const, text: error instanceof Error ? error.message : '历史读取失败。' }] };
         }
     });
+    server.registerTool('gameai_collaboration_history', {
+        description:'读取当前项目永久保存的公开协作反馈，不审批、不派工。',
+        inputSchema:collaborationQuery.shape, annotations
+    }, async query =>
+    {
+        try { return {content:[],structuredContent:await collaborationHistory(query)}; }
+        catch { return {isError:true,content:[{type:'text' as const,text:'协作记录读取失败，请检查查询参数或数据库。'}]}; }
+    });
     return server;
 }
 
@@ -79,7 +89,7 @@ export async function handleTrackRequest(request: IncomingMessage, response: Ser
 {
     const path = new URL(request.url ?? '/', 'http://localhost').pathname;
     const documentId = /^\/api\/track\/documents\/([0-9a-f-]{36})$/i.exec(path)?.[1];
-    if (!documentId && !['/mcp', '/track', '/api/track/demo', '/api/track/snapshot', '/api/track/agent-history', '/api/track/agents', '/api/track/agent-skills', '/api/track/agent-options', '/api/track/agent-runs', '/api/track/requirements', '/api/track/review-session', '/api/track/review-login', '/api/track/review-logout', '/api/track/review-decisions', '/api/track/review-pm-split', '/api/track/review-agent-automation', '/api/track/review-task-clear', '/api/track/review-task-edit', '/api/track/review-task-selection', '/api/track/review-task-preview', '/api/track/review-task-dispatch'].includes(path))
+    if (!documentId && !['/mcp', '/track', '/api/track/demo', '/api/track/snapshot', '/api/track/collaboration', '/api/track/agent-history', '/api/track/agents', '/api/track/agent-skills', '/api/track/agent-options', '/api/track/agent-runs', '/api/track/requirements', '/api/track/review-session', '/api/track/review-login', '/api/track/review-logout', '/api/track/review-decisions', '/api/track/review-pm-split', '/api/track/review-agent-automation', '/api/track/review-task-clear', '/api/track/review-task-accept', '/api/track/review-task-edit', '/api/track/review-task-selection', '/api/track/review-task-preview', '/api/track/review-task-dispatch'].includes(path))
     {
         return false;
     }
@@ -99,6 +109,17 @@ export async function handleTrackRequest(request: IncomingMessage, response: Ser
     if (path === '/api/track/agent-runs' || path === '/api/track/requirements' || path.startsWith('/api/track/review-'))
     {
         await handleReviewRequest(request, response);
+        return true;
+    }
+    if (path === '/api/track/collaboration')
+    {
+        if (request.method !== 'GET') { json(response,405,{error:'方法不允许。'}); return true; }
+        try
+        {
+            const query=Object.fromEntries(new URL(request.url!, 'http://localhost').searchParams);
+            json(response,200,await collaborationHistory(query));
+        }
+        catch { json(response,400,{error:'协作记录读取失败，请检查查询参数或数据库。'}); }
         return true;
     }
     if (path === '/api/track/agent-history')

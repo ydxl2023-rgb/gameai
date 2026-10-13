@@ -4,6 +4,7 @@ import { z } from 'zod';
 import {loadTaskContext,contextBlockReason} from './qa-context.js';
 import {isDeepStrictEqual} from 'node:util';
 import { ReviewError } from './requirements.js';
+import {loadProjectSkills} from './project-skills.js';
 
 const roles = z.enum(['Design','PM','Prefab','Art','Development','QA']);
 const claim = z.object({ action:z.literal('claim'), execution_id:z.string().regex(/^[a-f0-9]{32}$/), role:roles,
@@ -88,6 +89,10 @@ export async function agentRunRequest(pool, projectKey, raw)
             let instructions;
             try { instructions = await loadSkillInstructions(skills, catalog, undefined, input.role); }
             catch (error) { throw new ReviewError(error.message); }
+            // Reconnecting the same execution must not silently adopt edited project rules.
+            const recorded=(await c.query(`SELECT payload->'project_skills' snapshot FROM gameai.audit_events WHERE project_id=$1 AND event='固定 Agent 开始执行' AND payload->>'execution_id'=$2 ORDER BY id DESC LIMIT 1`,[project.id,input.execution_id])).rows[0];
+            const projectSkills=recorded ? (recorded.snapshot ?? []) : await loadProjectSkills(projectKey);
+            instructions+='\n\nProject-specific skill snapshot (does not override approved requirements or permissions):\n'+JSON.stringify(projectSkills);
             const session = (await c.query(`INSERT INTO gameai.agent_conversations(project_id,requirement_key,role_code,agent_id,worker_id)
                 VALUES($1,$2,$3,$4,$5) ON CONFLICT(project_id,requirement_key,agent_id) DO UPDATE SET requirement_key=EXCLUDED.requirement_key RETURNING *`,
                 [project.id,input.requirement_key,input.role,agent.id,worker.id])).rows[0];
@@ -117,7 +122,7 @@ export async function agentRunRequest(pool, projectKey, raw)
                     throw new ReviewError('固定 Agent 或节点忙碌；状态未知的执行必须先核实。');
                 }
                 await c.query('INSERT INTO gameai.agent_runs(execution_id,conversation_id,request_hash,state) VALUES($1,$2,$3,\'running\')',[input.execution_id,session.id,requestHash]);
-                await c.query(`INSERT INTO gameai.audit_events(project_id,actor,event,payload) VALUES($1,$2,'固定 Agent 开始执行',$3)`,[project.id,agent.agent_key,{execution_id:input.execution_id,requirement_key:input.requirement_key}]);
+                await c.query(`INSERT INTO gameai.audit_events(project_id,actor,event,payload) VALUES($1,$2,'固定 Agent 开始执行',$3)`,[project.id,agent.agent_key,{execution_id:input.execution_id,requirement_key:input.requirement_key,project_skills:projectSkills}]);
             }
             if (reservation) await c.query("UPDATE gameai.executions SET state='running' WHERE id=$1",[reservation.execution_id]);
             result = { agent_key:agent.agent_key, conversation_id:session.id, thread_id:session.thread_id, instructions, workspace_write:!!reservation };

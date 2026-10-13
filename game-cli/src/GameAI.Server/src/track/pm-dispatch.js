@@ -1,3 +1,5 @@
+import {parsePmOutcome,recordPmBlock} from '../database/requirement-revisions.js';
+import {resumeRequirementRevisions} from './requirement-revision-flow.js';
 import {projectRoot,platformRoot,tempRoot} from '../paths.js';
 import { prepareApprovedDocument } from '../database/approved-document.js';
 import { spawn } from 'node:child_process';
@@ -97,6 +99,15 @@ export async function dispatchPmJob(pool, projectKey, started, execute = runPmCl
         await writeFile(join(directory,'agent-output.json'),run.output,'utf8');
         const result=JSON.parse(run.output);
         if(result.execution_id!==job.execution_id || !Array.isArray(result.plan?.tasks) || result.plan.tasks.some(t=>!['Prefab','Art'].includes(t.role))) throw new ReviewError('当前只允许 UI 白模、美术资源和预制装配任务。');
+        const outcome = parsePmOutcome(result.plan);
+        if (outcome.outcome === 'execution_error') throw new ReviewError(outcome.summary+'\n'+outcome.issues.map(i=>i.evidence).join('\n'));
+        if (outcome.outcome !== 'ready')
+        {
+            await recordPmBlock(pool,job,outcome);
+            void resumeRequirementRevisions(pool).catch(error=>console.error('修订调度失败',error.message));
+            return;
+        }
+        result.plan = {summary:outcome.summary,tasks:outcome.tasks};
         result.scope='ui-only';
         result.plan = validateUiDeliveryPlan(validatePmPlan(result.plan),skeleton);
         await writeFile(join(directory,'result.json'),JSON.stringify(result),'utf8');

@@ -8,12 +8,21 @@ import {validateTaskResult} from './task-results.js';
 import {validateQaReport,applyQaReport,finishRepair} from './qa-repairs.js';
 import { verifyTaskFiles } from './task-files.js';
 import { prepareApprovedDocument } from './approved-document.js';
+import {snapshotPrefabInputs} from './delivery-snapshot.js';
+import {recoveryDecision} from './task-recovery.js';
 
-const request = z.object({tasks:z.array(z.object({task_id:z.uuid(),revision:z.number().int().nonnegative()}).strict()).min(1).max(100),auto_continue:z.boolean().optional(),retry:z.boolean().optional()}).strict();
+const request = z.object({tasks:z.array(z.object({task_id:z.uuid(),revision:z.number().int().nonnegative()}).strict()).min(1).max(100),auto_continue:z.boolean().optional(),retry:z.boolean().optional(),retry_override:z.object({attempts:z.number().int().min(3),reason:z.string().trim().min(1).max(1000)}).strict().optional()}).strict();
+
+export function retryLimitReason(attempts, override, automaticDispatch)
+{
+    if (override && (automaticDispatch || override.attempts !== attempts)) return '人工重试授权已过期或用于自动派发，请重新核实执行次数';
+    return attempts >= 3 && !override ? '已达到三次执行上限，需人工处理' : '';
+}
 export async function dispatchTasks(pool,projectKey,userId,raw,commit=false,automaticDispatch=false)
 {
     const parsed=request.safeParse(raw);
     if (!parsed.success || new Set(parsed.data.tasks.map(t=>t.task_id)).size!==parsed.data.tasks.length) throw new ReviewError('派发任务参数无效。');
+    if (parsed.data.retry_override && (automaticDispatch || !parsed.data.retry || parsed.data.tasks.length!==1 || parsed.data.auto_continue)) throw new ReviewError('超限重试仅允许人工对单个失败任务授权一次。');
     const c=await pool.connect();
     try
     {
@@ -38,6 +47,9 @@ export async function dispatchTasks(pool,projectKey,userId,raw,commit=false,auto
             const a=(await c.query(`SELECT a.*,w.worker_key,w.enabled worker_enabled,w.capacity worker_capacity FROM gameai.fixed_agents f
                 JOIN gameai.agents a ON a.id=f.agent_id JOIN gameai.workers w ON w.id=a.worker_id WHERE f.project_id=$1 AND f.role_code=$2`,[project.id,t.role_code])).rows[0];
             let reason='';
+            const previous=parsed.data.retry ? (await c.query('SELECT agent_id,state,result FROM gameai.executions WHERE task_id=$1 ORDER BY started_at DESC LIMIT 1',[t.id])).rows[0] : null;
+            if (previous && previous.agent_id!==a?.id) reason='原执行 Agent 不可用，禁止改派其他 Agent';
+            if (parsed.data.retry_override && t.status!=='failed') throw new ReviewError('超限重试只适用于失败任务。');
             if (!t.parent_id || !['Prefab','Art','Development','QA'].includes(t.role_code)) reason='此入口仅执行预制、美术、程序和 QA 子任务';
             else if (!t.dispatch_allowed) reason='尚未勾选允许派发';
             else if (t.dispatch_revision!==input.revision) reason='勾选状态已改变，请刷新';
@@ -45,14 +57,15 @@ export async function dispatchTasks(pool,projectKey,userId,raw,commit=false,auto
             if (!reason && parsed.data.retry && t.status==='failed')
             {
                 const attempts=(await c.query('SELECT count(*)::int n FROM gameai.executions WHERE task_id=$1',[t.id])).rows[0].n;
-                if (attempts>=3) reason='已达到三次执行上限，需人工处理';
+                reason=retryLimitReason(attempts,parsed.data.retry_override,automaticDispatch);
+                if (!reason && automaticDispatch && !recoveryDecision({state:previous?.state,error:previous?.result?.error,attempts,authorized:true}).retry) reason='此失败需要人工确认，不允许自动重试';
             }
             const approved=await c.query(`SELECT 1 FROM gameai.plan_versions p JOIN gameai.requirement_versions v ON v.id=p.requirement_version_id
                 JOIN gameai.approvals a ON a.version_id=v.id AND a.decision='approved' WHERE p.id=$1 AND p.state='published'
                 AND NOT EXISTS(SELECT 1 FROM gameai.requirement_versions n WHERE n.requirement_id=v.requirement_id AND n.ordinal>v.ordinal)`,[t.plan_version_id]);
             if (!reason && !approved.rowCount) reason='需求未批准或计划版本已过期';
-            const context=await loadTaskContext(c,t);
-            const dependencies=context.dependencies;
+            let context=await loadTaskContext(c,t);
+            let dependencies=context.dependencies;
             if (!reason) reason=await contextBlockReason(context,t);
             if (!reason && automaticDispatch)
             {
@@ -79,13 +92,24 @@ export async function dispatchTasks(pool,projectKey,userId,raw,commit=false,auto
             if (reason) continue;
             workspaceReserved=true;
             if (!commit) continue;
+            await snapshotPrefabInputs(c,t);
+            context=await loadTaskContext(c,t);
+            dependencies=context.dependencies;
             const executionId=randomUUID();
+            // Exact prior attempt count makes this human exception single-use under the project lock.
+            // Failed history is retained and automatic dispatch never receives this exception.
+            if (parsed.data.retry_override)
+            {
+                await c.query(`INSERT INTO gameai.audit_events(project_id,actor,event,payload) VALUES($1,$2,$3,$4)`,[project.id,'human:'+userId,'人工授权单次超限重试',{task:t.task_key,execution_id:executionId,prior_attempts:parsed.data.retry_override.attempts,reason:parsed.data.retry_override.reason}]);
+            }
             const approvedDocument=await prepareApprovedDocument(t.version_id,doc.sha256,doc.bytes.toString('utf8'));
             const taskDoc = t.role_code === 'Prefab' ? (await c.query(`SELECT a.storage_key,a.sha256,d.bytes FROM gameai.artifact_links l
                 JOIN gameai.artifacts a ON a.id=l.artifact_id JOIN gameai.document_contents d ON d.artifact_id=a.id
                 WHERE l.task_id=$1 AND a.storage_key LIKE 'deliveries/%/task-%.html' ORDER BY a.verified_at DESC LIMIT 1`,[t.id])).rows[0] : null;
             if (taskDoc && createHash('sha256').update(taskDoc.bytes).digest('hex') !== taskDoc.sha256) throw new ReviewError('预制任务 HTML 校验失败。');
-            const prompt=JSON.stringify({task_document:taskDoc ? {path:taskDoc.storage_key,sha256:taskDoc.sha256,html:taskDoc.bytes.toString('utf8')} : null,approved_document:approvedDocument,platform_context:{authoritative:true,validated_at:new Date().toISOString(),requirement_version_id:t.version_id,plan_version_id:t.plan_version_id,approval:'approved',dispatch_allowed:true,executor:'GameCLIServer'},task:t.task_key,title:t.title,description:t.description,criteria:t.delivery_criteria,source_refs:t.source_refs,dependencies,repair:context.repair,retests:context.retests,approved_html:doc.bytes.toString('utf8')});
+            const humanNotes=(await c.query('SELECT body,created_at FROM gameai.comments WHERE task_id=$1 AND user_id IS NOT NULL ORDER BY created_at DESC LIMIT 10',[t.id])).rows;
+            const failureContext=previous ? {error:previous.result?.error,previous_result:previous.result?.result?.Text ?? null,instruction:'先分析上次失败与已存在产物，修复本任务范围内的问题再验证；不得绕过审批、权限或降低验收标准。返回实际修复内容与检查证据。'} : null;
+            const prompt=JSON.stringify({failure_context:failureContext,human_task_notes:humanNotes,task_document:taskDoc ? {path:taskDoc.storage_key,sha256:taskDoc.sha256,html:taskDoc.bytes.toString('utf8')} : null,approved_document:approvedDocument,platform_context:{authoritative:true,validated_at:new Date().toISOString(),requirement_version_id:t.version_id,plan_version_id:t.plan_version_id,approval:'approved',dispatch_allowed:true,executor:'GameCLIServer',human_retry_context:parsed.data.retry_override ? {actor:'human:'+userId,reason:parsed.data.retry_override.reason,prior_attempts:parsed.data.retry_override.attempts} : null},task:t.task_key,title:t.title,description:t.description,criteria:t.delivery_criteria,source_refs:t.source_refs,dependencies,repair:context.repair,retests:context.retests,approved_html:doc.bytes.toString('utf8')});
             const inputHash=createHash('sha256').update(prompt).digest('hex');
             await c.query(`INSERT INTO gameai.executions(id,project_id,task_id,agent_id,state,started_at) VALUES($1,$2,$3,$4,'assigned',clock_timestamp())`,[executionId,project.id,t.id,a.id]);
             await c.query(`INSERT INTO gameai.task_dispatch_jobs(execution_id,project_id,requested_by,requirement_key,input_hash,context) VALUES($1,$2,$3,$4,$5,$6)`,[executionId,project.id,userId,t.requirement_key,inputHash,JSON.stringify(context)]);
@@ -154,7 +178,14 @@ export async function finishTaskDispatch(pool,job,result,error)
         await c.query('UPDATE gameai.tasks SET status=$2,progress=$3 WHERE id=$1',[job.taskId,success ? completed ? 'completed' : 'review' : unknown ? 'running' : 'failed',success ? 100 : 0]);
         if (success && context.repair) await finishRepair(c,task,context.repair);
         if (success && task.role_code==='QA') await applyQaReport(c,task,execution,context,content);
-        if (!success) await c.query("UPDATE gameai.plan_dispatch_flows SET state='paused',reason=$2,updated_at=now() WHERE plan_version_id=$1",[task.plan_version_id,error ?? '执行状态待核实']);
+        if (!success)
+        {
+            const attempts=(await c.query('SELECT count(*)::int n FROM gameai.executions WHERE task_id=$1',[task.id])).rows[0].n;
+            const agent=(await c.query('SELECT auto_execute FROM gameai.agents WHERE id=$1',[execution.agent_id])).rows[0];
+            const recovery=recoveryDecision({state,error,attempts,authorized:flow?.state==='active' && agent?.auto_execute});
+            await c.query("UPDATE gameai.plan_dispatch_flows SET state=$2,reason=$3,updated_at=now() WHERE plan_version_id=$1",[task.plan_version_id,recovery.retry?'active':'paused',recovery.reason]);
+            await c.query(`INSERT INTO gameai.audit_events(project_id,actor,event,payload) VALUES($1,'orchestrator',$2,$3)`,[job.projectId,recovery.retry?'任务失败，安排原 Agent 修复重试':'任务自动修复停止，等待人工处理',{task_id:job.taskId,execution_id:job.executionId,reason:recovery.reason,error,attempts}]);
+        }
         let summary=error ?? '执行状态待核实';
         if (!error && result?.Text)
         {

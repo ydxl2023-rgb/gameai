@@ -26,6 +26,8 @@ HTTP 用于查询、文档、审批及结果提交；后续 WebSocket 用于工�
 
 数据库新增 `fixed_agents`、`agent_conversations`、`agent_runs`。原 LOGIN-7 的已记录 Design 会话已绑定固定策划 Agent，修订继续使用该会话。看板显示固定标记、执行状态和当前需求编号。
 
+每次执行均重新加载当前技能，并计算指令快照 SHA-256 写入执行诊断。恢复原会话时，除更新 `developerInstructions`，还在本轮输入中明确携带同一技能快照及其替代历史旧规则的约束，避免旧会话继续引用已失效规范；需求 HTML 与历史回复不作为技能覆盖来源。此机制不更换 Agent 或会话，也不改变人工审批门禁。CLI 的标准输入、标准输出和标准错误统一使用无 BOM 的 UTF-8，与服务端管道解码一致，特别覆盖直接返回中文 questions 的暂停分支。
+
 命令入口：`design draft` 沿用现有参数；`pm --analyze` 新增必填 `--key`；`art analyze`、`development analyze`、`qa analyze` 使用 `--project <仓库> --key <需求编号> --prompt-file <文件>`。后三者当前仅只读分析，PM 仍返回拆分草案。设计上传校验固定 Design 已完成执行与需求/会话匹配；人工审批不变。云端自动排队、审批后 PM 自动发布任务、正式生产执行暂未实现。
 
 初始化：在服务目录运行 `npm run db:migrate`，再运行 `node --env-file=.env.database-admin scripts/setup-fixed-agents.mjs`。脚本拒绝在活动执行期间重配，不提交 `.env*` 或 `.gamecli/client.json`。验证：`npm run test:agents`；测试使用事务回滚隔离真实业务。
@@ -151,3 +153,20 @@ Codex MCP UI 通过只读 gameai_track_snapshot 的 document_version 参数读�
 每独立窗口固定 WHITEBOX/ART/ASSEMBLY 三项；内部区域和控件不拆单，不生成 Development/QA。跨窗口资源复用显式给 assembly 加 owner-ART 前置。tasks.logical_id/window_id/delivery_phase 保存稳定逻辑身份，与数据库公开编号分别管理。三阶段任务都生成完整窗口原始 HTML 附件，沿用人工审批和各 Agent 自动授权。
 
 校验入口：src/database/ui-delivery-plan.js。测试：test/ui-delivery-plan.test.js、test/pm-plans.test.js、test/prefab-task-document.test.js。新迁移 018_ui_delivery_identity.sql 与 019_ui_delivery_identity_required.sql 只加字段/约束，不改历史业务数据。旧文档没有清单明确阻塞；任意自然语言与线框语义一致性仍需 Design/PM 审查。执行快照离线重放及计划哈希幂等属于第二、三阶段，尚未完成。
+
+## PM 退回需求修订
+
+PM 用 ready / revision_required / needs_input / execution_error 分类报告。服务器持久化 requirement_revisions，把明确文档矛盾排队交回原 Design；每条记录保存问题、证据、轮次、新旧版本、幂等提交。最多两轮，重复问题及待决策项转人工；运行结果未知时不重复启动。生成稿通过清单校验且窗口骨架未变后，原子写入新需求版本与待审批状态，不复制审批。人工批准新版本后，原有 PM 授权配置决定自动或手动拆分。旧版本审批和 HTML 始终保留。角色绑定改变时不静默转派。
+
+## 永久协作记录（只读第一版）
+
+操作记录后的协作记录页以聊天气泡展示公开流程事件，通过 HTTP 或 MCP 只读查询，三秒刷新并按游标加载历史。消息由 audit_events 插入触发器在原业务事务内保存到 collaboration_messages，来源事件唯一，历史不可更新或删除；不复制模型思考、提示词或原始 JSON。记录保存角色名称、需求标题及版本、任务编号快照，不外键依赖可清空的业务对象。普通测试清空保留协作记录，关联对象不存在时仅展示历史。已有审计事件一次性回填，不伪造对话。读取按当前项目隔离，支持角色与需求/任务搜索；首版没有发送、审批或派工输入入口。
+
+
+## Design / PM 公共契约整理（2026-10-12）
+
+公共 UI 规则唯一维护于 `game-cli/skills/common/gameai-ui-delivery-contract/SKILL.md`（规则版本 2.0.0）。文档格式入口引用它；Design 显式加载它；固定 Agent 的技能依赖解析也会加载它。Design 编写及自检，PM 补全固定骨架，UI/Art 只是 PM 的内部工作模块，不重新定义公共格式或任务粒度。Prefab 从同一契约读取命名约束。
+
+平台规则矛盾用 CONTRACT_CONFLICT，经 PM 现有 execution_error 返回，不触发 Design 自动修订；正文错误用 DOCUMENT_INVALID，经 revision_required 返回；业务缺口用 BUSINESS_UNDECIDED，经 needs_input 返回。Design 仍使用现有 questions 文本通道带分类前缀，不改变外层严格 schema。
+
+此次完成技能单一来源与加载接线，没有实现每文档契约快照持久化。后续版本锁定应在文档生成时由宿主保存 contract_version、原文快照和哈希，绑定需求版本；PM/修订读取绑定快照，迁移另建待审批版本。不能将当前执行指令哈希误称为文档契约锁定，也不能直接向既有严格 manifest 添加字段。现有提交校验继续检查 v1/v2 结构、引用与骨架；可见计数自动生成与全文语义比对须另行实现和验证。

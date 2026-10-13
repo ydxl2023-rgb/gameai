@@ -130,7 +130,7 @@ export async function startPmJob(pool, projectKey, userId, raw)
             throw new ReviewError('请由具有审批权限的人工账户启动 PM 拆分。');
         }
         const prior = (await client.query('SELECT * FROM gameai.pm_jobs WHERE requirement_version_id=$1',[version.id])).rows[0];
-        if (prior && ['running','completed','unknown'].includes(prior.state))
+        if (prior && ['running','completed','unknown','revision_required'].includes(prior.state))
         {
             return { job:prior, created:false };
         }

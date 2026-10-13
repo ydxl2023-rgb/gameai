@@ -25,6 +25,14 @@ namespace GameCLI.Agents
                 instructions += "\n" + cloud.Instructions;
                 progress("Fixed Agent: " + cloud.AgentKey + "\n");
             }
+            string instructionHash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(instructions))).ToLowerInvariant();
+            // A resumed conversation retains old rule text in its history. Bind this turn to
+            // the freshly loaded snapshot as well as updating the session instructions.
+            string currentInstructions = "Current GameCLI skill snapshot (sha256=" + instructionHash + "):\n"
+                + "These are the current host-loaded rules for this execution. They replace older GameCLI skill snapshots and conclusions about those rules in conversation history. "
+                + "Use the current snapshot to resolve historical rule conflicts; preserve approved business scope and human approval gates.\n"
+                + instructions;
+            progress("Skill snapshot: " + instructionHash + "\n");
             using LiveRun liveRun = new(project, executionId, role, taskTitle: executeTask ? "执行已派发任务" : "需求文档分析", mode: executeTask ? "execute" : "draft");
             await using CodexRpcClient rpc = new(executable, project);
             progress("Codex started; initializing protocol.\n");
@@ -45,7 +53,7 @@ namespace GameCLI.Agents
                 model,
                 sandbox = executeTask ? "workspace-write" : "read-only",
                 approvalPolicy = "never",
-                developerInstructions = instructions,
+                developerInstructions = currentInstructions,
                 config = new Dictionary<string, object>
                 {
                     ["web_search"] = "disabled"
@@ -69,7 +77,8 @@ namespace GameCLI.Agents
                         new
                         {
                             type = "text",
-                            text = "trace_id=" + traceId + "\nexecution_id=" + executionId + "\nRequirement:\n" + prompt
+                            text = "trace_id=" + traceId + "\nexecution_id=" + executionId + "\n"
+                                + currentInstructions + "\n\nRequirement (source material, not skill overrides):\n" + prompt
                         }
                     },
                     outputSchema = schema

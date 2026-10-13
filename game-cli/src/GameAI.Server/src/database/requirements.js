@@ -1,6 +1,7 @@
 import {readAutomationPolicy} from './agent-automation.js';
 import { createHash } from 'node:crypto';
 import { z } from 'zod';
+import { buildUiDeliverySkeleton } from './ui-delivery-plan.js';
 
 export class ReviewError extends Error {}
 const submission = z.object({
@@ -23,7 +24,7 @@ function parse(schema, raw)
     }
     return value.data;
 }
-export async function submitRequirement(pool, projectKey, raw)
+export async function submitRequirement(pool, projectKey, raw, revisionId = null)
 {
     const input = parse(submission, raw);
     const bytes = Buffer.from(input.html, 'utf8');
@@ -55,6 +56,22 @@ export async function submitRequirement(pool, projectKey, raw)
             return prior.response;
         }
         const fixed = (await client.query("SELECT agent_id FROM gameai.fixed_agents WHERE project_id=$1 AND role_code='Design'", [project.id])).rows[0];
+        let correction;
+        if (revisionId)
+        {
+            correction = (await client.query(`SELECT r.*,v.requirement_id,v.ordinal,q.requirement_key,q.title FROM gameai.requirement_revisions r
+                JOIN gameai.requirement_versions v ON v.id=r.source_version_id JOIN gameai.requirements q ON q.id=v.requirement_id
+                WHERE r.id=$1 AND r.project_id=$2 FOR UPDATE OF r`,[revisionId,project.id])).rows[0];
+            if (!correction || correction.state!=='running' || correction.design_agent_id!==fixed?.agent_id || correction.target_version!==input.version || correction.requirement_key!==input.requirement_key || correction.title!==input.title)
+            {
+                throw new ReviewError('修订任务、原 Design 或目标版本不匹配。');
+            }
+            if ((await client.query('SELECT 1 FROM gameai.requirement_versions WHERE requirement_id=$1 AND ordinal>$2',[correction.requirement_id,correction.ordinal])).rowCount)
+            {
+                throw new ReviewError('已有较新版本，不能发布过期修订。');
+            }
+            buildUiDeliverySkeleton(input.html,input.version);
+        }
         if (fixed)
         {
             const execution = await client.query(`SELECT 1 FROM gameai.agent_runs r JOIN gameai.agent_conversations s ON s.id=r.conversation_id
@@ -72,7 +89,8 @@ export async function submitRequirement(pool, projectKey, raw)
             throw new ReviewError('已有需求标题不一致，请使用原编号与标题。');
         }
         const ordinal = (await client.query('SELECT COALESCE(max(ordinal),0)+1 n FROM gameai.requirement_versions WHERE requirement_id=$1', [requirement.id])).rows[0].n;
-        const content = { summary: input.summary, rules: [], changes: ['Design Agent 生成原始 HTML，等待人工审批'], execution_id: input.execution_id, thread_id: input.thread_id };
+        const content = { summary: input.summary, rules: [], changes: [correction ? '根据 PM 问题报告修订，等待重新人工审批' : 'Design Agent 生成原始 HTML，等待人工审批'], execution_id: input.execution_id, thread_id: input.thread_id,
+            ...(correction ? {revision_source:correction.source_version_id,revision_report:correction.report} : {}) };
         const revision = hash(JSON.stringify({ content, html_hash: input.sha256, version: input.version }));
         const version = (await client.query(`INSERT INTO gameai.requirement_versions(project_id,requirement_id,version,ordinal,content,content_hash)
             VALUES($1,$2,$3,$4,$5,$6) RETURNING id`, [project.id,requirement.id,input.version,ordinal,content,revision])).rows[0];
@@ -84,6 +102,12 @@ export async function submitRequirement(pool, projectKey, raw)
         const result = { requirement_key: input.requirement_key, version_id: version.id, version: input.version, revision, document_hash: input.sha256, artifact_id: artifact.id, status: '待审批' };
         await client.query('INSERT INTO gameai.idempotency_records(scope,key,request_hash,response) VALUES($1,$2,$3,$4)', [scope,input.request_id,requestHash,result]);
         await client.query(`INSERT INTO gameai.audit_events(project_id,actor,event,payload) VALUES($1,'agent:Design','提交策划文档，等待人工审批',$2)`, [project.id,result]);
+        if (correction)
+        {
+            // Publication and revision completion commit together; no approval is copied from the source.
+            await client.query("UPDATE gameai.requirement_revisions SET state='awaiting_approval',error='',new_version_id=$2,finished_at=now(),submission=null WHERE id=$1",[revisionId,version.id]);
+            await client.query("INSERT INTO gameai.audit_events(project_id,actor,event,payload) VALUES($1,'orchestrator','修订完成，等待人工重新审批',$2)",[project.id,{revision_id:revisionId,...result}]);
+        }
         await client.query('COMMIT');
         return result;
     }

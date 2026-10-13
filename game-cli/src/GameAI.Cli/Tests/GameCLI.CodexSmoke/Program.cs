@@ -1,3 +1,5 @@
+using System.Diagnostics;
+using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 
@@ -61,7 +63,7 @@ internal static class Program
                     "--codex",
                     Environment.ProcessPath ?? throw new Exception("No executable"),
                     "--timeout",
-                    "2",
+                    mode == "stall" ? "2" : "15",
                     "--format",
                     "json"
                 });
@@ -123,6 +125,36 @@ internal static class Program
         }
 
         Console.WriteLine("PASS cloud PM plan proposal");
+        Environment.SetEnvironmentVariable("GAMECLI_FAKE_MODE", "design-question");
+        ProcessStartInfo child = new("dotnet")
+        {
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            StandardOutputEncoding = new UTF8Encoding(false, true),
+            StandardErrorEncoding = new UTF8Encoding(false, true),
+            UseShellExecute = false,
+            CreateNoWindow = true
+        };
+        foreach (string argument in new[]
+        {
+            Path.Combine(root, "game-cli/src/GameAI.Cli/GameCLI/bin/Release/net8.0/GameCLI.dll"),
+            "design", "draft", "--project", cloud.Project, "--key", "TEST-PM",
+            "--prompt-file", promptFile, "--version", "v2", "--skills", Path.Combine(root, "game-cli/skills"),
+            "--codex", Environment.ProcessPath!, "--timeout", "15"
+        })
+        {
+            child.ArgumentList.Add(argument);
+        }
+        using Process process = Process.Start(child)!;
+        Task<string> stdout = process.StandardOutput.ReadToEndAsync();
+        Task<string> stderr = process.StandardError.ReadToEndAsync();
+        await process.WaitForExitAsync();
+        using JsonDocument question = JsonDocument.Parse(await stdout);
+        if (process.ExitCode != 3 || question.RootElement.GetProperty("questions")[0].GetString() != "请确认新版规范：控件数量为26。")
+        {
+            throw new Exception("Redirected Design UTF-8 response failed: " + await stderr);
+        }
+        Console.WriteLine("PASS resumed Design current skills and redirected UTF-8 questions");
         Environment.SetEnvironmentVariable("GAMECLI_FAKE_MODE", null);
         Console.WriteLine("CODEX_PROTOCOL_SMOKE_PASSED");
         return 0;
@@ -131,6 +163,7 @@ internal static class Program
     private static async Task FakeServerAsync()
     {
         string? mode = Environment.GetEnvironmentVariable("GAMECLI_FAKE_MODE");
+        string? currentSnapshot = null;
         while (await Console.In.ReadLineAsync() is string line)
         {
             using JsonDocument document = JsonDocument.Parse(line);
@@ -161,7 +194,8 @@ internal static class Program
                 {
                     throw new Exception("Original conversation was not resumed");
                 }
-                if (p.GetProperty("sandbox").GetString() != "read-only" || !p.GetProperty("developerInstructions").GetString()!.Contains("# PM Agent"))
+                currentSnapshot = p.GetProperty("developerInstructions").GetString();
+                if (p.GetProperty("sandbox").GetString() != "read-only" || (mode != "design-question" && !currentSnapshot!.Contains("RodFergusson")))
                 {
                     throw new Exception("Missing role instructions or sandbox");
                 }
@@ -216,6 +250,14 @@ internal static class Program
                 }
 
                 string input = message.GetProperty("params").GetProperty("input")[0].GetProperty("text").GetString()!;
+                if (currentSnapshot == null || !input.Contains(currentSnapshot) || !input.Contains("replace older GameCLI skill snapshots"))
+                {
+                    throw new Exception("Current skill snapshot was not delivered in the resumed turn");
+                }
+                if (mode == "design-question" && !input.Contains("schema_version=2"))
+                {
+                    throw new Exception("Design did not receive the current manifest v2 rules");
+                }
                 string trace = Regex.Match(input, "trace_id=([^\\n]+)").Groups[1].Value;
                 string execution = Regex.Match(input, "execution_id=([^\\n]+)").Groups[1].Value;
                 string[] dependencies = mode == "cycle" ? new[]
@@ -240,6 +282,12 @@ internal static class Program
                     "Check"
                 }, Array.Empty<string>(), Array.Empty<string>(), true), Array.Empty<string>(), Array.Empty<PmError>());
                 string text = mode == "bad-json" ? "not json" : JsonSerializer.Serialize(analysis, PmContract.JsonOptions);
+                if (mode == "design-question")
+                {
+                    text = """
+                        {"title":"中文测试","summary":"规则已更新","html":"","questions":["请确认新版规范：控件数量为26。"]}
+                        """;
+                }
                 if (mode == "plan")
                 {
                     text = """

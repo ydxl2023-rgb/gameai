@@ -67,6 +67,18 @@ export class TrackBridge
         if (result?.isError) throw new Error('快照工具返回失败。');
         return parseSnapshot(result?.structuredContent);
     }
+    async collaboration(query: {before?:string;role?:string;search?:string} = {})
+    {
+        if (!this.embedded)
+        {
+            const response=await fetch('/api/track/collaboration?'+new URLSearchParams(query),{cache:'no-store',signal:AbortSignal.timeout(10000)});
+            if (!response.ok) throw new Error('协作记录读取失败：HTTP '+response.status);
+            return response.json();
+        }
+        const result=await this.rpc('tools/call',{name:'gameai_collaboration_history',arguments:query});
+        if (result?.isError) throw new Error('协作记录读取失败，请重新连接插件。');
+        return result.structuredContent;
+    }
     async display(mode: DisplayMode)
     {
         if (!this.ready || !this.modes.includes(mode)) throw new Error('当前宿主不支持该展示模式。');

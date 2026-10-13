@@ -16,6 +16,8 @@ try
     await pool.query('GRANT EXECUTE ON FUNCTION gameai.clear_project_requirements(uuid,uuid) TO '+role);
     await pool.query('GRANT SELECT,INSERT,UPDATE ON gameai.pm_jobs TO '+role);
     await pool.query('GRANT INSERT ON gameai.plans,gameai.plan_versions,gameai.tasks,gameai.task_dependencies TO '+role);
+    await pool.query('GRANT UPDATE(verified_at) ON gameai.artifacts TO '+role);
+    await pool.query('GRANT UPDATE(logical_id,window_id,delivery_phase) ON gameai.tasks TO '+role);
     await pool.query('GRANT UPDATE(dispatch_allowed,dispatch_revision,dispatch_selected_by,dispatch_selected_at) ON gameai.tasks TO '+role);
     await pool.query('GRANT SELECT,INSERT ON gameai.task_dispatch_jobs TO '+role);
     await pool.query('GRANT INSERT,UPDATE ON gameai.executions TO '+role);

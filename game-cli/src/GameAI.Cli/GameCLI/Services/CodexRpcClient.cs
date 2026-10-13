@@ -36,7 +36,7 @@ namespace GameCLI.Services
             this.serverRequest = serverRequest;
             ProcessStartInfo start = new ProcessStartInfo
             {
-                FileName = executable,
+                FileName = ResolveExecutable(executable),
                 WorkingDirectory = project,
                 UseShellExecute = false,
                 CreateNoWindow = true,
@@ -54,6 +54,46 @@ namespace GameCLI.Services
             // Drain stderr concurrently to prevent pipe deadlocks. Do not forward raw runtime diagnostics or secrets.
             diagnostics = Task.Run(DrainDiagnosticsAsync);
             reader = Task.Run(ReadAsync);
+        }
+
+        private static string ResolveExecutable(string executable)
+        {
+            // Preserve explicit caller paths. Background services may not inherit the desktop PATH.
+            if (!OperatingSystem.IsWindows() || (executable != "codex" && executable != "codex.exe"))
+            {
+                return executable;
+            }
+            string? configured = Environment.GetEnvironmentVariable("GAMEAI_CODEX_EXECUTABLE");
+            if (!string.IsNullOrWhiteSpace(configured))
+            {
+                if (!File.Exists(configured))
+                {
+                    throw new FileNotFoundException("GAMEAI_CODEX_EXECUTABLE does not exist.");
+                }
+                return Path.GetFullPath(configured);
+            }
+            foreach (string directory in (Environment.GetEnvironmentVariable("PATH") ?? "").Split(Path.PathSeparator))
+            {
+                string candidate = Path.Combine(directory.Trim('"'), "codex.exe");
+                if (Path.IsPathFullyQualified(candidate) && File.Exists(candidate))
+                {
+                    return candidate;
+                }
+            }
+            string bundled = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "OpenAI", "Codex", "bin");
+            if (Directory.Exists(bundled))
+            {
+                string? candidate = Directory.GetDirectories(bundled)
+                    .Select(directory => Path.Combine(directory, "codex.exe"))
+                    .Where(File.Exists)
+                    .OrderByDescending(File.GetLastWriteTimeUtc)
+                    .FirstOrDefault();
+                if (candidate != null)
+                {
+                    return candidate;
+                }
+            }
+            throw new FileNotFoundException("Codex executable was not found. Configure GAMEAI_CODEX_EXECUTABLE with its absolute path.");
         }
 
         /// <summary>Sends a correlated RPC request and waits for its result or caller cancellation.</summary>

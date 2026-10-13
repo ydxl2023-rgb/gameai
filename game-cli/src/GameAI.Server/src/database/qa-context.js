@@ -21,12 +21,12 @@ export async function ensureQaTasks(c,planId)
 // Keep original manifests immutable; successful fixes overlay only their changed paths.
 export async function effectiveDelivery(c,taskId)
 {
-    const original=(await c.query("SELECT id,agent_id,started_at,result->'artifacts' artifacts FROM gameai.executions WHERE task_id=$1 AND state='succeeded' ORDER BY started_at DESC LIMIT 1",[taskId])).rows[0];
+    const original=(await c.query("SELECT id,agent_id,started_at,result->'human_acceptance' human_acceptance,COALESCE(result->'delivery_snapshot',result->'human_acceptance'->'artifacts',result->'artifacts') artifacts FROM gameai.executions WHERE task_id=$1 AND (state='succeeded' OR result->'human_acceptance'->>'decision'='accepted_with_deferred_report_preview') ORDER BY started_at DESC LIMIT 1",[taskId])).rows[0];
     if (!original) return {artifacts:[]};
     const files=new Map((original.artifacts ?? []).map(a=>[a.path,a]));
     const fixes=(await c.query(`SELECT e.result->'artifacts' artifacts FROM gameai.qa_defects d JOIN gameai.executions e ON e.task_id=d.repair_task_id WHERE d.source_task_id=$1 AND e.state='succeeded' AND e.started_at>$2 ORDER BY e.started_at`,[taskId,original.started_at])).rows;
     for (const fix of fixes) for (const file of fix.artifacts ?? []) files.set(file.path,file);
-    return {execution_id:original.id,agent_id:original.agent_id,artifacts:[...files.values()]};
+    return {execution_id:original.id,agent_id:original.agent_id,artifacts:[...files.values()],...(original.human_acceptance ? {human_acceptance:original.human_acceptance} : {})};
 }
 export async function loadTaskContext(c,task)
 {
