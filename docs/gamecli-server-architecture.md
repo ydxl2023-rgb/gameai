@@ -170,3 +170,15 @@ PM 用 ready / revision_required / needs_input / execution_error 分类报告。
 平台规则矛盾用 CONTRACT_CONFLICT，经 PM 现有 execution_error 返回，不触发 Design 自动修订；正文错误用 DOCUMENT_INVALID，经 revision_required 返回；业务缺口用 BUSINESS_UNDECIDED，经 needs_input 返回。Design 仍使用现有 questions 文本通道带分类前缀，不改变外层严格 schema。
 
 此次完成技能单一来源与加载接线，没有实现每文档契约快照持久化。后续版本锁定应在文档生成时由宿主保存 contract_version、原文快照和哈希，绑定需求版本；PM/修订读取绑定快照，迁移另建待审批版本。不能将当前执行指令哈希误称为文档契约锁定，也不能直接向既有严格 manifest 添加字段。现有提交校验继续检查 v1/v2 结构、引用与骨架；可见计数自动生成与全文语义比对须另行实现和验证。
+
+
+## UI 模板库提取与入库首版（2026-10-13）
+
+Unity CLI `prefab export` 在原工程只读导出。GameCLI `ui-library validate/import` 是现有插件宿主下的 C# 命令，通过结构化进程参数调用 GameAI.Server 的 `scripts/ui-library.mjs` 本机维护适配器；此入口不引入任务编排，不是远程上传 API。验证和 PostgreSQL 事务位于 `src/ui-library/library.js`。独立 `ui_library` schema 的 migrations 024/025 保留来源、不可变布局版本、依赖和导入记录，不属于 Track 业务清理范围。
+
+当前标准序列化属性快照不等于跨版本逻辑属性适配器。嵌套覆盖、纹理/动画/特效依赖和源自定义组件存在缺项时返回 reference-only；禁止自动当作可重建模板。使用方式与真实验证范围见《GameAI-UI布局与视觉表现模板库开发纲要.html》第12章。
+
+
+### 多项目离线UI目录采集
+
+GameCLI `ui-library export --input <目录或prefab> --output <空目录> --source-key <来源编号> [--limit N]` 在 C# 内使用 YamlDotNet 读取源工程文本资产与 .meta，无需打开或安装源工程 Unity CLI。来源 Assets/Packages/LocalPackages 的 GUID 索引隔离，自定义脚本不执行。嵌套层级按实例前缀展开，资源版本引用保持，未支持的结构变化显式诊断；失败批次不能直接入库。当前 Unity 承担后续重建验证，不充当源工程宿主。具体范围见 UI 模板库纲要第13章。

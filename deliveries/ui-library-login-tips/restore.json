@@ -1,0 +1,1680 @@
+{
+  "prefab": {
+    "name": "TipsView",
+    "nodes": [
+      {
+        "id": "1358232033540012619",
+        "kind": "Node",
+        "name": "Image",
+        "rect": {
+          "pivot": [
+            0.5,
+            0.5
+          ],
+          "anchorMax": [
+            0.5,
+            0.5
+          ],
+          "anchorMin": [
+            0.5,
+            0.5
+          ],
+          "sizeDelta": [
+            2440,
+            1080
+          ],
+          "anchoredPosition": [
+            0,
+            0
+          ]
+        },
+        "active": true,
+        "parentId": "4264533981367216901",
+        "components": [
+          {
+            "id": "2733479714221474201",
+            "type": "UnityEngine.CanvasRenderer",
+            "properties": {
+              "m_CullTransparentMesh": 0
+            }
+          },
+          {
+            "id": "2282777775032719574",
+            "type": "UnityEngine.UI.Image",
+            "properties": {
+              "m_Name": "",
+              "m_Type": 1,
+              "m_Sprite": null,
+              "m_Color.a": 0.7058824,
+              "m_Color.b": 0,
+              "m_Color.g": 0,
+              "m_Color.r": 0,
+              "m_Enabled": 1,
+              "m_Maskable": 1,
+              "m_Material": null,
+              "m_FillAmount": 1,
+              "m_FillCenter": 1,
+              "m_FillMethod": 4,
+              "m_FillOrigin": 0,
+              "m_FillClockwise": 1,
+              "m_RaycastTarget": 1,
+              "m_UseSpriteMesh": 0,
+              "m_PreserveAspect": 0,
+              "m_EditorHideFlags": 0,
+              "m_RaycastPadding.w": 0,
+              "m_RaycastPadding.x": 0,
+              "m_RaycastPadding.y": 0,
+              "m_RaycastPadding.z": 0,
+              "m_PixelsPerUnitMultiplier": 1
+            }
+          }
+        ],
+        "localScale": [
+          1,
+          1,
+          1
+        ],
+        "siblingIndex": 0,
+        "localPosition": [
+          0,
+          0,
+          0
+        ],
+        "localRotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "id": "1985570209592216405",
+        "kind": "Node",
+        "name": "_ConfireButton",
+        "rect": {
+          "pivot": [
+            0.5,
+            0.5
+          ],
+          "anchorMax": [
+            1,
+            1
+          ],
+          "anchorMin": [
+            0,
+            0
+          ],
+          "sizeDelta": [
+            -20.891113,
+            -17.641357
+          ],
+          "anchoredPosition": [
+            -3.0200043,
+            0.91999817
+          ]
+        },
+        "active": true,
+        "parentId": "7440033914064892332",
+        "components": [
+          {
+            "id": "7966596637162233820",
+            "type": "UnityEngine.CanvasRenderer",
+            "properties": {
+              "m_CullTransparentMesh": 0
+            }
+          },
+          {
+            "id": "text-adapter",
+            "type": "UnityEngine.UI.Text",
+            "properties": {
+              "m_Text": "\u786e\u5b9a",
+              "m_FontData.m_Font": {
+                "assetPath": "Assets/GameAI/Tests/UiLibrary/LoginTips/msyhbd.ttc"
+              },
+              "m_FontData.m_FontSize": 40,
+              "m_FontData.m_Alignment": 4,
+              "m_FontData.m_LineSpacing": 1,
+              "m_FontData.m_RichText": true,
+              "m_RaycastTarget": false,
+              "m_Color.r": 1,
+              "m_Color.g": 1,
+              "m_Color.b": 1,
+              "m_Color.a": 1
+            }
+          }
+        ],
+        "localScale": [
+          1,
+          1,
+          1
+        ],
+        "siblingIndex": 0,
+        "localPosition": [
+          0,
+          0,
+          0
+        ],
+        "localRotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "id": "3757314482987763421",
+        "kind": "Node",
+        "name": "TopDi",
+        "rect": {
+          "pivot": [
+            0.5,
+            0.5
+          ],
+          "anchorMax": [
+            0.5,
+            0.5
+          ],
+          "anchorMin": [
+            0.5,
+            0.5
+          ],
+          "sizeDelta": [
+            700.5055,
+            59.35916
+          ],
+          "anchoredPosition": [
+            -2.11,
+            181.6
+          ]
+        },
+        "active": true,
+        "parentId": "7263429817324478758",
+        "components": [
+          {
+            "id": "2638342312520837986",
+            "type": "UnityEngine.CanvasRenderer",
+            "properties": {
+              "m_CullTransparentMesh": 0
+            }
+          },
+          {
+            "id": "6653746341717828146",
+            "type": "UnityEngine.UI.Image",
+            "properties": {
+              "m_Name": "",
+              "m_Type": 0,
+              "m_Color.a": 1,
+              "m_Color.b": 1,
+              "m_Color.g": 1,
+              "m_Color.r": 1,
+              "m_Enabled": 1,
+              "m_Maskable": 1,
+              "m_Material": null,
+              "m_FillAmount": 1,
+              "m_FillCenter": 1,
+              "m_FillMethod": 4,
+              "m_FillOrigin": 0,
+              "m_FillClockwise": 1,
+              "m_RaycastTarget": 0,
+              "m_UseSpriteMesh": 0,
+              "m_PreserveAspect": 0,
+              "m_EditorHideFlags": 0,
+              "m_RaycastPadding.w": 0,
+              "m_RaycastPadding.x": 0,
+              "m_RaycastPadding.y": 0,
+              "m_RaycastPadding.z": 0,
+              "m_PixelsPerUnitMultiplier": 1,
+              "m_Sprite": {
+                "assetPath": "Assets/GameAI/Tests/UiLibrary/LoginTips/d2cbd1b4fd3b9e745b819e4a9d4c57ac.png"
+              }
+            }
+          }
+        ],
+        "localScale": [
+          1,
+          1,
+          1
+        ],
+        "siblingIndex": 0,
+        "localPosition": [
+          0,
+          0,
+          0
+        ],
+        "localRotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "id": "4264533981367216901",
+        "kind": "Node",
+        "name": "TipsView",
+        "rect": {
+          "pivot": [
+            0.5,
+            0.5
+          ],
+          "anchorMax": [
+            1,
+            1
+          ],
+          "anchorMin": [
+            0,
+            0
+          ],
+          "sizeDelta": [
+            0,
+            0
+          ],
+          "anchoredPosition": [
+            0,
+            0
+          ]
+        },
+        "active": true,
+        "parentId": null,
+        "components": [],
+        "localScale": [
+          1,
+          1,
+          1
+        ],
+        "siblingIndex": 0,
+        "localPosition": [
+          0,
+          0,
+          0
+        ],
+        "localRotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "id": "4286652717984503295",
+        "kind": "Node",
+        "name": "TitleZhuangShi",
+        "rect": {
+          "pivot": [
+            0.5,
+            0.5
+          ],
+          "anchorMax": [
+            0.5,
+            0.5
+          ],
+          "anchorMin": [
+            0.5,
+            0.5
+          ],
+          "sizeDelta": [
+            220,
+            112
+          ],
+          "anchoredPosition": [
+            -267.6,
+            8
+          ]
+        },
+        "active": true,
+        "parentId": "3757314482987763421",
+        "components": [
+          {
+            "id": "6171870603642104532",
+            "type": "UnityEngine.CanvasRenderer",
+            "properties": {
+              "m_CullTransparentMesh": 0
+            }
+          },
+          {
+            "id": "7139235945971043060",
+            "type": "UnityEngine.UI.Image",
+            "properties": {
+              "m_Name": "",
+              "m_Type": 0,
+              "m_Color.a": 1,
+              "m_Color.b": 1,
+              "m_Color.g": 1,
+              "m_Color.r": 1,
+              "m_Enabled": 1,
+              "m_Maskable": 1,
+              "m_Material": null,
+              "m_FillAmount": 1,
+              "m_FillCenter": 1,
+              "m_FillMethod": 4,
+              "m_FillOrigin": 0,
+              "m_FillClockwise": 1,
+              "m_RaycastTarget": 0,
+              "m_UseSpriteMesh": 0,
+              "m_PreserveAspect": 0,
+              "m_EditorHideFlags": 0,
+              "m_RaycastPadding.w": 0,
+              "m_RaycastPadding.x": 0,
+              "m_RaycastPadding.y": 0,
+              "m_RaycastPadding.z": 0,
+              "m_PixelsPerUnitMultiplier": 1,
+              "m_Sprite": {
+                "assetPath": "Assets/GameAI/Tests/UiLibrary/LoginTips/c0d8044f283c30d498fffdd70cee350d.png"
+              }
+            }
+          }
+        ],
+        "localScale": [
+          1,
+          1,
+          1
+        ],
+        "siblingIndex": 0,
+        "localPosition": [
+          0,
+          0,
+          0
+        ],
+        "localRotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "id": "1749326906105155935",
+        "kind": "Node",
+        "name": "_TitleUpdate",
+        "rect": {
+          "pivot": [
+            0.5,
+            0.5
+          ],
+          "anchorMax": [
+            0.5,
+            0.5
+          ],
+          "anchorMin": [
+            0.5,
+            0.5
+          ],
+          "sizeDelta": [
+            192,
+            72
+          ],
+          "anchoredPosition": [
+            -261.26,
+            194.90002
+          ]
+        },
+        "active": false,
+        "parentId": "7263429817324478758",
+        "components": [
+          {
+            "id": "2856198170768675388",
+            "type": "UnityEngine.CanvasRenderer",
+            "properties": {
+              "m_CullTransparentMesh": 0
+            }
+          }
+        ],
+        "localScale": [
+          1,
+          1,
+          1
+        ],
+        "siblingIndex": 1,
+        "localPosition": [
+          0,
+          0,
+          0
+        ],
+        "localRotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "id": "7263429817324478758",
+        "kind": "Node",
+        "name": "TipsBg",
+        "rect": {
+          "pivot": [
+            0.5,
+            0.5
+          ],
+          "anchorMax": [
+            0.5,
+            0.5
+          ],
+          "anchorMin": [
+            0.5,
+            0.5
+          ],
+          "sizeDelta": [
+            732.4291,
+            457.09515
+          ],
+          "anchoredPosition": [
+            0,
+            0
+          ]
+        },
+        "active": true,
+        "parentId": "4264533981367216901",
+        "components": [
+          {
+            "id": "8035867854874965095",
+            "type": "UnityEngine.CanvasRenderer",
+            "properties": {
+              "m_CullTransparentMesh": 0
+            }
+          },
+          {
+            "id": "8400668969008014926",
+            "type": "UnityEngine.UI.Image",
+            "properties": {
+              "m_Name": "",
+              "m_Type": 1,
+              "m_Color.a": 1,
+              "m_Color.b": 1,
+              "m_Color.g": 1,
+              "m_Color.r": 1,
+              "m_Enabled": 1,
+              "m_Maskable": 1,
+              "m_Material": null,
+              "m_FillAmount": 1,
+              "m_FillCenter": 1,
+              "m_FillMethod": 4,
+              "m_FillOrigin": 0,
+              "m_FillClockwise": 1,
+              "m_RaycastTarget": 1,
+              "m_UseSpriteMesh": 0,
+              "m_PreserveAspect": 0,
+              "m_EditorHideFlags": 0,
+              "m_RaycastPadding.w": 0,
+              "m_RaycastPadding.x": 0,
+              "m_RaycastPadding.y": 0,
+              "m_RaycastPadding.z": 0,
+              "m_PixelsPerUnitMultiplier": 1,
+              "m_Sprite": {
+                "assetPath": "Assets/GameAI/Tests/UiLibrary/LoginTips/1f15f4d2a190eb54f80d3bbe49a114f3.png"
+              }
+            }
+          }
+        ],
+        "localScale": [
+          1,
+          1,
+          1
+        ],
+        "siblingIndex": 1,
+        "localPosition": [
+          0,
+          0,
+          0
+        ],
+        "localRotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "id": "4764472339484952524",
+        "kind": "Node",
+        "name": "_TipsDetail",
+        "rect": {
+          "pivot": [
+            0.5,
+            0.5
+          ],
+          "anchorMax": [
+            0.5,
+            0.5
+          ],
+          "anchorMin": [
+            0.5,
+            0.5
+          ],
+          "sizeDelta": [
+            639.75995,
+            177.59003
+          ],
+          "anchoredPosition": [
+            -3.26,
+            18.86
+          ]
+        },
+        "active": true,
+        "parentId": "7263429817324478758",
+        "components": [
+          {
+            "id": "1674656547495449810",
+            "type": "UnityEngine.CanvasRenderer",
+            "properties": {
+              "m_CullTransparentMesh": 0
+            }
+          },
+          {
+            "id": "text-adapter",
+            "type": "UnityEngine.UI.Text",
+            "properties": {
+              "m_Text": "\u8d44\u6e90\u5df2\u51c6\u5907\u5b8c\u6210\uff0c\u662f\u5426\u7ee7\u7eed\u767b\u5f55\uff1f",
+              "m_FontData.m_Font": {
+                "assetPath": "Assets/GameAI/Tests/UiLibrary/LoginTips/msyh.ttc"
+              },
+              "m_FontData.m_FontSize": 27,
+              "m_FontData.m_Alignment": 4,
+              "m_FontData.m_LineSpacing": 1,
+              "m_FontData.m_RichText": true,
+              "m_RaycastTarget": false,
+              "m_Color.r": 0,
+              "m_Color.g": 0,
+              "m_Color.b": 0,
+              "m_Color.a": 1
+            }
+          }
+        ],
+        "localScale": [
+          1,
+          1,
+          1
+        ],
+        "siblingIndex": 2,
+        "localPosition": [
+          0,
+          0,
+          0
+        ],
+        "localRotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "id": "7440033914064892332",
+        "kind": "Node",
+        "name": "_ConfirmButton",
+        "rect": {
+          "pivot": [
+            0.5,
+            0.5
+          ],
+          "anchorMax": [
+            0.5,
+            0.5
+          ],
+          "anchorMin": [
+            0.5,
+            0.5
+          ],
+          "sizeDelta": [
+            296,
+            92.5
+          ],
+          "anchoredPosition": [
+            4,
+            -138
+          ]
+        },
+        "active": true,
+        "parentId": "7263429817324478758",
+        "components": [
+          {
+            "id": "8432178262230007195",
+            "type": "UnityEngine.CanvasRenderer",
+            "properties": {
+              "m_CullTransparentMesh": 0
+            }
+          },
+          {
+            "id": "6278976166150493143",
+            "type": "UnityEngine.UI.Image",
+            "properties": {
+              "m_Name": "",
+              "m_Type": 0,
+              "m_Color.a": 1,
+              "m_Color.b": 1,
+              "m_Color.g": 1,
+              "m_Color.r": 1,
+              "m_Enabled": 1,
+              "m_Maskable": 1,
+              "m_Material": null,
+              "m_FillAmount": 1,
+              "m_FillCenter": 1,
+              "m_FillMethod": 4,
+              "m_FillOrigin": 0,
+              "m_FillClockwise": 1,
+              "m_RaycastTarget": 1,
+              "m_UseSpriteMesh": 0,
+              "m_PreserveAspect": 0,
+              "m_EditorHideFlags": 0,
+              "m_RaycastPadding.w": 0,
+              "m_RaycastPadding.x": 0,
+              "m_RaycastPadding.y": 0,
+              "m_RaycastPadding.z": 0,
+              "m_PixelsPerUnitMultiplier": 1,
+              "m_Sprite": {
+                "assetPath": "Assets/GameAI/Tests/UiLibrary/LoginTips/75299df824b9eb14c87cdd6554cc1c72.png"
+              }
+            }
+          },
+          {
+            "id": "2105441689617350550",
+            "type": "UnityEngine.UI.Button",
+            "properties": {
+              "m_Name": "",
+              "m_Enabled": 1,
+              "m_Transition": 1,
+              "m_Interactable": 1,
+              "m_TargetGraphic": {
+                "nodeId": "7440033914064892332"
+              },
+              "m_EditorHideFlags": 0,
+              "m_Navigation.m_Mode": 3,
+              "m_Colors.m_FadeDuration": 0.1,
+              "m_Colors.m_NormalColor.a": 1,
+              "m_Colors.m_NormalColor.b": 1,
+              "m_Colors.m_NormalColor.g": 1,
+              "m_Colors.m_NormalColor.r": 1,
+              "m_Colors.m_PressedColor.a": 1,
+              "m_Colors.m_PressedColor.b": 0.78431374,
+              "m_Colors.m_PressedColor.g": 0.78431374,
+              "m_Colors.m_PressedColor.r": 0.78431374,
+              "m_Navigation.m_SelectOnUp": null,
+              "m_Navigation.m_WrapAround": 0,
+              "m_Colors.m_ColorMultiplier": 1,
+              "m_Colors.m_DisabledColor.a": 0.5019608,
+              "m_Colors.m_DisabledColor.b": 0.78431374,
+              "m_Colors.m_DisabledColor.g": 0.78431374,
+              "m_Colors.m_DisabledColor.r": 0.78431374,
+              "m_Colors.m_SelectedColor.a": 1,
+              "m_Colors.m_SelectedColor.b": 0.9607843,
+              "m_Colors.m_SelectedColor.g": 0.9607843,
+              "m_Colors.m_SelectedColor.r": 0.9607843,
+              "m_Navigation.m_SelectOnDown": null,
+              "m_Navigation.m_SelectOnLeft": null,
+              "m_Navigation.m_SelectOnRight": null,
+              "m_Colors.m_HighlightedColor.a": 1,
+              "m_Colors.m_HighlightedColor.b": 0.9607843,
+              "m_Colors.m_HighlightedColor.g": 0.9607843,
+              "m_Colors.m_HighlightedColor.r": 0.9607843,
+              "m_SpriteState.m_PressedSprite": null,
+              "m_SpriteState.m_DisabledSprite": null,
+              "m_SpriteState.m_SelectedSprite": null,
+              "m_SpriteState.m_HighlightedSprite": null,
+              "m_AnimationTriggers.m_NormalTrigger": "Normal",
+              "m_AnimationTriggers.m_PressedTrigger": "Pressed",
+              "m_AnimationTriggers.m_DisabledTrigger": "Disabled",
+              "m_AnimationTriggers.m_SelectedTrigger": "Selected",
+              "m_AnimationTriggers.m_HighlightedTrigger": "Highlighted"
+            }
+          }
+        ],
+        "localScale": [
+          1,
+          1,
+          1
+        ],
+        "siblingIndex": 3,
+        "localPosition": [
+          0,
+          0,
+          0
+        ],
+        "localRotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "id": "4691181079272975993",
+        "kind": "Node",
+        "name": "CloseBtn",
+        "rect": {
+          "pivot": [
+            0.5,
+            0.5
+          ],
+          "anchorMax": [
+            0.5,
+            0.5
+          ],
+          "anchorMin": [
+            0.5,
+            0.5
+          ],
+          "sizeDelta": [
+            100,
+            100
+          ],
+          "anchoredPosition": [
+            312.2,
+            184.9
+          ]
+        },
+        "active": true,
+        "parentId": "7263429817324478758",
+        "components": [
+          {
+            "id": "4817918017575857022",
+            "type": "UnityEngine.CanvasRenderer",
+            "properties": {
+              "m_CullTransparentMesh": 0
+            }
+          },
+          {
+            "id": "646984145040589158",
+            "type": "UnityEngine.UI.Image",
+            "properties": {
+              "m_Name": "",
+              "m_Type": 0,
+              "m_Color.a": 1,
+              "m_Color.b": 1,
+              "m_Color.g": 1,
+              "m_Color.r": 1,
+              "m_Enabled": 1,
+              "m_Maskable": 1,
+              "m_Material": null,
+              "m_FillAmount": 1,
+              "m_FillCenter": 1,
+              "m_FillMethod": 4,
+              "m_FillOrigin": 0,
+              "m_FillClockwise": 1,
+              "m_RaycastTarget": 1,
+              "m_UseSpriteMesh": 0,
+              "m_PreserveAspect": 0,
+              "m_EditorHideFlags": 0,
+              "m_RaycastPadding.w": 0,
+              "m_RaycastPadding.x": 0,
+              "m_RaycastPadding.y": 0,
+              "m_RaycastPadding.z": 0,
+              "m_PixelsPerUnitMultiplier": 1,
+              "m_Sprite": {
+                "assetPath": "Assets/GameAI/Tests/UiLibrary/LoginTips/2c14b01057732b64fa7980cc5c8bdfe8.png"
+              }
+            }
+          },
+          {
+            "id": "5438116237377275949",
+            "type": "UnityEngine.UI.Button",
+            "properties": {
+              "m_Name": "",
+              "m_Enabled": 1,
+              "m_Transition": 1,
+              "m_Interactable": 1,
+              "m_TargetGraphic": {
+                "nodeId": "4691181079272975993"
+              },
+              "m_EditorHideFlags": 0,
+              "m_Navigation.m_Mode": 3,
+              "m_Colors.m_FadeDuration": 0.1,
+              "m_Colors.m_NormalColor.a": 1,
+              "m_Colors.m_NormalColor.b": 1,
+              "m_Colors.m_NormalColor.g": 1,
+              "m_Colors.m_NormalColor.r": 1,
+              "m_Colors.m_PressedColor.a": 1,
+              "m_Colors.m_PressedColor.b": 0.78431374,
+              "m_Colors.m_PressedColor.g": 0.78431374,
+              "m_Colors.m_PressedColor.r": 0.78431374,
+              "m_Navigation.m_SelectOnUp": null,
+              "m_Navigation.m_WrapAround": 0,
+              "m_Colors.m_ColorMultiplier": 1,
+              "m_Colors.m_DisabledColor.a": 0.5019608,
+              "m_Colors.m_DisabledColor.b": 0.78431374,
+              "m_Colors.m_DisabledColor.g": 0.78431374,
+              "m_Colors.m_DisabledColor.r": 0.78431374,
+              "m_Colors.m_SelectedColor.a": 1,
+              "m_Colors.m_SelectedColor.b": 0.9607843,
+              "m_Colors.m_SelectedColor.g": 0.9607843,
+              "m_Colors.m_SelectedColor.r": 0.9607843,
+              "m_Navigation.m_SelectOnDown": null,
+              "m_Navigation.m_SelectOnLeft": null,
+              "m_Navigation.m_SelectOnRight": null,
+              "m_Colors.m_HighlightedColor.a": 1,
+              "m_Colors.m_HighlightedColor.b": 0.9607843,
+              "m_Colors.m_HighlightedColor.g": 0.9607843,
+              "m_Colors.m_HighlightedColor.r": 0.9607843,
+              "m_SpriteState.m_PressedSprite": null,
+              "m_SpriteState.m_DisabledSprite": null,
+              "m_SpriteState.m_SelectedSprite": null,
+              "m_SpriteState.m_HighlightedSprite": null,
+              "m_AnimationTriggers.m_NormalTrigger": "Normal",
+              "m_AnimationTriggers.m_PressedTrigger": "Pressed",
+              "m_AnimationTriggers.m_DisabledTrigger": "Disabled",
+              "m_AnimationTriggers.m_SelectedTrigger": "Selected",
+              "m_AnimationTriggers.m_HighlightedTrigger": "Highlighted"
+            }
+          }
+        ],
+        "localScale": [
+          1,
+          1,
+          1
+        ],
+        "siblingIndex": 4,
+        "localPosition": [
+          0,
+          0,
+          0
+        ],
+        "localRotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      }
+    ],
+    "instances": [],
+    "rootNodeId": "4264533981367216901"
+  },
+  "resources": {},
+  "schemaVersion": "ui-template/1",
+  "visualTextures": [
+    {
+      "path": "Assets/GameAI/Tests/UiLibrary/LoginTips/1f15f4d2a190eb54f80d3bbe49a114f3.png",
+      "settings": {
+        "vTOnly": 0,
+        "bumpmap": {
+          "heightScale": 0.25,
+          "normalMapFilter": 0,
+          "externalNormalMap": 0,
+          "convertToNormalMap": 0
+        },
+        "mipmaps": {
+          "fadeOut": 0,
+          "mipMapMode": 0,
+          "sRGBTexture": 1,
+          "borderMipMap": 0,
+          "enableMipMap": 0,
+          "linearTexture": 0,
+          "mipMapFadeDistanceEnd": 3,
+          "alphaTestReferenceValue": 0.5,
+          "mipMapFadeDistanceStart": 1,
+          "mipMapsPreserveCoverage": 0
+        },
+        "lightmap": 0,
+        "userData": "",
+        "alignment": 0,
+        "nPOTScale": 0,
+        "alphaUsage": 1,
+        "isReadable": 0,
+        "spriteMode": 1,
+        "spritePivot": {
+          "x": 0.5,
+          "y": 0.5
+        },
+        "spriteSheet": {
+          "bones": [],
+          "edges": [],
+          "indices": "",
+          "outline": [],
+          "sprites": [],
+          "weights": [],
+          "spriteID": "5e97eb03825dee720800000000000000",
+          "vertices": [],
+          "internalID": 0,
+          "physicsShape": [],
+          "nameFileIdTable": {},
+          "secondaryTextures": [],
+          "serializedVersion": 2
+        },
+        "textureType": 8,
+        "flipbookRows": 1,
+        "spriteBorder": {
+          "w": 49,
+          "x": 49,
+          "y": 49,
+          "z": 49
+        },
+        "textureShape": 1,
+        "spriteExtrude": 1,
+        "textureFormat": 1,
+        "ignorePngGamma": 0,
+        "maxTextureSize": 2048,
+        "pSDRemoveMatte": 0,
+        "spriteMeshType": 0,
+        "assetBundleName": "",
+        "cookieLightType": 1,
+        "externalObjects": {},
+        "flipbookColumns": 1,
+        "generateCubemap": 6,
+        "seamlessCubemap": 0,
+        "textureSettings": {
+          "aniso": 1,
+          "wrapU": 1,
+          "wrapV": 1,
+          "wrapW": 1,
+          "mipBias": 0,
+          "filterMode": 1,
+          "serializedVersion": 2
+        },
+        "grayScaleToAlpha": 0,
+        "platformSettings": [
+          {
+            "overridden": 1,
+            "buildTarget": "Android",
+            "textureFormat": 50,
+            "maxTextureSize": 2048,
+            "resizeAlgorithm": 0,
+            "serializedVersion": 3,
+            "compressionQuality": 50,
+            "textureCompression": 1,
+            "crunchedCompression": 0,
+            "allowsAlphaSplitting": 0,
+            "androidETC2FallbackOverride": 0,
+            "forceMaximumCompressionQuality_BC6H_BC7": 0
+          },
+          {
+            "overridden": 1,
+            "buildTarget": "iPhone",
+            "textureFormat": 50,
+            "maxTextureSize": 2048,
+            "resizeAlgorithm": 0,
+            "serializedVersion": 3,
+            "compressionQuality": 50,
+            "textureCompression": 1,
+            "crunchedCompression": 0,
+            "allowsAlphaSplitting": 0,
+            "androidETC2FallbackOverride": 0,
+            "forceMaximumCompressionQuality_BC6H_BC7": 0
+          },
+          {
+            "overridden": 0,
+            "buildTarget": "DefaultTexturePlatform",
+            "textureFormat": -1,
+            "maxTextureSize": 2048,
+            "resizeAlgorithm": 0,
+            "serializedVersion": 3,
+            "compressionQuality": 50,
+            "textureCompression": 1,
+            "crunchedCompression": 0,
+            "allowsAlphaSplitting": 0,
+            "androidETC2FallbackOverride": 0,
+            "forceMaximumCompressionQuality_BC6H_BC7": 0
+          },
+          {
+            "overridden": 0,
+            "buildTarget": "Standalone",
+            "textureFormat": -1,
+            "maxTextureSize": 2048,
+            "resizeAlgorithm": 0,
+            "serializedVersion": 3,
+            "compressionQuality": 50,
+            "textureCompression": 1,
+            "crunchedCompression": 0,
+            "allowsAlphaSplitting": 0,
+            "androidETC2FallbackOverride": 0,
+            "forceMaximumCompressionQuality_BC6H_BC7": 0
+          }
+        ],
+        "spritePackingTag": "",
+        "streamingMipmaps": 0,
+        "textureFormatSet": 0,
+        "maxTextureSizeSet": 0,
+        "serializedVersion": 12,
+        "applyGammaDecoding": 0,
+        "assetBundleVariant": "",
+        "compressionQuality": 50,
+        "cubemapConvolution": 0,
+        "alphaIsTransparency": 1,
+        "spritePixelsToUnits": 100,
+        "compressionQualitySet": 0,
+        "internalIDToNameTable": [],
+        "singleChannelComponent": 0,
+        "ignoreMasterTextureLimit": 0,
+        "pSDShowRemoveMatteOption": 0,
+        "spriteTessellationDetail": -1,
+        "streamingMipmapsPriority": 0,
+        "spriteGenerateFallbackPhysicsShape": 0
+      }
+    },
+    {
+      "path": "Assets/GameAI/Tests/UiLibrary/LoginTips/2c14b01057732b64fa7980cc5c8bdfe8.png",
+      "settings": {
+        "vTOnly": 0,
+        "bumpmap": {
+          "heightScale": 0.25,
+          "normalMapFilter": 0,
+          "externalNormalMap": 0,
+          "convertToNormalMap": 0
+        },
+        "mipmaps": {
+          "fadeOut": 0,
+          "mipMapMode": 0,
+          "sRGBTexture": 1,
+          "borderMipMap": 0,
+          "enableMipMap": 0,
+          "linearTexture": 0,
+          "mipMapFadeDistanceEnd": 3,
+          "alphaTestReferenceValue": 0.5,
+          "mipMapFadeDistanceStart": 1,
+          "mipMapsPreserveCoverage": 0
+        },
+        "lightmap": 0,
+        "userData": "",
+        "alignment": 0,
+        "nPOTScale": 0,
+        "alphaUsage": 1,
+        "isReadable": 0,
+        "spriteMode": 1,
+        "spritePivot": {
+          "x": 0.5,
+          "y": 0.5
+        },
+        "spriteSheet": {
+          "bones": [],
+          "edges": [],
+          "indices": "",
+          "outline": [],
+          "sprites": [],
+          "weights": [],
+          "spriteID": "5e97eb03825dee720800000000000000",
+          "vertices": [],
+          "internalID": 0,
+          "physicsShape": [],
+          "nameFileIdTable": {},
+          "secondaryTextures": [],
+          "serializedVersion": 2
+        },
+        "textureType": 8,
+        "flipbookRows": 1,
+        "spriteBorder": {
+          "w": 0,
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "textureShape": 1,
+        "spriteExtrude": 1,
+        "textureFormat": 1,
+        "ignorePngGamma": 0,
+        "maxTextureSize": 2048,
+        "pSDRemoveMatte": 0,
+        "spriteMeshType": 0,
+        "assetBundleName": "",
+        "cookieLightType": 1,
+        "externalObjects": {},
+        "flipbookColumns": 1,
+        "generateCubemap": 6,
+        "seamlessCubemap": 0,
+        "textureSettings": {
+          "aniso": 1,
+          "wrapU": 1,
+          "wrapV": 1,
+          "wrapW": 1,
+          "mipBias": 0,
+          "filterMode": 1,
+          "serializedVersion": 2
+        },
+        "grayScaleToAlpha": 0,
+        "platformSettings": [
+          {
+            "overridden": 1,
+            "buildTarget": "Android",
+            "textureFormat": 50,
+            "maxTextureSize": 2048,
+            "resizeAlgorithm": 0,
+            "serializedVersion": 3,
+            "compressionQuality": 50,
+            "textureCompression": 1,
+            "crunchedCompression": 0,
+            "allowsAlphaSplitting": 0,
+            "androidETC2FallbackOverride": 0,
+            "forceMaximumCompressionQuality_BC6H_BC7": 0
+          },
+          {
+            "overridden": 1,
+            "buildTarget": "iPhone",
+            "textureFormat": 50,
+            "maxTextureSize": 2048,
+            "resizeAlgorithm": 0,
+            "serializedVersion": 3,
+            "compressionQuality": 50,
+            "textureCompression": 1,
+            "crunchedCompression": 0,
+            "allowsAlphaSplitting": 0,
+            "androidETC2FallbackOverride": 0,
+            "forceMaximumCompressionQuality_BC6H_BC7": 0
+          },
+          {
+            "overridden": 0,
+            "buildTarget": "DefaultTexturePlatform",
+            "textureFormat": -1,
+            "maxTextureSize": 2048,
+            "resizeAlgorithm": 0,
+            "serializedVersion": 3,
+            "compressionQuality": 50,
+            "textureCompression": 1,
+            "crunchedCompression": 0,
+            "allowsAlphaSplitting": 0,
+            "androidETC2FallbackOverride": 0,
+            "forceMaximumCompressionQuality_BC6H_BC7": 0
+          },
+          {
+            "overridden": 0,
+            "buildTarget": "Standalone",
+            "textureFormat": -1,
+            "maxTextureSize": 2048,
+            "resizeAlgorithm": 0,
+            "serializedVersion": 3,
+            "compressionQuality": 50,
+            "textureCompression": 1,
+            "crunchedCompression": 0,
+            "allowsAlphaSplitting": 0,
+            "androidETC2FallbackOverride": 0,
+            "forceMaximumCompressionQuality_BC6H_BC7": 0
+          }
+        ],
+        "spritePackingTag": "",
+        "streamingMipmaps": 0,
+        "textureFormatSet": 0,
+        "maxTextureSizeSet": 0,
+        "serializedVersion": 12,
+        "applyGammaDecoding": 0,
+        "assetBundleVariant": "",
+        "compressionQuality": 50,
+        "cubemapConvolution": 0,
+        "alphaIsTransparency": 1,
+        "spritePixelsToUnits": 100,
+        "compressionQualitySet": 0,
+        "internalIDToNameTable": [],
+        "singleChannelComponent": 0,
+        "ignoreMasterTextureLimit": 0,
+        "pSDShowRemoveMatteOption": 0,
+        "spriteTessellationDetail": -1,
+        "streamingMipmapsPriority": 0,
+        "spriteGenerateFallbackPhysicsShape": 0
+      }
+    },
+    {
+      "path": "Assets/GameAI/Tests/UiLibrary/LoginTips/75299df824b9eb14c87cdd6554cc1c72.png",
+      "settings": {
+        "vTOnly": 0,
+        "bumpmap": {
+          "heightScale": 0.25,
+          "normalMapFilter": 0,
+          "externalNormalMap": 0,
+          "convertToNormalMap": 0
+        },
+        "mipmaps": {
+          "fadeOut": 0,
+          "mipMapMode": 0,
+          "sRGBTexture": 1,
+          "borderMipMap": 0,
+          "enableMipMap": 0,
+          "linearTexture": 0,
+          "mipMapFadeDistanceEnd": 3,
+          "alphaTestReferenceValue": 0.5,
+          "mipMapFadeDistanceStart": 1,
+          "mipMapsPreserveCoverage": 0
+        },
+        "lightmap": 0,
+        "userData": "",
+        "alignment": 0,
+        "nPOTScale": 0,
+        "alphaUsage": 1,
+        "isReadable": 0,
+        "spriteMode": 1,
+        "spritePivot": {
+          "x": 0.5,
+          "y": 0.5
+        },
+        "spriteSheet": {
+          "bones": [],
+          "edges": [],
+          "indices": "",
+          "outline": [],
+          "sprites": [],
+          "weights": [],
+          "spriteID": "5e97eb03825dee720800000000000000",
+          "vertices": [],
+          "internalID": 0,
+          "physicsShape": [],
+          "nameFileIdTable": {},
+          "secondaryTextures": [],
+          "serializedVersion": 2
+        },
+        "textureType": 8,
+        "flipbookRows": 1,
+        "spriteBorder": {
+          "w": 0,
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "textureShape": 1,
+        "spriteExtrude": 1,
+        "textureFormat": 1,
+        "ignorePngGamma": 0,
+        "maxTextureSize": 2048,
+        "pSDRemoveMatte": 0,
+        "spriteMeshType": 0,
+        "assetBundleName": "",
+        "cookieLightType": 1,
+        "externalObjects": {},
+        "flipbookColumns": 1,
+        "generateCubemap": 6,
+        "seamlessCubemap": 0,
+        "textureSettings": {
+          "aniso": 1,
+          "wrapU": 1,
+          "wrapV": 1,
+          "wrapW": 1,
+          "mipBias": 0,
+          "filterMode": 1,
+          "serializedVersion": 2
+        },
+        "grayScaleToAlpha": 0,
+        "platformSettings": [
+          {
+            "overridden": 1,
+            "buildTarget": "Android",
+            "textureFormat": 50,
+            "maxTextureSize": 2048,
+            "resizeAlgorithm": 0,
+            "serializedVersion": 3,
+            "compressionQuality": 50,
+            "textureCompression": 1,
+            "crunchedCompression": 0,
+            "allowsAlphaSplitting": 0,
+            "androidETC2FallbackOverride": 0,
+            "forceMaximumCompressionQuality_BC6H_BC7": 0
+          },
+          {
+            "overridden": 1,
+            "buildTarget": "iPhone",
+            "textureFormat": 50,
+            "maxTextureSize": 2048,
+            "resizeAlgorithm": 0,
+            "serializedVersion": 3,
+            "compressionQuality": 50,
+            "textureCompression": 1,
+            "crunchedCompression": 0,
+            "allowsAlphaSplitting": 0,
+            "androidETC2FallbackOverride": 0,
+            "forceMaximumCompressionQuality_BC6H_BC7": 0
+          },
+          {
+            "overridden": 0,
+            "buildTarget": "DefaultTexturePlatform",
+            "textureFormat": -1,
+            "maxTextureSize": 2048,
+            "resizeAlgorithm": 0,
+            "serializedVersion": 3,
+            "compressionQuality": 50,
+            "textureCompression": 1,
+            "crunchedCompression": 0,
+            "allowsAlphaSplitting": 0,
+            "androidETC2FallbackOverride": 0,
+            "forceMaximumCompressionQuality_BC6H_BC7": 0
+          },
+          {
+            "overridden": 0,
+            "buildTarget": "Standalone",
+            "textureFormat": -1,
+            "maxTextureSize": 2048,
+            "resizeAlgorithm": 0,
+            "serializedVersion": 3,
+            "compressionQuality": 50,
+            "textureCompression": 1,
+            "crunchedCompression": 0,
+            "allowsAlphaSplitting": 0,
+            "androidETC2FallbackOverride": 0,
+            "forceMaximumCompressionQuality_BC6H_BC7": 0
+          }
+        ],
+        "spritePackingTag": "",
+        "streamingMipmaps": 0,
+        "textureFormatSet": 0,
+        "maxTextureSizeSet": 0,
+        "serializedVersion": 12,
+        "applyGammaDecoding": 0,
+        "assetBundleVariant": "",
+        "compressionQuality": 50,
+        "cubemapConvolution": 0,
+        "alphaIsTransparency": 1,
+        "spritePixelsToUnits": 100,
+        "compressionQualitySet": 0,
+        "internalIDToNameTable": [],
+        "singleChannelComponent": 0,
+        "ignoreMasterTextureLimit": 0,
+        "pSDShowRemoveMatteOption": 0,
+        "spriteTessellationDetail": -1,
+        "streamingMipmapsPriority": 0,
+        "spriteGenerateFallbackPhysicsShape": 0
+      }
+    },
+    {
+      "path": "Assets/GameAI/Tests/UiLibrary/LoginTips/c0d8044f283c30d498fffdd70cee350d.png",
+      "settings": {
+        "vTOnly": 0,
+        "bumpmap": {
+          "heightScale": 0.25,
+          "normalMapFilter": 0,
+          "externalNormalMap": 0,
+          "convertToNormalMap": 0
+        },
+        "mipmaps": {
+          "fadeOut": 0,
+          "mipMapMode": 0,
+          "sRGBTexture": 1,
+          "borderMipMap": 0,
+          "enableMipMap": 0,
+          "linearTexture": 0,
+          "mipMapFadeDistanceEnd": 3,
+          "alphaTestReferenceValue": 0.5,
+          "mipMapFadeDistanceStart": 1,
+          "mipMapsPreserveCoverage": 0
+        },
+        "lightmap": 0,
+        "userData": "",
+        "alignment": 0,
+        "nPOTScale": 0,
+        "alphaUsage": 1,
+        "isReadable": 0,
+        "spriteMode": 1,
+        "spritePivot": {
+          "x": 0.5,
+          "y": 0.5
+        },
+        "spriteSheet": {
+          "bones": [],
+          "edges": [],
+          "indices": "",
+          "outline": [],
+          "sprites": [],
+          "weights": [],
+          "spriteID": "5e97eb03825dee720800000000000000",
+          "vertices": [],
+          "internalID": 0,
+          "physicsShape": [],
+          "nameFileIdTable": {},
+          "secondaryTextures": [],
+          "serializedVersion": 2
+        },
+        "textureType": 8,
+        "flipbookRows": 1,
+        "spriteBorder": {
+          "w": 0,
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "textureShape": 1,
+        "spriteExtrude": 1,
+        "textureFormat": 1,
+        "ignorePngGamma": 0,
+        "maxTextureSize": 2048,
+        "pSDRemoveMatte": 0,
+        "spriteMeshType": 0,
+        "assetBundleName": "",
+        "cookieLightType": 1,
+        "externalObjects": {},
+        "flipbookColumns": 1,
+        "generateCubemap": 6,
+        "seamlessCubemap": 0,
+        "textureSettings": {
+          "aniso": 1,
+          "wrapU": 1,
+          "wrapV": 1,
+          "wrapW": 1,
+          "mipBias": 0,
+          "filterMode": 1,
+          "serializedVersion": 2
+        },
+        "grayScaleToAlpha": 0,
+        "platformSettings": [
+          {
+            "overridden": 1,
+            "buildTarget": "Android",
+            "textureFormat": 50,
+            "maxTextureSize": 2048,
+            "resizeAlgorithm": 0,
+            "serializedVersion": 3,
+            "compressionQuality": 50,
+            "textureCompression": 1,
+            "crunchedCompression": 0,
+            "allowsAlphaSplitting": 0,
+            "androidETC2FallbackOverride": 0,
+            "forceMaximumCompressionQuality_BC6H_BC7": 0
+          },
+          {
+            "overridden": 1,
+            "buildTarget": "iPhone",
+            "textureFormat": 50,
+            "maxTextureSize": 2048,
+            "resizeAlgorithm": 0,
+            "serializedVersion": 3,
+            "compressionQuality": 50,
+            "textureCompression": 1,
+            "crunchedCompression": 0,
+            "allowsAlphaSplitting": 0,
+            "androidETC2FallbackOverride": 0,
+            "forceMaximumCompressionQuality_BC6H_BC7": 0
+          },
+          {
+            "overridden": 0,
+            "buildTarget": "DefaultTexturePlatform",
+            "textureFormat": -1,
+            "maxTextureSize": 2048,
+            "resizeAlgorithm": 0,
+            "serializedVersion": 3,
+            "compressionQuality": 50,
+            "textureCompression": 1,
+            "crunchedCompression": 0,
+            "allowsAlphaSplitting": 0,
+            "androidETC2FallbackOverride": 0,
+            "forceMaximumCompressionQuality_BC6H_BC7": 0
+          },
+          {
+            "overridden": 0,
+            "buildTarget": "Standalone",
+            "textureFormat": -1,
+            "maxTextureSize": 2048,
+            "resizeAlgorithm": 0,
+            "serializedVersion": 3,
+            "compressionQuality": 50,
+            "textureCompression": 1,
+            "crunchedCompression": 0,
+            "allowsAlphaSplitting": 0,
+            "androidETC2FallbackOverride": 0,
+            "forceMaximumCompressionQuality_BC6H_BC7": 0
+          }
+        ],
+        "spritePackingTag": "",
+        "streamingMipmaps": 0,
+        "textureFormatSet": 0,
+        "maxTextureSizeSet": 0,
+        "serializedVersion": 12,
+        "applyGammaDecoding": 0,
+        "assetBundleVariant": "",
+        "compressionQuality": 50,
+        "cubemapConvolution": 0,
+        "alphaIsTransparency": 1,
+        "spritePixelsToUnits": 100,
+        "compressionQualitySet": 0,
+        "internalIDToNameTable": [],
+        "singleChannelComponent": 0,
+        "ignoreMasterTextureLimit": 0,
+        "pSDShowRemoveMatteOption": 0,
+        "spriteTessellationDetail": -1,
+        "streamingMipmapsPriority": 0,
+        "spriteGenerateFallbackPhysicsShape": 0
+      }
+    },
+    {
+      "path": "Assets/GameAI/Tests/UiLibrary/LoginTips/d2cbd1b4fd3b9e745b819e4a9d4c57ac.png",
+      "settings": {
+        "vTOnly": 0,
+        "bumpmap": {
+          "heightScale": 0.25,
+          "normalMapFilter": 0,
+          "externalNormalMap": 0,
+          "convertToNormalMap": 0
+        },
+        "mipmaps": {
+          "fadeOut": 0,
+          "mipMapMode": 0,
+          "sRGBTexture": 1,
+          "borderMipMap": 0,
+          "enableMipMap": 0,
+          "linearTexture": 0,
+          "mipMapFadeDistanceEnd": 3,
+          "alphaTestReferenceValue": 0.5,
+          "mipMapFadeDistanceStart": 1,
+          "mipMapsPreserveCoverage": 0
+        },
+        "lightmap": 0,
+        "userData": "",
+        "alignment": 0,
+        "nPOTScale": 0,
+        "alphaUsage": 1,
+        "isReadable": 0,
+        "spriteMode": 1,
+        "spritePivot": {
+          "x": 0.5,
+          "y": 0.5
+        },
+        "spriteSheet": {
+          "bones": [],
+          "edges": [],
+          "indices": "",
+          "outline": [],
+          "sprites": [],
+          "weights": [],
+          "spriteID": "5e97eb03825dee720800000000000000",
+          "vertices": [],
+          "internalID": 0,
+          "physicsShape": [],
+          "nameFileIdTable": {},
+          "secondaryTextures": [],
+          "serializedVersion": 2
+        },
+        "textureType": 8,
+        "flipbookRows": 1,
+        "spriteBorder": {
+          "w": 26,
+          "x": 331,
+          "y": 28,
+          "z": 330
+        },
+        "textureShape": 1,
+        "spriteExtrude": 1,
+        "textureFormat": 1,
+        "ignorePngGamma": 0,
+        "maxTextureSize": 2048,
+        "pSDRemoveMatte": 0,
+        "spriteMeshType": 0,
+        "assetBundleName": "",
+        "cookieLightType": 1,
+        "externalObjects": {},
+        "flipbookColumns": 1,
+        "generateCubemap": 6,
+        "seamlessCubemap": 0,
+        "textureSettings": {
+          "aniso": 1,
+          "wrapU": 1,
+          "wrapV": 1,
+          "wrapW": 1,
+          "mipBias": 0,
+          "filterMode": 1,
+          "serializedVersion": 2
+        },
+        "grayScaleToAlpha": 0,
+        "platformSettings": [
+          {
+            "overridden": 1,
+            "buildTarget": "Android",
+            "textureFormat": 52,
+            "maxTextureSize": 2048,
+            "resizeAlgorithm": 0,
+            "serializedVersion": 3,
+            "compressionQuality": 50,
+            "textureCompression": 1,
+            "crunchedCompression": 0,
+            "allowsAlphaSplitting": 0,
+            "androidETC2FallbackOverride": 0,
+            "forceMaximumCompressionQuality_BC6H_BC7": 0
+          },
+          {
+            "overridden": 1,
+            "buildTarget": "iPhone",
+            "textureFormat": 52,
+            "maxTextureSize": 2048,
+            "resizeAlgorithm": 0,
+            "serializedVersion": 3,
+            "compressionQuality": 50,
+            "textureCompression": 1,
+            "crunchedCompression": 0,
+            "allowsAlphaSplitting": 0,
+            "androidETC2FallbackOverride": 0,
+            "forceMaximumCompressionQuality_BC6H_BC7": 0
+          },
+          {
+            "overridden": 0,
+            "buildTarget": "DefaultTexturePlatform",
+            "textureFormat": -1,
+            "maxTextureSize": 2048,
+            "resizeAlgorithm": 0,
+            "serializedVersion": 3,
+            "compressionQuality": 50,
+            "textureCompression": 1,
+            "crunchedCompression": 0,
+            "allowsAlphaSplitting": 0,
+            "androidETC2FallbackOverride": 0,
+            "forceMaximumCompressionQuality_BC6H_BC7": 0
+          },
+          {
+            "overridden": 0,
+            "buildTarget": "Standalone",
+            "textureFormat": -1,
+            "maxTextureSize": 2048,
+            "resizeAlgorithm": 0,
+            "serializedVersion": 3,
+            "compressionQuality": 50,
+            "textureCompression": 1,
+            "crunchedCompression": 0,
+            "allowsAlphaSplitting": 0,
+            "androidETC2FallbackOverride": 0,
+            "forceMaximumCompressionQuality_BC6H_BC7": 0
+          }
+        ],
+        "spritePackingTag": "",
+        "streamingMipmaps": 0,
+        "textureFormatSet": 0,
+        "maxTextureSizeSet": 0,
+        "serializedVersion": 12,
+        "applyGammaDecoding": 0,
+        "assetBundleVariant": "",
+        "compressionQuality": 50,
+        "cubemapConvolution": 0,
+        "alphaIsTransparency": 1,
+        "spritePixelsToUnits": 100,
+        "compressionQualitySet": 0,
+        "internalIDToNameTable": [],
+        "singleChannelComponent": 0,
+        "ignoreMasterTextureLimit": 0,
+        "pSDShowRemoveMatteOption": 0,
+        "spriteTessellationDetail": -1,
+        "streamingMipmapsPriority": 0,
+        "spriteGenerateFallbackPhysicsShape": 0
+      }
+    }
+  ],
+  "visualPreview": {
+    "width": 1280,
+    "height": 720,
+    "output": "G:\\gameai\\ugame-ai-cli\\deliveries\\ui-library-login-tips\\UILoginTips.png"
+  }
+}

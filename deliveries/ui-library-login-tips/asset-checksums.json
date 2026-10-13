@@ -1,0 +1,66 @@
+[
+  {
+    "file": "1f15f4d2a190eb54f80d3bbe49a114f3.png",
+    "sha256": "27a0a23fec0b66a99085db3bdd35ff47af691bad45eb67563af56c085e83b6d8"
+  },
+  {
+    "file": "1f15f4d2a190eb54f80d3bbe49a114f3.png.meta",
+    "sha256": "e213902fcb2cc68a78b6cf8600b8fc5846426fb4691a3a6a756fa14b4439382a"
+  },
+  {
+    "file": "2c14b01057732b64fa7980cc5c8bdfe8.png",
+    "sha256": "f5994c753dca009e49ef62207e7bc2439d16f98f461b5b5f3a36815ce91c582d"
+  },
+  {
+    "file": "2c14b01057732b64fa7980cc5c8bdfe8.png.meta",
+    "sha256": "3d0c0ca39ccab29e09e13ad600e8fedef4b21fc524d7cb55a7e2f39d1bd32cca"
+  },
+  {
+    "file": "75299df824b9eb14c87cdd6554cc1c72.png",
+    "sha256": "60b9ffe2e87e25711a15ae2d994a8441daa0722e0ec919c9e15931cd912f9548"
+  },
+  {
+    "file": "75299df824b9eb14c87cdd6554cc1c72.png.meta",
+    "sha256": "2a0c8f5ba74d011b32f2d2954d65813e60361db29359c0889ec9710435cfd062"
+  },
+  {
+    "file": "c0d8044f283c30d498fffdd70cee350d.png",
+    "sha256": "3bfce9f79e6f06993370d423a2709d566bc90555b821e5863154d7fbd05bbfc9"
+  },
+  {
+    "file": "c0d8044f283c30d498fffdd70cee350d.png.meta",
+    "sha256": "1f3942a8b747b27af54d99460afc92fa5fa3c7e947f5efba46cd1f74b9588d06"
+  },
+  {
+    "file": "d2cbd1b4fd3b9e745b819e4a9d4c57ac.png",
+    "sha256": "c79d0396bff34e944ce95a469814fba09a653e7b99af33a7292931bb0c1f22f1"
+  },
+  {
+    "file": "d2cbd1b4fd3b9e745b819e4a9d4c57ac.png.meta",
+    "sha256": "06e19ab0e656606dbfc4d17839f19261e6788bc7140ad8def5d4000fd48c9465"
+  },
+  {
+    "file": "msyh.ttc",
+    "sha256": "e4b3b9d058750fb80899c24f68e35beda606ca92694eff0e9f7f91eec7a846aa"
+  },
+  {
+    "file": "msyh.ttc.meta",
+    "sha256": "4e294082be6e16a89f841628bf899afdd53b03f85d959b29a716ffffc0835425"
+  },
+  {
+    "file": "msyhbd.ttc",
+    "sha256": "06e1a30f687ab7d39f533447b21e84d51e0cecdaa6bfa060c87136b168811bdc"
+  },
+  {
+    "file": "msyhbd.ttc.meta",
+    "sha256": "4a81b4612480c1e4c08bd121e5a67c4218f4bf03816a31c820889a80035ac713"
+  },
+  {
+    "file": "UILoginTips.prefab",
+    "sha256": "65a4fbb45b03fdc8ec013a326160fa387bd007e4fe1f0d1332590a821458721c"
+  },
+  {
+    "file": "UILoginTips.prefab.meta",
+    "sha256": "994119d0b2892bbabe757ce12a1ebfde615471c1fd09f2d1ac62b81d086768aa"
+  }
+]

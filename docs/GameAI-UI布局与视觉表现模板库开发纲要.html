@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GameAI UI布局与视觉表现模板库开发纲要</title>
+<style>
+  :root {
+    --bg: #ffffff;
+    --fg: #1f2328;
+    --muted: #57606a;
+    --border: #d0d7de;
+    --code-bg: #f6f8fa;
+    --accent: #0969da;
+    --accent-soft: #ddf4ff;
+    --warn: #bf8700;
+    --warn-soft: #fff8c5;
+    --ok: #1a7f37;
+    --ok-soft: #dafbe1;
+    --err: #cf222e;
+    --err-soft: #ffebe9;
+    --rule-color: #b42318;
+  }
+
+  * { box-sizing: border-box; }
+
+  .rule, .rule * { color: var(--rule-color) !important; }
+  svg .rule, svg .rule * { fill: var(--rule-color); }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: #f6f8fa;
+    color: var(--fg);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+                 "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue",
+                 Arial, sans-serif;
+    font-size: 14px;
+    line-height: 1.7;
+  }
+
+  .page {
+    max-width: 900px;
+    margin: 0 auto;
+    background: var(--bg);
+    padding: 60px 70px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+  }
+
+  /* 封面 */
+  .cover {
+    text-align: center;
+    padding: 80px 0 60px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 48px;
+  }
+  .cover h1 {
+    font-size: 34px;
+    margin: 0 0 16px;
+    letter-spacing: 1px;
+  }
+  .cover .subtitle {
+    font-size: 16px;
+    color: var(--muted);
+    margin-bottom: 30px;
+  }
+  .cover .meta {
+    display: inline-block;
+    text-align: left;
+    font-size: 13px;
+    color: var(--muted);
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    padding: 12px 30px;
+  }
+  .cover .meta span { display: inline-block; min-width: 90px; color: var(--fg); }
+
+  /* 标题 */
+  h1 { font-size: 26px; margin: 48px 0 16px; padding-bottom: 8px; border-bottom: 2px solid var(--fg); }
+  h2 { font-size: 20px; margin: 36px 0 12px; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
+  h3 { font-size: 16px; margin: 24px 0 8px; color: #24292f; }
+  h4 { font-size: 14px; margin: 16px 0 6px; color: var(--muted); }
+
+  p { margin: 8px 0; }
+
+  /* 代码 */
+  code {
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    background: var(--code-bg);
+    padding: 2px 5px;
+    border-radius: 4px;
+    font-size: 12.5px;
+  }
+  pre {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 14px 16px;
+    overflow-x: auto;
+    font-size: 12px;
+    line-height: 1.6;
+    margin: 12px 0;
+  }
+  pre code {
+    background: none;
+    padding: 0;
+    font-size: 12px;
+  }
+
+  /* 表格 */
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 14px 0;
+    font-size: 13px;
+  }
+  th, td {
+    border: 1px solid var(--border);
+    padding: 8px 10px;
+    text-align: left;
+    vertical-align: top;
+  }
+  th { background: #f6f8fa; font-weight: 600; }
+  tr:nth-child(even) td { background: #fafbfc; }
+
+  /* 引用 */
+  blockquote {
+    border-left: 4px solid var(--accent);
+    margin: 12px 0;
+    padding: 6px 14px;
+    background: var(--accent-soft);
+    border-radius: 0 6px 6px 0;
+    color: #0a3069;
+    font-size: 13.5px;
+  }
+
+  /* 提示框 */
+  .callout {
+    padding: 12px 16px;
+    border-radius: 6px;
+    margin: 14px 0;
+    font-size: 13.5px;
+    border-left: 4px solid;
+  }
+  .callout.info { background: var(--accent-soft); border-color: var(--accent); }
+  .callout.warn { background: var(--warn-soft); border-color: var(--warn); }
+  .callout.ok   { background: var(--ok-soft);   border-color: var(--ok); }
+  .callout.err  { background: var(--err-soft);  border-color: var(--err); }
+
+  /* 列表 */
+  ul, ol { padding-left: 24px; margin: 8px 0; }
+  li { margin: 4px 0; }
+
+  /* 图表容器 */
+  .diagram {
+    margin: 24px 0;
+    padding: 20px;
+    background: #fafbfc;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow-x: auto;
+    text-align: center;
+  }
+  .diagram svg { max-width: 100%; height: auto; }
+  .diagram .caption {
+    font-size: 12.5px;
+    color: var(--muted);
+    margin-top: 10px;
+    font-style: italic;
+  }
+
+  /* 目录 */
+  .toc {
+    background: #fafbfc;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px 28px;
+    margin: 24px 0 40px;
+  }
+  .toc h3 { margin-top: 0; }
+  .toc ol { margin: 0; padding-left: 20px; }
+  .toc a { color: var(--accent); text-decoration: none; }
+  .toc a:hover { text-decoration: underline; }
+
+  /* 打印 */
+  @page {
+    size: A4;
+    margin: 18mm 16mm;
+  }
+  @media print {
+    html, body { background: #fff; font-size: 11.5pt; }
+    .page { box-shadow: none; padding: 0; max-width: 100%; }
+    h1 { page-break-before: auto; }
+    h2 { page-break-after: avoid; }
+    pre, table, .diagram { page-break-inside: avoid; }
+    .cover { page-break-after: always; }
+    .no-print { display: none; }
+    a { color: var(--fg); text-decoration: none; }
+  }
+
+  /* 页脚 */
+  .footer {
+    margin-top: 60px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border);
+    text-align: center;
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  .print-btn {
+    position: fixed;
+    right: 24px;
+    bottom: 24px;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 999px;
+    padding: 12px 22px;
+    font-size: 14px;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(9,105,218,0.35);
+    z-index: 100;
+  }
+  .print-btn:hover { background: #0860ca; }
+
+.page { overflow-wrap: anywhere; }
+@media screen and (max-width: 700px) { .page { padding: 24px 18px; } .cover { padding: 30px 0; } .cover h1 { font-size: 26px; } .toc { padding: 16px; } }
+.wire-gallery { display: flex; flex-direction: column; gap: 24px; }
+.wire-step { width: 100%; }
+</style>
+</head>
+<body>
+<button class="print-btn no-print" onclick="window.print()">打印 / 导出文档</button>
+<main class="page">
+<header class="cover">
+<h1>GameAI UI布局与视觉表现模板库开发纲要</h1>
+<div class="subtitle">布局模板 · 嵌套预制 · 特效动画 · Shader实现描述 · RAG检索</div>
+<div class="meta">版本 v1.3 ｜ 2026-10-13 ｜ 状态：设计基线，待分阶段实现</div>
+</header>
+<nav class="toc" aria-label="目录"><h3>目录</h3><ol><li><a href="#scope">1. 目标、边界与已确认决策</a></li><li><a href="#architecture">2. 总体架构与职责</a></li><li><a href="#layout">3. UI 布局数据契约</a></li><li><a href="#nested">4. 嵌套模板、实例覆盖与依赖图</a></li><li><a href="#effects">5. 特效索引与参数文件</a></li><li><a href="#animation">6. 动画索引与节点绑定</a></li><li><a href="#textures">7. 贴图二进制与 Shader 实现描述</a></li><li><a href="#database">8. PostgreSQL 存储模型（拟定）</a></li><li><a href="#rag">9. 功能分类、候选选择与 RAG</a></li><li><a href="#workflow">10. 接入 GameCLI 生产流程</a></li><li><a href="#phases">11. 分阶段实施与验收</a></li><li><a href="#status">12. 当前状态与待开发事项</a></li></ol><p><a href="#offline">13. 多项目离线采集入口</a></p></nav>
+<section id="scope"><h2>1. 目标、边界与已确认决策</h2><p>建设可持续扩充的 UI 布局与视觉表现模板库。导入现有 Unity 预制，按功能检索多个候选，再由 Agent 提出组合与映射方案，交给确定性工具生成目标项目预制。</p><p>首批来源：G:/Works/SV/Development/Project/Assets/data/UI。只读扫描发现 2,833 个 .prefab；这是本次扫描数量，不代表已完成入库或兼容性验证。</p><ul class="rule"><li>核心复用对象是布局、嵌套组件与视觉表现，不迁移原项目业务 C# 代码。</li><li>正式布局 JSON 允许目标工程支持的 Unity 标准组件和官方包组件；禁止携带源项目自定义 C# 路径、脚本 GUID、业务组件实例、业务事件方法名及未解析对象引用。标准组件使用注册表逻辑类型，不保存源工程脚本 GUID。</li><li>嵌套预制、特效、动画、贴图必须保留依赖与绑定关系，使用库内稳定 ID 和固定版本。</li><li>特效贴图以原始二进制存入数据库；Shader 保存可理解的实现描述，不直接复用原 Shader 实现。</li><li>源工程只读；目标生成失败不得污染源资产。未知或不支持的内容显式标记，不静默丢弃。</li></ul><p>本文是后续开发基线 v1.3，尚未实现全量提取、资源入库或 RAG 服务；下文表名、JSON 字段和命令为拟定契约。</p></section><section id="architecture"><h2>2. 总体架构与职责</h2><table><thead><tr><th>模块</th><th>职责</th></tr></thead><tbody><tr><td>提取器</td><td>读取源预制、解析完整层级与嵌套覆盖，输出中立结构；适配已识别的自定义布局组件。</td></tr><tr><td>资源登记器</td><td>递归收集特效、动画、贴图及材质依赖，分配资源 ID、版本和内容哈希。</td></tr><tr><td>PostgreSQL</td><td>保存模板索引、版本化 JSONB、贴图二进制、依赖图、检索数据与生成溯源。</td></tr><tr><td>检索服务</td><td>功能过滤＋全文检索；后续加入向量召回及结构重排，返回候选和差异。</td></tr><tr><td>Agent</td><td>补充可审核语义；比较候选、提出组合及 Shader 实现方案，输出受约束的参数。</td></tr><tr><td>目标生成器</td><td>校验 JSON、资源与节点映射；通过 Unity CLI 创建/组装预制及兼容视觉实现。</td></tr><tr><td>QA</td><td>检查结构、引用、布局适配及实际效果，保存证据，不用语义相似度代替验收。</td></tr></tbody></table><pre>源工程（只读） → 提取/归一化 → 版本化模板库
+需求 → 功能分类 → 候选检索 → 结构比较 → 组合方案 JSON
+组合方案 → 兼容性校验 → Unity CLI → 白模 → 美术补齐 → 最终装配 → QA</pre><p>GameCLI 负责执行工具与上传结果，GameCLIServer 负责数据、权限、审批与调度。实现时沿用 C#/.NET CLI 和 Node.js 服务边界，不另建本地编排器。</p></section><section id="layout"><h2>3. UI 布局数据契约</h2><h3>3.1 唯一结构：资源清单＋节点</h3><p>顶层业务主体固定为 resources 与 prefab，schemaVersion 为格式元数据。不另设顶层 bindings；嵌套实例、动画和特效绑定就近保存在所属节点。来源、分类、标签、检索描述和导入日志另存数据库。</p><ul class="rule"><li>resources 是资源别名字典，统一使用 kind、id、version 描述预制、特效、动画、贴图和 Shader 描述；固定版本，禁止隐式 latest。</li><li>prefab.nodes 是扁平节点表。只用 parentId 与 siblingIndex 表达层级，不再同时维护 children。必须有且仅有一个根节点，rootNodeId 指向它；节点 ID 唯一，父关系无环。</li><li>kind 仅区分 Node 与 PrefabInstance；semanticRole 是可选语义标签，不决定组件。不能同时用节点 type 与 components 重复定义 Button 等组件。</li><li>components 是标准组件配置的唯一依据；rect 是 RectTransform 的唯一来源，不在 components 再存一份 RectTransform。</li><li>effects 默认挂在所属节点；animations 的 targets 明确绑定目标。trigger 为 null 时表示未知，不能自行补出触发业务。</li></ul><pre><code>{
+  &quot;schemaVersion&quot;: &quot;ui-template/1&quot;,
+  &quot;resources&quot;: {
+    &quot;itemBox&quot;: {
+      &quot;kind&quot;: &quot;prefab&quot;,
+      &quot;id&quot;: &quot;ui-item-box&quot;,
+      &quot;version&quot;: 1
+    },
+    &quot;rewardGlow&quot;: {
+      &quot;kind&quot;: &quot;effect&quot;,
+      &quot;id&quot;: &quot;fx-reward-glow&quot;,
+      &quot;version&quot;: 2
+    },
+    &quot;windowOpen&quot;: {
+      &quot;kind&quot;: &quot;animation&quot;,
+      &quot;id&quot;: &quot;anim-window-open&quot;,
+      &quot;version&quot;: 1
+    }
+  },
+  &quot;prefab&quot;: {
+    &quot;id&quot;: &quot;ui-shop&quot;,
+    &quot;version&quot;: 1,
+    &quot;name&quot;: &quot;UIShop&quot;,
+    &quot;rootNodeId&quot;: &quot;root&quot;,
+    &quot;nodes&quot;: [
+      {
+        &quot;id&quot;: &quot;root&quot;,
+        &quot;name&quot;: &quot;ShopWindow&quot;,
+        &quot;kind&quot;: &quot;Node&quot;,
+        &quot;semanticRole&quot;: &quot;window&quot;,
+        &quot;parentId&quot;: null,
+        &quot;siblingIndex&quot;: 0,
+        &quot;rect&quot;: {
+          &quot;anchorMin&quot;: [
+            0,
+            0
+          ],
+          &quot;anchorMax&quot;: [
+            1,
+            1
+          ],
+          &quot;pivot&quot;: [
+            0.5,
+            0.5
+          ],
+          &quot;anchoredPosition&quot;: [
+            0,
+            0
+          ],
+          &quot;sizeDelta&quot;: [
+            0,
+            0
+          ]
+        },
+        &quot;components&quot;: [],
+        &quot;animations&quot;: [
+          {
+            &quot;resourceRef&quot;: &quot;windowOpen&quot;,
+            &quot;targets&quot;: {
+              &quot;windowRoot&quot;: {
+                &quot;nodeId&quot;: &quot;root&quot;
+              }
+            },
+            &quot;trigger&quot;: null
+          }
+        ]
+      },
+      {
+        &quot;id&quot;: &quot;rewardItem&quot;,
+        &quot;name&quot;: &quot;RewardItem&quot;,
+        &quot;kind&quot;: &quot;PrefabInstance&quot;,
+        &quot;parentId&quot;: &quot;root&quot;,
+        &quot;siblingIndex&quot;: 0,
+        &quot;resourceRef&quot;: &quot;itemBox&quot;,
+        &quot;rect&quot;: {
+          &quot;anchorMin&quot;: [
+            0.5,
+            0.5
+          ],
+          &quot;anchorMax&quot;: [
+            0.5,
+            0.5
+          ],
+          &quot;pivot&quot;: [
+            0.5,
+            0.5
+          ],
+          &quot;anchoredPosition&quot;: [
+            120,
+            80
+          ],
+          &quot;sizeDelta&quot;: [
+            128,
+            128
+          ]
+        },
+        &quot;overrides&quot;: [
+          {
+            &quot;target&quot;: {
+              &quot;nodeId&quot;: &quot;quantity&quot;
+            },
+            &quot;property&quot;: &quot;text&quot;,
+            &quot;value&quot;: &quot;10&quot;
+          }
+        ],
+        &quot;effects&quot;: [
+          {
+            &quot;instanceId&quot;: &quot;highlight&quot;,
+            &quot;resourceRef&quot;: &quot;rewardGlow&quot;,
+            &quot;localPosition&quot;: [
+              0,
+              0,
+              0
+            ],
+            &quot;localScale&quot;: [
+              1,
+              1,
+              1
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}</code></pre><p>以上为设计契约示例，不是现有 prefab create 可直接执行的格式。实例 overrides 中的 target 相对于被引用模板；例如 quantity 是 itemBox 版本1内部的稳定节点 ID。属性键最终由组件注册表限定，存在多组件歧义时必须显式指定 componentId。</p><h3>3.2 标准组件与代码依赖边界</h3><table><tr><th>类别</th><th>处理规则</th></tr><tr><td>Unity 标准组件</td><td>保留 Image、Button、Toggle、ScrollRect、RectMask2D、布局组件、Animator 等支持的类型与参数。</td></tr><tr><td>官方可选包</td><td>例如 TMP，记录逻辑类型、包版本要求及目标兼容性；缺包时标记需要适配。</td></tr><tr><td>源项目自定义组件</td><td>不直接迁移。已确认布局语义可转为标准组件；未知行为记录在诊断中，不嵌入生产 JSON。</td></tr><tr><td>标准组件中的业务引用</td><td>保留按钮等本体，剥离旧 onClick 脚本方法；Animator 中自定义 StateMachineBehaviour 同样需要适配。记录待接入的语义交互接口，不猜测实现。</td></tr></table><h3>3.3 组件注册表</h3><p>提取器和生成器共享同一份版本化注册表：逻辑类型、支持属性、属性类型、默认值、取值范围、引用类型、包/引擎版本要求与适配器。未知字段必须拒绝或转为诊断，不静默忽略。</p><pre><code>{
+  "kind": "Node",
+  "semanticRole": "reward-list",
+  "components": [{
+    "id": "scroll",
+    "type": "unity.ugui.ScrollRect",
+    "properties": {"horizontal": false, "vertical": true, "inertia": true},
+    "references": {
+      "viewport": {"nodeId": "rewardViewport"},
+      "content": {"nodeId": "rewardContent"}
+    }
+  }]
+}</code></pre><h3>3.4 布局值与计算值</h3><p>保存参考分辨率、Canvas 缩放设置、anchorMin/Max、pivot、anchoredPosition、sizeDelta、局部变换及自动布局参数。明确单位和坐标约定。静态序列化值用于生成；引擎计算后的屏幕尺寸仅作为派生测量数据，记录测量分辨率与环境，不覆盖原值。</p><p class="rule">SizeDelta 可为负值，不能当作实际宽高直接使用。LayoutGroup、LayoutElement、ContentSizeFitter 的排列、间距、padding 与约束必须保留；单个预制不能确定的画布参数应标记未知，不猜测。</p><h3>3.5 可重建等级</h3><p>完整支持：全部布局、组件与引用可在声明的目标环境重建；需要适配：存在明确缺口；仅供参考：尚不能可信重建。另记录验证状态，不能把“支持提取”当成“已验证效果”。检索优先完整支持的候选。</p></section><section id="nested"><h2>4. 嵌套模板、实例覆盖与依赖图</h2><p>商店窗口可以引用道具框，奖励列表可以引用卡片模板。被引用模板独立入库，父模板只保存固定版本引用和实例差异。</p><p>嵌套实例统一采用第3节的 kind=PrefabInstance、resourceRef 和 overrides，不另存 templateRef 或第二套实例绑定清单。</p><ul class="rule"><li>实例覆盖以稳定节点 ID 为目标；支持可验证的属性覆盖、子节点新增和删除。保留覆盖顺序，禁止只按同名节点匹配。</li><li>导入时解析 PrefabVariant、PrefabInstance 及 inherited/stripped 对象；未展开的模板不能标记为可无损重建。</li><li>跨嵌套引用使用 instancePath（实例节点ID数组）＋nodeId；当前模板节点使用 nodeId。覆盖目标相对被引用模板解析；禁止靠名字或拼接层级路径猜测。引用固定版本，不能隐式取 latest。缺失引用、循环引用和无效覆盖必须阻止生成。</li><li>保存完整依赖闭包及依赖哈希，生成时锁定所有使用版本。</li></ul></section><section id="effects"><h2>5. 特效索引与参数文件</h2><p>特效是一类独立版本化模板。UI 引用 effectId/version，实例保存挂载节点、局部变换、排序和明确的播放条件。</p><table><thead><tr><th>参数组</th><th>提取内容</th></tr></thead><tbody><tr><td>核心</td><td>时长、循环、空间、生命周期、初速度、尺寸、颜色及随机分布。</td></tr><tr><td>发射/形状</td><td>速率、爆发、形状、边界与方向。</td></tr><tr><td>随时间变化</td><td>速度、力、颜色、尺寸、旋转、噪声等曲线与模式。</td></tr><tr><td>渲染</td><td>网格/广告牌、排序、材质表现引用、贴图序列、Trail等。</td></tr><tr><td>嵌套</td><td>子发射器、子特效、挂载层级、依赖版本。</td></tr><tr><td>验证</td><td>已提取模块、不支持模块、目标管线兼容性和实际验证状态。</td></tr></tbody></table><p class="rule">“完整参数”以明确支持清单为准。曲线保存关键帧、切线、插值、wrap、常量/双常量/双曲线等模式；不能仅存采样值后宣称精确还原。Mesh、贴图和其他必要资源未登记时，特效只能处于待适配状态。</p></section><section id="animation"><h2>6. 动画索引与节点绑定</h2><p>AnimationClip 与 Animator 状态机分开登记。片段保存时长、循环、帧率、属性轨道、关键帧和插值信息；状态机另存参数、状态、过渡、混合树及默认状态。</p><ul class="rule"><li>轨道目标使用语义 bindingKey，由实例映射到 nodeId；生成器再转换为目标工程的动画路径。</li><li>保留对象引用曲线中的资源版本，如逐帧 Sprite 动画。</li><li>动画事件、StateMachineBehaviour 和自定义属性若依赖旧代码，不复制方法名或脚本引用到中立模板；记录为需适配的行为。</li><li>仅在序列化证据明确时记录触发条件。由 C# 决定的点击播放逻辑不可猜测。</li></ul><p>动画和特效绑定统一放入所属节点的 animations/effects，resourceRef 指向顶层资源别名。跨模板目标使用 {"instancePath":["rewardItem"],"nodeId":"quantity"}；生成器校验目标实例与节点存在后转换成引擎路径。</p></section><section id="textures"><h2>7. 贴图二进制与 Shader 实现描述</h2><h3>7.1 贴图入库</h3><p>使用 PostgreSQL bytea 保存原始文件字节，记录 SHA-256、MIME、字节数、宽高、通道。文件原始字节按哈希去重；颜色空间、wrap、filter、alpha用途等作为引用的使用设置，同一文件可有不同用途。上传配置大小上限，服务校验解码结果和哈希；不要把 Base64 大图嵌入布局 JSON 或向量文本。</p><h3>7.2 Shader 描述</h3><p>保存视觉目标、纹理槽位及通道含义、参数类型/默认值/范围、采样与数学步骤、渲染状态和已知限制。可保留原 Shader 名称与哈希用于溯源，但不依赖其源代码、include、编译产物或源工程类型。</p><pre><code>{
+  &quot;name&quot;: &quot;流动溶解光效&quot;,
+  &quot;purpose&quot;: &quot;纹理纵向流动并按噪声阈值溶解&quot;,
+  &quot;parameters&quot;: {
+    &quot;scrollSpeed&quot;: {
+      &quot;type&quot;: &quot;float2&quot;,
+      &quot;default&quot;: [
+        0,
+        0.2
+      ]
+    },
+    &quot;threshold&quot;: {
+      &quot;type&quot;: &quot;float&quot;,
+      &quot;range&quot;: [
+        0,
+        1
+      ]
+    },
+    &quot;softness&quot;: {
+      &quot;type&quot;: &quot;float&quot;,
+      &quot;minExclusive&quot;: 0
+    }
+  },
+  &quot;steps&quot;: [
+    &quot;uvMain = uv + timeSeconds * scrollSpeed&quot;,
+    &quot;base = sample(mainTexture, uvMain)&quot;,
+    &quot;noise = sample(noiseTexture, uv).r&quot;,
+    &quot;visibility = smoothstep(threshold, threshold + softness, noise)&quot;,
+    &quot;rgb = base.rgb * tint.rgb * intensity&quot;,
+    &quot;alpha = base.a * tint.a * visibility&quot;
+  ],
+  &quot;renderState&quot;: {
+    &quot;lighting&quot;: &quot;unlit&quot;,
+    &quot;blend&quot;: {
+      &quot;src&quot;: &quot;SrcAlpha&quot;,
+      &quot;dst&quot;: &quot;One&quot;
+    },
+    &quot;depthWrite&quot;: false,
+    &quot;cull&quot;: &quot;Off&quot;
+  },
+  &quot;evidenceStatus&quot;: &quot;inferred_needs_validation&quot;
+}</code></pre><p class="rule">具体 Shader 示例仅说明存储形式，未表示从当前源文件提取。必须区分源码分析事实与 Agent 推断。透明、预乘与加法混合不可混用；目标 URP/Built-in 等由生成器选择实现并实际验证。不承诺跨管线像素一致。</p><p>Shader Graph、自定义光照和平台宏可能无法自动转换；保留待确认说明及可用参考效果，不虚构实现。</p></section><section id="database"><h2>8. PostgreSQL 存储模型（拟定）</h2><table><thead><tr><th>表</th><th>主要内容</th></tr></thead><tbody><tr><td>ui_templates</td><td>稳定 ID、功能分类、标签、名称、源工程标识＋源GUID。</td></tr><tr><td>ui_template_versions</td><td>模板版本、schemaVersion、布局 JSONB、源哈希、提取器版本、兼容性。</td></tr><tr><td>effect_templates / effect_versions</td><td>特效索引及版本化完整参数 JSONB。</td></tr><tr><td>animation_templates / animation_versions</td><td>动画片段与状态机索引、轨道和绑定描述 JSONB。</td></tr><tr><td>shader_descriptions / shader_description_versions</td><td>视觉实现描述、参数、渲染状态、来源与可信程度。</td></tr><tr><td>texture_blobs</td><td>哈希唯一键、原始 bytea、MIME、尺寸、字节数。</td></tr><tr><td>texture_assets / texture_versions</td><td>语义名称、来源与 blob 引用；使用设置由材质/实例引用携带。</td></tr><tr><td>asset_dependencies</td><td>源资源版本→目标资源版本、用途槽位、依赖关系与验证结果。</td></tr><tr><td>search_documents / search_embeddings</td><td>对应资源版本、语义描述、结构特征、描述哈希、模型/维度及向量。</td></tr><tr><td>import_runs / extraction_issues</td><td>导入来源、状态、解析警告、失败项；诊断与生产布局分离。</td></tr><tr><td>generation_records</td><td>目标任务、候选列表、最终选择、版本锁定清单、映射和生成证据。</td></tr></tbody></table><p>数据库约束：资源版本不可变；同源＋同内容导入幂等；引用目标版本必须存在；二进制先校验再发布元数据；删除被引用版本应拒绝或显式归档。多来源工程使用不同 source_project_id，避免 GUID 冲突。</p><p>首版可不建向量列，但必须提前保存可重建的检索文本及其哈希。后续迁移按模型维度设计索引，不假定所有模型共享一个向量空间。</p></section><section id="rag"><h2>9. 功能分类、候选选择与 RAG</h2><p>先找到“登录”功能，再从多个登录模板中比较：设备一键登录、账号密码登录、选服登录等；功能类别不是唯一模板，不合并不同实现。</p><ol><li>根据需求提取功能、横竖屏、必要控件和目标兼容条件。</li><li>结构化过滤不可用候选，全文召回功能名称与标签。</li><li>后续加入语义向量召回，并合并去重。</li><li>按功能覆盖、布局、层级结构、嵌套依赖与改造成本分别重排。</li><li>Agent 读取少量候选完整 JSON，输出选择理由、缺失控件和修改方案。</li></ol><p class="rule">不将完整坐标、GUID 和重复节点 JSON 直接作为唯一向量文本。语义描述与工具事实分开保存；模型生成标签标记为推断。向量只是检索索引，不是生成的真实数据源。</p><p>检索单元为完整窗口和可独立复用的弹窗、卡片、列表项、特效、动画；不把每个 Text/Image 切成独立知识片段。保存父模板关系和节点定位信息。记录 embedding 模型、版本、维度及输入文本哈希，内容改变后仅重建受影响检索条目。</p></section><section id="workflow"><h2>10. 接入 GameCLI 生产流程</h2><ol><li>Design 编写并由人工批准需求，明确项目视觉规范版本。风格在目标生成阶段应用，原模板布局与可选视觉资源分开；不强制新项目沿用旧皮肤。</li><li>PM 按独立窗口拆分白模、美术及最终装配任务，避免因模板节点多而过度拆单。</li><li>Prefab Agent 查询模板库，形成模板引用、节点映射、实例覆盖和缺口清单。</li><li>生成器校验版本、依赖图及支持能力，通过 Unity CLI 创建目标白模。</li><li>Art 复用符合规范的视觉资源；缺少或不兼容时按已批准风格补齐，不要求所有资源重新生成。</li><li>Prefab Agent 绑定图片、特效和动画；工具负责资源导入、路径重映射及校验。</li><li>QA 验证真实结构和运行效果，保存证据；编排器按现有权限和审批规则推进。</li></ol><p class="rule">Agent 负责选择和映射决策，工具负责可重复执行。不存在的资源引用、未知字段、循环依赖及不支持属性必须在生成前拒绝。历史任务使用锁定版本，禁止隐式升级模板。</p></section><section id="phases"><h2>11. 分阶段实施与验收</h2><table><thead><tr><th>阶段</th><th>范围</th><th>通过标准</th></tr></thead><tbody><tr><td>P0 契约与样例</td><td>统一中立JSON、数据库结构和支持矩阵；一个完整窗口＋一个嵌套列表项。</td><td>布局JSON无业务C#依赖；来源/诊断隔离；引用可解析，属性单位明确。</td></tr><tr><td>P1 布局索引</td><td>只读批量扫描、分类与增量导入，提取标准UGUI和必要自定义适配。</td><td>重复导入不重复建版；嵌套覆盖准确；未知组件被标记，原工程哈希不变。</td></tr><tr><td>P2 生成闭环</td><td>功能搜索→候选对比→组合JSON→Unity CLI生成。</td><td>先覆盖登录窗口、商店/奖励列表、带动画特效弹窗三个代表样例；提取→入库→重建后对照层级、布局、引用及规定分辨率，通过后再扩大导入。</td></tr><tr><td>P3 视觉资源库</td><td>贴图二进制、特效参数、动画轨道、Shader描述和目标映射。</td><td>依赖闭包完整；曲线、材质、动画绑定校验通过；有实际视觉证据和兼容性结论。</td></tr><tr><td>P4 RAG增强</td><td>混合检索、结构重排、反馈与模型版本管理。</td><td>建立人工标注查询集；评估候选召回、选择准确性、改造成本，不能仅看向量分数。</td></tr></tbody></table><p>推荐首个真实样例：累计登录奖励项。已做过静态试提取，但它包含源脚本引用，不能作为正式布局契约或已完成入库成果；应重新按本文 schema 归一化。</p><p>必要测试：拉伸锚点与负 SizeDelta、自动布局、嵌套变体覆盖、缺失资源、重复导入、同GUID不同源工程、循环引用、动画目标改名、自定义组件不支持、贴图重复与损坏、Shader管线不兼容。</p></section><section id="status"><h2>12. 当前实现：布局提取与入库首版</h2>
+<p>2026-10-13：已实现 Unity CLI 只读导出入口、GameCLI 离线目录导出及校验/入库入口和 PostgreSQL 独立 ui_library schema。当前是 layout-snapshot/0.1，不代表 P0～P4 已全部完成。</p>
+<h3>12.1 实际命令</h3>
+<pre>UnityCLI --project &lt;Unity工程&gt; --format json prefab export \
+  --prefab Assets/某目录/UILogin.prefab \
+  --output &lt;新建空目录&gt; --source-key &lt;稳定来源工程编号&gt;
+
+GameCLI ui-library validate --input &lt;导出目录&gt; --server &lt;GameAI.Server目录&gt;
+GameCLI ui-library import --input &lt;导出目录&gt; --server &lt;GameAI.Server目录&gt; --dry-run
+GameCLI ui-library import --input &lt;导出目录&gt; --server &lt;GameAI.Server目录&gt;</pre>
+<p>--prefab 也接受 Assets/ 下的目录，按顺序批量导出；--output 必须是 Assets 外的空目录。manifest.json 最后写入，未成功完成的批次不会得到有效清单。原始资产只读，生成包放在 game-cli/temp/。CLI 当前通过本机 Node 服务维护适配器入库，要求安装 Node 以及 GameAI.Server 依赖；数据库凭据沿用服务 .env.workflow，不传给 Agent。此入口不是远程 HTTP API。</p>
+<h3>12.2 存储与幂等</h3>
+<p>已创建 sources、templates、versions、dependencies、imports 六张表。来源工程＋源 GUID 区分模板身份，版本保存 JSONB、源依赖哈希、提取器/Unity 版本、诊断和兼容等级。规范化内容及依赖版本参与指纹；事务和唯一约束保证重复、并发导入不会重复建版。更新产生新版本，不覆盖旧 JSON。分类默认 unclassified，不依据名称猜测已确认的功能。</p>
+<p>--dry-run 走相同数据库校验并回滚；PostgreSQL 序列可能消耗编号，这不是新增业务记录。Track 清空任务不清空模板库。首次部署运行服务既有 db:migrate，迁移号 024、025。</p>
+<h3>12.3 明确边界</h3>
+<ul class="rule"><li>现阶段支持节点、RectTransform、标准组件的序列化标量/向量和本地节点引用。属性键仍是 Unity 序列化属性路径，尚未完成跨 Unity 版本的逻辑属性注册表。不能直接传给 prefab create。</li><li>位置节点 ID 只保证单个不可变版本内稳定，跨层级调整的节点身份匹配尚待实现。</li><li>嵌套预制会递归导出并建立版本依赖；实例覆盖目前保存为诊断证据，完整覆盖/增删节点适配尚未完成，等级为 reference-only。</li><li>未知组件、旧业务回调及未支持的资源属性被记录为诊断，不进入标准组件的生产字段。字体、贴图、材质、动画和特效完整参数/二进制入库尚待实现，不承诺视觉无损。</li><li>supported 仅表示本轮没有发现不支持字段；仍须实际重建验证。reference-only 禁止自动作为最终生产结果。</li></ul>
+<h3>12.4 本轮证据与下一步</h3>
+<p>已从运行中的 GameAI Unity 工程提取 Assets/GameAI/UI/Prefabs/F-0000827/UILogin.prefab，包位于 game-cli/temp/ui-library/login-03。真实入库首次新增1版，第二次新增0版、跳过1版。样本存在自定义脚本和未导出视觉资源，真实等级为 reference-only。7项测试覆盖负 SizeDelta、契约错误、路径限制、引用完整性、事务回滚、并发幂等和版本变化。Unity 编译后 Console 无错误。</p>
+<p>原始 SV 工程不需要打开或安装 Unity CLI；已用离线目录入口验证，见第13章。当前 Unity 用于后续重建和兼容性验证，完整批量入库及视觉资源适配尚待完成。</p></section>
+<section id="offline"><h2>13. 多项目离线采集入口（2026-10-13）</h2>
+<p>采集主入口现在是 C# GameCLI，使用 YamlDotNet 解析文本序列化的 Unity 资产。来源工程不启动 Unity、不安装 Unity CLI、不执行源 C# 脚本。现有 Unity 导出入口保留为目标工程的校验工具。</p>
+<pre>GameCLI ui-library export \
+  --input "G:/Works/SV/Development/Project/Assets/data/UI" \
+  --output "&lt;新的空导出目录&gt;" --source-key sv --limit 20
+
+GameCLI ui-library validate --input "&lt;导出目录&gt;" --server "&lt;GameAI.Server&gt;"
+GameCLI ui-library import --input "&lt;导出目录&gt;" --server "&lt;GameAI.Server&gt;"</pre>
+<p>--input 接受单个 .prefab 或目录；不传 --limit 时扫描全部。source-key 是人为指定并持续复用的来源工程身份。自动定位上级 Unity 工程，扫描 Assets、Packages、LocalPackages 内的 .meta 建立 GUID 索引；不遍历重解析点，不写入源工程。外置包未落在这些目录时会报告缺失，不猜测引用。导出目录必须在来源工程外。</p>
+<h3>13.1 解析与引用约定</h3>
+<ul><li>fileID 按字符串解析，避免超过 JavaScript 精确整数范围时损坏。</li><li>递归解析嵌套预制，将实例层级展开为带实例前缀的节点 ID；prefab.instances 保留 instanceId、resourceRef 和 rootNodeId，resources 保存源预制及版本。数据库依赖表绑定库内固定版本。</li><li>应用已支持的名称、标量、向量属性及节点引用覆盖。数组规模调整、删除节点/组件等复杂结构变化仍报告人工复核；不宣称无损还原。</li><li>官方脚本 GUID 映射来自已安装的 UGUI/TMP 包并内嵌分发；不把来源工程中同名自定义脚本误认为官方组件。</li><li>外部纹理/材质/动画引用目前保存为缺项诊断，未完成二进制入库。FBX 模型预制保留明确标注的占位节点；二进制 .prefab 和找不到的源预制作为失败项。</li><li>节点结构与标准组件属性仍是布局快照，不直接兼容 prefab create 输入。全部离线结果初始为 reference-only，实际重建验证后才能提升状态。</li></ul>
+<h3>13.2 批次完整性与证据</h3>
+<p>report.json 分别记录扫描数、选取数、包含依赖的导出数和失败详情。部分失败返回非零退出码，manifest.failed 标记失败数，入库器拒绝将失败批次静默当作成功；应修复依赖或重新选取完整子集。</p>
+<p>SV UI当前实扫2,833个预制。累计登录奖励项离线导出含15个预制，校验及真实入库成功，重复导入新增0版。前20个文件的试跑有10个模型变体缺失同一来源GUID，另有35个含依赖导出结果；该试跑不等于全库导入。11项C#断言与8项Node/数据库测试通过，源资产只读。</p>
+<p>下一步：补充结构覆盖适配、当前Unity重建映射、视觉资源库；再处理全库缺失依赖和分类。当前尚未批量导入全部SV预制。</p></section>
+<footer class="footer">GameAI · 实际实现范围与限制见第12、13章，其余阶段仍为开发约定。</footer>
+</main>
+<section id="visual-evidence-implementation"><h2>视觉依据提取与入库（2026-10-13）</h2>
+<p>流程固定为：原始预制提取 → 白模重建 → 读取原始视觉依据 → 生成或适配最终资源 → 填充预制 → 视觉验收。白模布局与视觉证据分开保存，原始项目只读，不携带自定义业务脚本。</p>
+<table><thead><tr><th>信息</th><th>当前保存内容</th></tr></thead><tbody>
+<tr><td>贴图与字体</td><td>源二进制、SHA256、导入参数；PNG 尺寸；Sprite 切片、九宫格边界、Pivot、PPU 等按原始 importer 保存。可选字体包资产需要专用适配。</td></tr>
+<tr><td>节点映射</td><td>节点 ID、组件 ID、属性路径、资源 ID、子资源 fileID；保留按钮状态图、图片、材质、字体引用。</td></tr>
+<tr><td>动画与特效</td><td>AnimationClip 序列化曲线及设置、Animator 控制器、粒子系统和渲染器参数、依赖纹理与材质；排除脚本事件和业务回调。</td></tr>
+<tr><td>Shader</td><td>源指纹、可识别渲染状态和实现线索；不保存源代码用于直接执行。线索不是完整算法，标记 analysis-required，未来需分析采样公式和目标渲染管线。</td></tr>
+</tbody></table>
+<p>导出增加 visual/*.json 节点绑定，以及 manifest.visualResources 资源图和 blobs/ 内容寻址文件。数据库 visual_blobs 保存二进制；visual_resources 保存按预制版本锁定的资源图，可按 kind 查询 texture / animation / effect；visual_bindings 保存节点映射。依赖 ID 在同一 version_id 内解析，允许控制器资源循环引用。视觉内容也参与预制版本指纹。导入校验路径、二进制哈希、节点和依赖闭包，同一批重复导入不生成新版本。</p>
+<p>已验证 SV 累计登录奖励样本及引用共 15 个预制，54 张贴图、7 份动画、7 份动画控制器入库。不是全量 SV 导入。缺失 GUID、模型和可选包资产保留明确限制；未完成源界面截图、像素一致性验证或最终视觉自动装配，不标记为完整视觉复原。</p></section>
+</body>
+</html>

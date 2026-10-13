@@ -1,0 +1,212 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "UI template layout snapshot 0.1 (not a prefab-create input)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "resources",
+    "prefab"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": "ui-template/1"
+    },
+    "resources": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": [
+          "kind",
+          "id",
+          "version"
+        ],
+        "properties": {
+          "kind": {
+            "const": "prefab"
+          },
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "version": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "prefab": {
+      "type": "object",
+      "required": [
+        "name",
+        "rootNodeId",
+        "nodes"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "rootNodeId": {
+          "type": "string"
+        },
+        "nodes": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": [
+              "id",
+              "name",
+              "parentId",
+              "siblingIndex",
+              "active",
+              "kind",
+              "rect",
+              "components"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "name": {
+                "type": "string"
+              },
+              "parentId": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "siblingIndex": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "active": {
+                "type": "boolean"
+              },
+              "kind": {
+                "enum": [
+                  "Node",
+                  "PrefabInstance"
+                ]
+              },
+              "rect": {
+                "anyOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "type": "object",
+                    "required": [
+                      "anchorMin",
+                      "anchorMax",
+                      "pivot",
+                      "anchoredPosition",
+                      "sizeDelta"
+                    ],
+                    "properties": {
+                      "anchorMin": {
+                        "type": "array",
+                        "items": {
+                          "type": "number"
+                        },
+                        "minItems": 2,
+                        "maxItems": 2
+                      },
+                      "anchorMax": {
+                        "type": "array",
+                        "items": {
+                          "type": "number"
+                        },
+                        "minItems": 2,
+                        "maxItems": 2
+                      },
+                      "pivot": {
+                        "type": "array",
+                        "items": {
+                          "type": "number"
+                        },
+                        "minItems": 2,
+                        "maxItems": 2
+                      },
+                      "anchoredPosition": {
+                        "type": "array",
+                        "items": {
+                          "type": "number"
+                        },
+                        "minItems": 2,
+                        "maxItems": 2
+                      },
+                      "sizeDelta": {
+                        "type": "array",
+                        "items": {
+                          "type": "number"
+                        },
+                        "minItems": 2,
+                        "maxItems": 2
+                      }
+                    }
+                  }
+                ]
+              },
+              "components": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "id",
+                    "type",
+                    "properties"
+                  ],
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "enum": [
+                        "TMPro.TMP_Dropdown",
+                        "TMPro.TMP_InputField",
+                        "TMPro.TextMeshProUGUI",
+                        "UnityEngine.Canvas",
+                        "UnityEngine.CanvasGroup",
+                        "UnityEngine.CanvasRenderer",
+                        "UnityEngine.UI.AspectRatioFitter",
+                        "UnityEngine.UI.Button",
+                        "UnityEngine.UI.CanvasScaler",
+                        "UnityEngine.UI.ContentSizeFitter",
+                        "UnityEngine.UI.Dropdown",
+                        "UnityEngine.UI.GraphicRaycaster",
+                        "UnityEngine.UI.GridLayoutGroup",
+                        "UnityEngine.UI.HorizontalLayoutGroup",
+                        "UnityEngine.UI.Image",
+                        "UnityEngine.UI.InputField",
+                        "UnityEngine.UI.LayoutElement",
+                        "UnityEngine.UI.Mask",
+                        "UnityEngine.UI.RawImage",
+                        "UnityEngine.UI.RectMask2D",
+                        "UnityEngine.UI.ScrollRect",
+                        "UnityEngine.UI.Scrollbar",
+                        "UnityEngine.UI.Slider",
+                        "UnityEngine.UI.Text",
+                        "UnityEngine.UI.Toggle",
+                        "UnityEngine.UI.ToggleGroup",
+                        "UnityEngine.UI.VerticalLayoutGroup"
+                      ]
+                    },
+                    "properties": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "$comment": "Graph uniqueness, cycles, reference closure, callback exclusion, grades and export path containment are enforced by library.js."
+}
