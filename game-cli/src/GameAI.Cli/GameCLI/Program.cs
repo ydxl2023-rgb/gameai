@@ -24,7 +24,8 @@ namespace GameCLI
                 new DevelopmentPlugin(),
                 new GameCLI.Plugins.Prefab.PrefabPlugin(),
                 new QAPlugin(),
-                new GameCLI.Plugins.UiLibrary.UiLibraryPlugin()
+                new GameCLI.Plugins.UiLibrary.UiLibraryPlugin(),
+                new GameCLI.Plugins.UiLibrary.AssetLibraryPlugin()
             };
             PluginHost host = new(plugins, new PluginSettingsStore());
             return host.RunAsync(args);

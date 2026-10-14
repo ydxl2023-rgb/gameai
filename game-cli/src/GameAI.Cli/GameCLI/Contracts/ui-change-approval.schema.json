@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Exact UI change approval; authorization evidence is checked by host",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "sourceSha256",
+    "outputPrefab",
+    "authorizationReference",
+    "changes"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schemaVersion": {
+      "const": "ui-change-approval/1"
+    },
+    "sourceSha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "outputPrefab": {
+      "type": "string",
+      "pattern": "^Assets/.+\\.prefab$"
+    },
+    "authorizationReference": {
+      "type": "string",
+      "minLength": 1
+    },
+    "changes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "path",
+          "beforeExists",
+          "before",
+          "afterExists",
+          "after"
+        ],
+        "properties": {
+          "path": {
+            "type": "string",
+            "pattern": "^/"
+          },
+          "beforeExists": {
+            "type": "boolean"
+          },
+          "before": {},
+          "afterExists": {
+            "type": "boolean"
+          },
+          "after": {}
+        }
+      }
+    }
+  }
+}

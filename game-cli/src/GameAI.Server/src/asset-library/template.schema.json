@@ -1,0 +1,277 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "UI asset library template version 2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "metadata",
+    "references",
+    "hierarchy",
+    "bindings",
+    "environment",
+    "diagnostics",
+    "visualProfile"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": "ui-template/2"
+    },
+    "metadata": {
+      "type": "object",
+      "required": [
+        "templateId",
+        "name",
+        "sourceGuid",
+        "sourceRevision"
+      ]
+    },
+    "references": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "prefabs",
+        "resources"
+      ],
+      "properties": {
+        "prefabs": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "refId",
+              "templateVersionId"
+            ],
+            "properties": {
+              "refId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "templateVersionId": {
+                "type": "string",
+                "format": "uuid"
+              }
+            }
+          }
+        },
+        "resources": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "refId",
+              "resourceVersionId"
+            ],
+            "properties": {
+              "refId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "resourceVersionId": {
+                "type": "string",
+                "format": "uuid"
+              }
+            }
+          }
+        }
+      }
+    },
+    "hierarchy": {
+      "type": "object",
+      "required": [
+        "name",
+        "rootNodeId",
+        "nodes"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "rootNodeId": {
+          "type": "string"
+        },
+        "nodes": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": [
+              "id",
+              "name",
+              "parentId",
+              "siblingIndex",
+              "active",
+              "kind",
+              "rect",
+              "components"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "name": {
+                "type": "string"
+              },
+              "parentId": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "siblingIndex": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "active": {
+                "type": "boolean"
+              },
+              "kind": {
+                "enum": [
+                  "Node",
+                  "PrefabInstance"
+                ]
+              },
+              "rect": {
+                "anyOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "type": "object",
+                    "required": [
+                      "anchorMin",
+                      "anchorMax",
+                      "pivot",
+                      "anchoredPosition",
+                      "sizeDelta"
+                    ],
+                    "properties": {
+                      "anchorMin": {
+                        "type": "array",
+                        "items": {
+                          "type": "number"
+                        },
+                        "minItems": 2,
+                        "maxItems": 2
+                      },
+                      "anchorMax": {
+                        "type": "array",
+                        "items": {
+                          "type": "number"
+                        },
+                        "minItems": 2,
+                        "maxItems": 2
+                      },
+                      "pivot": {
+                        "type": "array",
+                        "items": {
+                          "type": "number"
+                        },
+                        "minItems": 2,
+                        "maxItems": 2
+                      },
+                      "anchoredPosition": {
+                        "type": "array",
+                        "items": {
+                          "type": "number"
+                        },
+                        "minItems": 2,
+                        "maxItems": 2
+                      },
+                      "sizeDelta": {
+                        "type": "array",
+                        "items": {
+                          "type": "number"
+                        },
+                        "minItems": 2,
+                        "maxItems": 2
+                      }
+                    }
+                  }
+                ]
+              },
+              "components": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "id",
+                    "type",
+                    "properties"
+                  ],
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "enum": [
+                        "TMPro.TMP_Dropdown",
+                        "TMPro.TMP_InputField",
+                        "TMPro.TextMeshProUGUI",
+                        "UnityEngine.Canvas",
+                        "UnityEngine.CanvasGroup",
+                        "UnityEngine.CanvasRenderer",
+                        "UnityEngine.UI.AspectRatioFitter",
+                        "UnityEngine.UI.Button",
+                        "UnityEngine.UI.CanvasScaler",
+                        "UnityEngine.UI.ContentSizeFitter",
+                        "UnityEngine.UI.Dropdown",
+                        "UnityEngine.UI.GraphicRaycaster",
+                        "UnityEngine.UI.GridLayoutGroup",
+                        "UnityEngine.UI.HorizontalLayoutGroup",
+                        "UnityEngine.UI.Image",
+                        "UnityEngine.UI.InputField",
+                        "UnityEngine.UI.LayoutElement",
+                        "UnityEngine.UI.Mask",
+                        "UnityEngine.UI.RawImage",
+                        "UnityEngine.UI.RectMask2D",
+                        "UnityEngine.UI.ScrollRect",
+                        "UnityEngine.UI.Scrollbar",
+                        "UnityEngine.UI.Slider",
+                        "UnityEngine.UI.Text",
+                        "UnityEngine.UI.Toggle",
+                        "UnityEngine.UI.ToggleGroup",
+                        "UnityEngine.UI.VerticalLayoutGroup"
+                      ]
+                    },
+                    "properties": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "bindings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "nodeId",
+          "componentId"
+        ]
+      }
+    },
+    "environment": {
+      "type": "object"
+    },
+    "diagnostics": {
+      "type": "array"
+    },
+    "visualProfile": {
+      "type": "object",
+      "required": [
+        "status",
+        "evidence",
+        "observations"
+      ]
+    }
+  }
+}

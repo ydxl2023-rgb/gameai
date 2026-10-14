@@ -14,6 +14,11 @@ namespace GameCLI.Plugins.UiLibrary
         { get; } = Array.AsReadOnly(new ICommand[]
         {
             new OfflineExportCommand(),
+            new AssembleCommand(),
+            new ChangeGuardCommand(),
+            new ManifestCheckCommand(),
+            new RestoreCommand(),
+            new LibraryCommand("search"),
             new LibraryCommand("validate"),
             new LibraryCommand("import")
         });
@@ -24,7 +29,7 @@ namespace GameCLI.Plugins.UiLibrary
         public string Name
         { get; }
 
-        public string Description => "--input <export-directory> --server <GameAI.Server> [--dry-run]";
+        public string Description => Name == "search" ? "--query <description> --server <GameAI.Server> [--output <report-directory>]" : "--input <export-directory> --server <GameAI.Server> [--dry-run]";
 
         public LibraryCommand(string name)
         {
@@ -35,11 +40,18 @@ namespace GameCLI.Plugins.UiLibrary
         {
             string? input = null;
             string? server = null;
+            string? outputDirectory = null;
             bool dryRun = false;
             for (int index = 0; index < args.Length; index++)
             {
                 switch (args[index])
                 {
+                    case "--query" when Name == "search" && index + 1 < args.Length:
+                        input = args[++index];
+                        break;
+                    case "--output" when Name == "search" && index + 1 < args.Length:
+                        outputDirectory = Path.GetFullPath(args[++index]);
+                        break;
                     case "--input" when index + 1 < args.Length:
                         input = Path.GetFullPath(args[++index]);
                         break;
@@ -73,6 +85,10 @@ namespace GameCLI.Plugins.UiLibrary
             start.ArgumentList.Add(adapter);
             start.ArgumentList.Add(Name);
             start.ArgumentList.Add(input);
+            if (outputDirectory != null)
+            {
+                start.ArgumentList.Add(outputDirectory);
+            }
             if (dryRun)
             {
                 start.ArgumentList.Add("--dry-run");

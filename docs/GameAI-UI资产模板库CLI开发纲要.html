@@ -1,0 +1,451 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>GameAI-UI资产模板库CLI开发纲要</title><style>
+  :root {
+    --bg: #ffffff;
+    --fg: #1f2328;
+    --muted: #57606a;
+    --border: #d0d7de;
+    --code-bg: #f6f8fa;
+    --accent: #0969da;
+    --accent-soft: #ddf4ff;
+    --warn: #bf8700;
+    --warn-soft: #fff8c5;
+    --ok: #1a7f37;
+    --ok-soft: #dafbe1;
+    --err: #cf222e;
+    --err-soft: #ffebe9;
+    --rule-color: #b42318;
+  }
+
+  * { box-sizing: border-box; }
+
+  .rule, .rule * { color: var(--rule-color) !important; }
+  svg .rule, svg .rule * { fill: var(--rule-color); }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: #f6f8fa;
+    color: var(--fg);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+                 "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue",
+                 Arial, sans-serif;
+    font-size: 14px;
+    line-height: 1.7;
+  }
+
+  .page {
+    max-width: 900px;
+    margin: 0 auto;
+    background: var(--bg);
+    padding: 60px 70px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+  }
+
+  /* 封面 */
+  .cover {
+    text-align: center;
+    padding: 80px 0 60px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 48px;
+  }
+  .cover h1 {
+    font-size: 34px;
+    margin: 0 0 16px;
+    letter-spacing: 1px;
+  }
+  .cover .subtitle {
+    font-size: 16px;
+    color: var(--muted);
+    margin-bottom: 30px;
+  }
+  .cover .meta {
+    display: inline-block;
+    text-align: left;
+    font-size: 13px;
+    color: var(--muted);
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    padding: 12px 30px;
+  }
+  .cover .meta span { display: inline-block; min-width: 90px; color: var(--fg); }
+
+  /* 标题 */
+  h1 { font-size: 26px; margin: 48px 0 16px; padding-bottom: 8px; border-bottom: 2px solid var(--fg); }
+  h2 { font-size: 20px; margin: 36px 0 12px; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
+  h3 { font-size: 16px; margin: 24px 0 8px; color: #24292f; }
+  h4 { font-size: 14px; margin: 16px 0 6px; color: var(--muted); }
+
+  p { margin: 8px 0; }
+
+  /* 代码 */
+  code {
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    background: var(--code-bg);
+    padding: 2px 5px;
+    border-radius: 4px;
+    font-size: 12.5px;
+  }
+  pre {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 14px 16px;
+    overflow-x: auto;
+    font-size: 12px;
+    line-height: 1.6;
+    margin: 12px 0;
+  }
+  pre code {
+    background: none;
+    padding: 0;
+    font-size: 12px;
+  }
+
+  /* 表格 */
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 14px 0;
+    font-size: 13px;
+  }
+  th, td {
+    border: 1px solid var(--border);
+    padding: 8px 10px;
+    text-align: left;
+    vertical-align: top;
+  }
+  th { background: #f6f8fa; font-weight: 600; }
+  tr:nth-child(even) td { background: #fafbfc; }
+
+  /* 引用 */
+  blockquote {
+    border-left: 4px solid var(--accent);
+    margin: 12px 0;
+    padding: 6px 14px;
+    background: var(--accent-soft);
+    border-radius: 0 6px 6px 0;
+    color: #0a3069;
+    font-size: 13.5px;
+  }
+
+  /* 提示框 */
+  .callout {
+    padding: 12px 16px;
+    border-radius: 6px;
+    margin: 14px 0;
+    font-size: 13.5px;
+    border-left: 4px solid;
+  }
+  .callout.info { background: var(--accent-soft); border-color: var(--accent); }
+  .callout.warn { background: var(--warn-soft); border-color: var(--warn); }
+  .callout.ok   { background: var(--ok-soft);   border-color: var(--ok); }
+  .callout.err  { background: var(--err-soft);  border-color: var(--err); }
+
+  /* 列表 */
+  ul, ol { padding-left: 24px; margin: 8px 0; }
+  li { margin: 4px 0; }
+
+  /* 图表容器 */
+  .diagram {
+    margin: 24px 0;
+    padding: 20px;
+    background: #fafbfc;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow-x: auto;
+    text-align: center;
+  }
+  .diagram svg { max-width: 100%; height: auto; }
+  .diagram .caption {
+    font-size: 12.5px;
+    color: var(--muted);
+    margin-top: 10px;
+    font-style: italic;
+  }
+
+  /* 目录 */
+  .toc {
+    background: #fafbfc;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px 28px;
+    margin: 24px 0 40px;
+  }
+  .toc h3 { margin-top: 0; }
+  .toc ol { margin: 0; padding-left: 20px; }
+  .toc a { color: var(--accent); text-decoration: none; }
+  .toc a:hover { text-decoration: underline; }
+
+  /* 打印 */
+  @page {
+    size: A4;
+    margin: 18mm 16mm;
+  }
+  @media print {
+    html, body { background: #fff; font-size: 11.5pt; }
+    .page { box-shadow: none; padding: 0; max-width: 100%; }
+    h1 { page-break-before: auto; }
+    h2 { page-break-after: avoid; }
+    pre, table, .diagram { page-break-inside: avoid; }
+    .cover { page-break-after: always; }
+    .no-print { display: none; }
+    a { color: var(--fg); text-decoration: none; }
+  }
+
+  /* 页脚 */
+  .footer {
+    margin-top: 60px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border);
+    text-align: center;
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  .print-btn {
+    position: fixed;
+    right: 24px;
+    bottom: 24px;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 999px;
+    padding: 12px 22px;
+    font-size: 14px;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(9,105,218,0.35);
+    z-index: 100;
+  }
+  .print-btn:hover { background: #0860ca; }
+
+.page { overflow-wrap: anywhere; }
+@media screen and (max-width: 700px) { .page { padding: 24px 18px; } .cover { padding: 30px 0; } .cover h1 { font-size: 26px; } .toc { padding: 16px; } }
+.wire-gallery { display: flex; flex-direction: column; gap: 24px; }
+.wire-step { width: 100%; }
+
+.page{max-width:1100px}td,th{overflow-wrap:anywhere}pre{white-space:pre-wrap;overflow-wrap:anywhere}section{scroll-margin-top:20px}.print-action{position:fixed;right:18px;top:18px;padding:10px 18px}@media(max-width:700px){.page{padding:24px 16px}.cover{padding:36px 0}table{font-size:12px}.print-action{position:static}}@media print{.print-action{display:none}.page{max-width:none;padding:0;box-shadow:none}pre{white-space:pre-wrap}tr{break-inside:avoid}}
+</style></head><body><button class="print-action" onclick="window.print()">打印 / 保存 PDF</button><main class="page"><header class="cover"><h1>UI 资产模板库<br>CLI 开发纲要</h1><p class="subtitle">结构提取 · 视觉证据 · PostgreSQL · Qdrant · 生图与重建</p><div class="meta">版本：v1.1<br>日期：2026-10-13<br>状态：开发设计基线，待实施验证<br>范围：UnityCLI / GameCLI / 模板库服务</div></header><nav><h2>目录</h2><ol><li><a href="#scope">1．目标、范围与实施状态</a></li><li><a href="#architecture">2．模块职责与完整链路</a></li><li><a href="#database">3．正式 PostgreSQL 数据模型</a></li><li><a href="#package">4．导出包与三个统一契约</a></li><li><a href="#layout">5．结构与组件提取规范</a></li><li><a href="#visual">6．图片、风格与生图生产</a></li><li><a href="#motion">7．动画、特效与 Shader 契约</a></li><li><a href="#example">8．登录 UI 存储示例与引用闭合</a></li><li><a href="#import">9．提取、校验、入库与恢复</a></li><li><a href="#search">10．Qdrant 检索与 RAG</a></li><li><a href="#evidence">11．证据、质量与权限</a></li><li><a href="#roadmap">12．开发阶段与验收门槛</a></li><li><a href="#references">13．关联文档与实施约束</a></li><li><a href="#baseline-package">14．完整样例包与身份规则（v1.1 新增）</a></li><li><a href="#support-matrix">15．第一版组件支持矩阵（开发目标）</a></li><li><a href="#assembly-plan">16．版本化装配方案契约</a></li><li><a href="#acceptance-baseline">17．验收层级、检索测试与容量基线</a></li><li><a href="#implementation-20261013">18．首个装配适配器实现记录</a></li><li><a href="#formal-library-first">19．正式库首件接入</a> <a href="#authorized-change-guard">20．授权变更校验</a></li></ol></nav><section id="scope"><h1>1．目标、范围与实施状态</h1>
+<p>建立独立的 UI 布局与视觉资产模板库：用户提供来源项目目录，工具提取结构和视觉证据，正式 PostgreSQL 保存权威版本，Qdrant 建立可重建检索索引，Agent 选择模板、应用目标风格，再由 UnityCLI 创建与验证预制。</p>
+<p class="rule">本机数据作为验证样本保留；正式库重新设计，不直接把本机试验表结构视为正式标准。不清空本机数据，不启动 Track 流程，不因本文创建数据库、迁移或批量生成资产。</p>
+<p>本纲要是开发设计基线 v1.1，日期 2026-10-13；不是已实现能力清单。数据库物理 DDL、JSON Schema、命令参数与模型选型需要在实施阶段验证。</p>
+<table><thead><tr><th>项目</th><th>当前证据／边界</th></tr></thead><tbody><tr><td>本机验证</td><td>会话记录中 SV 扫描 2,833 个预制，成功入库 2,806 个，27 个未成功；已有离线提取和部分重建样例。这些是历史验证结果，本次未重新统计。</td></tr><tr><td>服务器</td><td>会话中已验证 PostgreSQL 16 与 Docker Qdrant 1.19.2 可运行；Qdrant 当时为空且仅本机监听。本次文档编写未重新检查服务器。</td></tr><tr><td>正式库与索引</td><td>本纲要中的独立库、统一资源版本、风格分析及索引同步均为待实施设计，不声称已完成。</td></tr><tr><td>与旧纲要关系</td><td>旧《GameAI-UI布局与视觉表现模板库开发纲要》保留为背景与原型记录；正式库职责、引用格式和版本规则以本文为新基线。</td></tr></tbody></table></section><section id="architecture"><h1>2．模块职责与完整链路</h1><table><thead><tr><th>模块</th><th>职责</th><th>禁止混入</th></tr></thead><tbody><tr><td>GameCLI 离线提取器（C#/.NET 8）</td><td>扫描外部目录、解析 Unity 序列化资产与 .meta、建立 GUID 映射、输出版本化数据包</td><td>不得要求每个源工程安装 UnityCLI；不得修改来源工程</td></tr><tr><td>UnityCLI（当前 Unity 宿主）</td><td>通过 Unity API 提取可验证信息、重建支持范围内的资产、渲染预览和验证</td><td>不保存数据库密码，不直接连接 PostgreSQL/Qdrant，不破坏用户场景</td></tr><tr><td>视觉分析适配层</td><td>依据真实截图和切图生成风格观察、置信度及证据引用</td><td>不得从文件名臆造材质和表现；不得将推断写成提取事实</td></tr><tr><td>GameAI.Server 导入服务（Node.js）</td><td>契约校验、去重、事务入库、版本与权限、索引待办</td><td>不以本地文件或 Qdrant 代替权威数据</td></tr><tr><td>索引工作进程</td><td>生成摘要与向量、重试、同步及重建 Qdrant 索引</td><td>不决定资产是否完整或允许生产</td></tr><tr><td>Agent 与生图适配</td><td>选择模板、应用项目目标风格、形成生成参数并调用生图；记录结果</td><td>不绕过校验，不承诺生成图片天然符合九宫格或每次完全相同</td></tr></tbody></table><pre>来源目录（只读） → 离线提取 → 数据包校验 → PostgreSQL 发布版本
+                                    ↓                 ↓
+                             Unity 重建验证       索引待办 → Qdrant
+需求 → 语义召回 + 结构筛选 → 读取完整模板 → 白模 → 生图与装配 → 验证与交付</pre>
+<p class="rule">原工程无法加载、自定义代码缺失或版本不兼容时，允许保留参考数据，但必须标明局限；不能称为完整等价还原。当前 Unity 项目不能替代所有源项目的运行环境。</p></section><section id="database"><h1>3．正式 PostgreSQL 数据模型</h1><p>建议独立数据库 <code>gameai_asset_library</code>，与 Track 数据库分开。以下表名为逻辑设计，实施阶段形成迁移脚本与索引。</p><table><thead><tr><th>Schema / 表</th><th>核心内容与约束</th></tr></thead><tbody><tr><td>catalog.sources</td><td>来源 ID、项目标识、Unity/包/管线版本、目录快照、使用权限；路径只是来源信息，不是全局主键</td></tr><tr><td>catalog.templates / template_versions</td><td>稳定 UUID；来源项目 + 源 GUID 唯一身份；不可变版本保存规范化 JSONB、schema_version、content_hash、提取器版本</td></tr><tr><td>catalog.categories / template_categories / tags / template_tags</td><td>功能分类多对多、结构标签；分类关联记录人工确认或自动推断、方法版本</td></tr><tr><td>catalog.template_dependencies</td><td>所属版本、依赖模板版本、实例节点 ID、实例覆盖；循环依赖阻止可重建发布并给出路径</td></tr><tr><td>catalog.template_bindings</td><td>所属版本、节点、组件、属性槽位、资源版本或内部组件目标；从契约投影生成</td></tr><tr><td>assets.resources / resource_versions</td><td>统一资源身份与不可变版本，kind 区分 texture/font/animation/animator/effect/material/shader-intent；参数 JSONB 使用分类型 schema</td></tr><tr><td>assets.blobs / resource_blob_bindings</td><td>SHA-256、字节数、MIME、bytea；版本到多个文件的用途映射，支持字体图集等复合资源</td></tr><tr><td>assets.resource_dependencies</td><td>资源版本 → 资源版本，含用途和槽位；合法互相引用作为依赖图处理，不强行要求所有资源为 DAG</td></tr><tr><td>assets.visual_profiles / visual_profile_versions / visual_profile_bindings</td><td>版本化源风格与目标风格、证据、置信度、审核状态；窗口和控件局部覆盖</td></tr><tr><td>assets.generation_specs / generation_runs / generation_outputs</td><td>生成约束、输入模板/风格版本、实际提示词、参考图、工具或模型标识、输出资源与检查结果</td></tr><tr><td>ingestion.import_batches / import_items</td><td>来源快照、幂等键、文件状态、错误码、检查点、提取诊断；支持部分成功的明确报告</td></tr><tr><td>validation.runs / findings / previews</td><td>模板版本、验证器与环境版本、测试结果；预览关联 blob 与采集条件</td></tr><tr><td>search.documents / embedding_profiles / index_jobs</td><td>摘要及哈希、生成方法、模型/维度/距离度量、索引代次、待办与重试；模型先确定后建集合</td></tr></tbody></table>
+<h2>3.1 物理约束</h2><ul class="rule">
+<li>身份、版本使用 UUID；同名 UI 可以来自不同项目，路径变更不产生新的逻辑身份。</li>
+<li>内容相同的重复导入不新增版本；唯一约束与事务处理并发，不能仅靠先查后写。</li>
+<li>哈希按规范化 JSON 计算，包含会影响重建的引用版本，不包含导入时间、预览和审核状态；数组中节点同级顺序与动画关键帧顺序不得随意排序。</li>
+<li>JSON 与关联表同一事务生成；JSON 为结构依据，关联表用于校验、查询和反向追踪，禁止两份人工修改。</li>
+<li>文件 bytea 按哈希去重；列表检索不查询二进制字段，导入限制单文件与批次大小，避免一次载入全部资源。</li>
+<li>来源缺失、删除采用失效或墓碑记录；仍被版本引用的文件不得直接物理删除。垃圾回收必须检查引用并有保留期。</li>
+</ul><p>第一版特效和动画共用资源表与版本机制，分别提供类型视图与严格参数契约；不重复建设独立的身份、版本和依赖系统。为来源 GUID、版本哈希、外键及高频筛选建立索引；JSONB GIN 只针对已确认查询场景。</p></section><section id="package"><h1>4．导出包与三个统一契约</h1><pre>export/
+  manifest.json
+  templates/&lt;local-id&gt;.json
+  resources/&lt;local-id&gt;.json
+  blobs/&lt;sha256&gt;
+  previews/&lt;sha256&gt;.png
+  diagnostics.json</pre>
+<p>三份契约为：模板契约（布局、层级、组件与绑定）、资源契约（文件及视觉参数）、证据与验证契约（来源、诊断、预览与验证）。数据包中的本地 ID 经导入映射为库内 UUID，离线提取不需要访问数据库。</p>
+<p class="rule">manifest 必须包含格式版本、提取器版本、来源快照、每文件相对路径/大小/哈希、条目与引用清单。不允许越界路径、符号链接绕过根目录、未登记文件或伪造哈希。非有限数值不可静默改成零，应记录不可表达值并按契约阻止重建。</p>
+<h2>4.1 模板顶层结构</h2><pre>{
+  &quot;schemaVersion&quot;: &quot;ui-template/2 (proposed)&quot;,
+  &quot;metadata&quot;: {
+    &quot;templateId&quot;: &quot;本地身份或UUID&quot;,
+    &quot;versionId&quot;: &quot;入库后版本UUID&quot;,
+    &quot;name&quot;: &quot;UILogin&quot;,
+    &quot;source&quot;: {}
+  },
+  &quot;references&quot;: {
+    &quot;prefabs&quot;: [],
+    &quot;resources&quot;: []
+  },
+  &quot;hierarchy&quot;: {
+    &quot;rootNodeId&quot;: &quot;loginRoot&quot;,
+    &quot;nodes&quot;: []
+  },
+  &quot;bindings&quot;: [],
+  &quot;behaviorSlots&quot;: [],
+  &quot;environment&quot;: {},
+  &quot;diagnostics&quot;: {}
+}</pre>
+<p class="rule">统一使用 references.prefabs 与 references.resources；动画、特效在 resources 中按 kind 区分，不再同时维护 animations/effects 两套引用列表。示例中的 proposed 是规划标识，正式发布时使用已注册 schema 字符串。</p>
+<h2>4.2 引用类型</h2><p>外部资源引用固定到 resourceVersionId；嵌套预制固定到 templateVersionId，并指定挂载节点及覆盖。内部组件引用使用 nodeId + componentId，不使用易变显示名称。动画和特效可复用槽位通过 bindings 映射到实例节点。</p>
+<p>质量结果与检索摘要独立存储，更新验证或分类不改变原始布局版本。生成目标要求也不写回源模板。</p></section><section id="layout"><h1>5．结构与组件提取规范</h1><table><thead><tr><th>领域</th><th>必须保留</th></tr></thead><tbody><tr><td>节点</td><td>稳定 ID、标准英文名称、父节点、siblingIndex、activeSelf、RectTransform 锚点/轴心/偏移/旋转/缩放</td></tr><tr><td>适配</td><td>Canvas 模式、CanvasScaler 参数、参考分辨率、安全区策略及证据来源；场景上下文未知时记录 unknown</td></tr><tr><td>动态布局</td><td>LayoutGroup、ContentSizeFitter、LayoutElement、优先级、间距、内边距、内容溢出与裁剪</td></tr><tr><td>滚动列表</td><td>ScrollRect → Viewport/RectMask2D → Content → 单元；方向、惯性、边界、滚动条绑定</td></tr><tr><td>交互组件</td><td>Button.targetGraphic、Selectable 导航、状态颜色/图片/动画触发器、ToggleGroup 等内部引用</td></tr><tr><td>文本</td><td>原始内容或动态槽位、字体、字号、对齐、换行/溢出、TMP 字体资产和回退依赖</td></tr><tr><td>嵌套与变体</td><td>基础预制版本、实例标识、属性覆盖、节点或组件增删；不可解析变体明确失败或参考状态</td></tr></tbody></table>
+<p class="rule">支持原生 Unity、UGUI 与明确适配的官方包组件；自定义脚本不复制、不执行、不保留可调用的原项目回调。组件白名单和版本适配表必须显式维护，未知 MonoBehaviour 不能按名称猜测为标准组件。</p>
+<p>生成的新预制采用 UI + 功能英文名，例如 UILogin.prefab；子节点使用 LoginBackground、Version、LoginButton 等名称。源资产原名称仍作为来源元数据保留；若规范化改名，必须同步引用且保留映射。</p>
+<p>按钮用途、列表数据槽位、动态文本和打开关闭约定归入 behaviorSlots。用户意图或推断的触发规则不能冒充原始脚本逻辑；实际业务仍由目标项目实现。</p></section><section id="visual"><h1>6．图片、风格与生图生产</h1><table><thead><tr><th>信息</th><th>规范</th></tr></thead><tbody><tr><td>图片事实</td><td>原文件、尺寸、实际透明像素、透明通道、Sprite 子图 rect、pivot、PPU、border（左下右上）、图集旋转/裁边、纹理导入信息</td></tr><tr><td>显示事实</td><td>Image 模式、节点颜色乘法、材质、Mask、绘制顺序、射线接收、按钮实际状态实现</td></tr><tr><td>源风格</td><td>色板、材质观感、轮廓、描边、装饰密度、光影、字体特征；引用实际证据并记录分析方法/置信度/人工确认</td></tr><tr><td>目标风格</td><td>项目单独配置且版本化；不可覆盖源风格；不是通用 Art 技能中的固定游戏风格</td></tr><tr><td>生成约束</td><td>像素尺寸、透明区域、九宫格边距、拉伸区、文字留白、状态要求和控件用途；数值来自事实或明确目标约定</td></tr><tr><td>生成追溯</td><td>模板/节点/资源/风格版本、实际提示词、参考图哈希、工具标识、时间、输出哈希、校验结果；不保存令牌</td></tr></tbody></table>
+<p class="rule">不得只保存“某某游戏风格”这一句话。不得伪造正常/按下/禁用图片：原按钮若使用 ColorTint，应记录 ColorTint；目标生产需要新状态时另建生成要求。文字原则上由独立文本节点绘制，既有源图中的烘焙文字如实记录。</p>
+<p>生图结果须检查实际尺寸、透明边缘、角部完整性、中心拉伸和状态一致性；按目标窗口装配验证。记录提示词可追溯，但不承诺图像生成逐像素可复现。原图、生成图和原始参数均应各有身份与版本。</p></section><section id="motion"><h1>7．动画、特效与 Shader 契约</h1><table><thead><tr><th>资源</th><th>参数与依赖</th></tr></thead><tbody><tr><td>AnimationClip</td><td>帧率、时长、循环/Wrap、浮点与对象引用轨道；时间/值/入出切线/权重/插值；目标组件属性槽位</td></tr><tr><td>Animator</td><td>控制器、参数、层、状态、混合树、过渡条件/时长/退出时间、Clip 引用；StateMachineBehaviour 作为排除项诊断</td></tr><tr><td>动画事件</td><td>保存非执行性的事件存在证据和意图；不得将原自定义函数回调直接恢复执行</td></tr><tr><td>ParticleSystem</td><td>主模块、发射和 Burst、形状、生命周期、速度、颜色/尺寸/旋转随时间曲线、纹理动画、拖尾、渲染、随机种子策略</td></tr><tr><td>特效空间与挂载</td><td>本地/世界模拟空间、父节点、局部变换、排序、遮罩/裁剪要求、停止/清理约定、子发射器和子特效引用</td></tr><tr><td>材质</td><td>纹理槽位、颜色/数值参数、渲染状态与 shader-intent 引用；不依赖原 Shader 可编译</td></tr><tr><td>Shader 实现描述</td><td>输入纹理用途、UV 操作、时间驱动、混合/深度/剔除/队列、遮罩要求、表现目标及可接受近似；分离事实与分析</td></tr></tbody></table>
+<p class="rule">未支持的模块、曲线或自定义行为必须产生诊断，不静默丢失。无效资产不可标记完整还原；提取成功、结构验证通过、视觉近似和原效果等价是不同结论。</p>
+<p>资源图可能存在控制器、材质或特效之间的互引，应两阶段分配 ID 再连接引用；预制递归嵌套等不合法循环另行拒绝。单纯对所有资源拓扑排序无法处理合法互引。</p></section><section id="example"><h1>8．登录 UI 存储示例与引用闭合</h1>
+<p>以下为人读设计样例，不是已提取资源或可直接提交的完整导入包；ID 使用可读别名，生产环境使用 UUID。样例包括窗口淡入和按钮光效，但不因此给所有登录窗口新增这两种效果。</p><pre>UILogin [RectTransform, CanvasGroup, Animator]
+└─ LoginBackground [Image]
+   ├─ TestIcon [Image]
+   ├─ Version [TMP_Text]
+   ├─ ServerSelectButton [Button]
+   │  ├─ Background [Image]
+   │  ├─ CurrentServer [TMP_Text]
+   │  └─ Arrow [TMP_Text]
+   └─ LoginButton [Button]
+      ├─ Background [Image]
+      ├─ GlowMount [RectTransform]
+      └─ Label [TMP_Text]</pre><pre>{
+  &quot;references&quot;: {
+    &quot;prefabs&quot;: [],
+    &quot;resources&quot;: [
+      {
+        &quot;refId&quot;: &quot;background&quot;,
+        &quot;kind&quot;: &quot;texture&quot;,
+        &quot;resourceVersionId&quot;: &quot;background-v1&quot;
+      },
+      {
+        &quot;refId&quot;: &quot;button&quot;,
+        &quot;kind&quot;: &quot;texture&quot;,
+        &quot;resourceVersionId&quot;: &quot;button-v1&quot;
+      },
+      {
+        &quot;refId&quot;: &quot;icon&quot;,
+        &quot;kind&quot;: &quot;texture&quot;,
+        &quot;resourceVersionId&quot;: &quot;icon-v1&quot;
+      },
+      {
+        &quot;refId&quot;: &quot;font&quot;,
+        &quot;kind&quot;: &quot;font&quot;,
+        &quot;resourceVersionId&quot;: &quot;font-v1&quot;
+      },
+      {
+        &quot;refId&quot;: &quot;serverField&quot;,
+        &quot;kind&quot;: &quot;texture&quot;,
+        &quot;resourceVersionId&quot;: &quot;server-field-v1&quot;
+      },
+      {
+        &quot;refId&quot;: &quot;controller&quot;,
+        &quot;kind&quot;: &quot;animator&quot;,
+        &quot;resourceVersionId&quot;: &quot;login-controller-v1&quot;
+      },
+      {
+        &quot;refId&quot;: &quot;glow&quot;,
+        &quot;kind&quot;: &quot;effect&quot;,
+        &quot;resourceVersionId&quot;: &quot;button-glow-v1&quot;
+      }
+    ]
+  },
+  &quot;bindings&quot;: [
+    {
+      &quot;nodeId&quot;: &quot;UILogin&quot;,
+      &quot;componentId&quot;: &quot;Animator&quot;,
+      &quot;property&quot;: &quot;controller&quot;,
+      &quot;refId&quot;: &quot;controller&quot;
+    },
+    {
+      &quot;nodeId&quot;: &quot;UILogin/LoginBackground&quot;,
+      &quot;componentId&quot;: &quot;Image&quot;,
+      &quot;property&quot;: &quot;sprite&quot;,
+      &quot;refId&quot;: &quot;background&quot;
+    },
+    {
+      &quot;nodeId&quot;: &quot;UILogin/LoginBackground/LoginButton/Background&quot;,
+      &quot;componentId&quot;: &quot;Image&quot;,
+      &quot;property&quot;: &quot;sprite&quot;,
+      &quot;refId&quot;: &quot;button&quot;
+    },
+    {
+      &quot;nodeId&quot;: &quot;UILogin/LoginBackground/LoginButton/GlowMount&quot;,
+      &quot;property&quot;: &quot;effectInstance&quot;,
+      &quot;refId&quot;: &quot;glow&quot;
+    }
+  ],
+  &quot;animationTargetBindings&quot;: [
+    {
+      &quot;refId&quot;: &quot;controller&quot;,
+      &quot;targetSlot&quot;: &quot;window&quot;,
+      &quot;nodeId&quot;: &quot;UILogin&quot;,
+      &quot;componentId&quot;: &quot;CanvasGroup&quot;
+    }
+  ]
+}</pre><p>此处用路径帮助阅读，正式 nodeId 使用稳定局部标识。为压缩篇幅只展示关键绑定；完整样例文件必须包含图标、字体、选服底图、内部 targetGraphic 及全部组件参数，不能把此节片段当作完整导入件。</p><table><thead><tr><th>资源版本</th><th>内容与固定依赖</th></tr></thead><tbody><tr><td>login-controller-v1</td><td>Open 状态引用 login-open-v1；触发时机须来自实际控制器或已确认需求</td></tr><tr><td>login-open-v1</td><td>0.3 秒非循环；window/CanvasGroup.alpha 从 0 到 1，线性插值；时间点 0 与 0.3，切线与线性标记一并保存</td></tr><tr><td>button-glow-v1</td><td>粒子模块/渲染参数 → glow-material-v1；定义挂载与模拟空间，未知参数不可声称完整</td></tr><tr><td>glow-material-v1</td><td>纹理槽位 → glow-texture-v1；实现语义 → glow-shader-intent-v1</td></tr><tr><td>glow-texture-v1</td><td>文件 SHA-256 → assets.blobs</td></tr><tr><td>glow-shader-intent-v1</td><td>描述透明金色光带、UV 随时间变化、混合方式和 UI 裁剪要求；目标管线实现待验证</td></tr></tbody></table></section><section id="import"><h1>9．提取、校验、入库与恢复</h1>
+<ol><li>扫描来源快照，记录文件清单、GUID、哈希、版本和使用权限；源目录只读。</li>
+<li>提取节点与资源图，识别嵌套、内部引用、自定义脚本和未知字段；逐文件记录结果。</li>
+<li>导出数据包并校验 JSON Schema、文件哈希、节点唯一性、父子关系、引用类型、参数范围和依赖闭合。</li>
+<li>将二进制按哈希暂存或去重，解析本地 ID 到稳定身份与版本；原文件与规范化参数哈希分开。</li>
+<li>以一个根模板及其依赖闭包为发布单位，在事务中写入版本、关联和索引待办。共享依赖按唯一约束复用。</li>
+<li>失败条目保留诊断；缺失依赖的模板可以保存为不可重建参考件，但不得混入完整模板结果；批次报告明确成功/参考/失败。</li>
+<li>重复执行依据快照、幂等键和检查点恢复；数据库提交后响应丢失时查询结果，不能无条件再建版本。</li></ol>
+<p class="rule">不跨 PostgreSQL 与 Qdrant 假装一个原子事务。数据库提交与 outbox 同事务；向量服务失败只影响索引状态，不撤销已保存模板。</p>
+<p>本机旧数据到新契约需要显式转换工具和验证报告；不能只改 schemaVersion。首轮用源目录重新提取对照样例，确认信息未丢失后再选择批量重提取或转换。</p></section><section id="search"><h1>10．Qdrant 检索与 RAG</h1>
+<p>第一版每个模板版本一个检索点，以功能、布局、控件、层级和已确认视觉特征构成摘要。完整 JSON、图片与参数保存在 PostgreSQL，查询命中后再读取。</p>
+<ul class="rule"><li>选择中英文适用的 embedding 模型后固定模型版本、维度、距离度量与摘要格式；不得将不同模型的向量混在同一向量空间。</li>
+<li>payload 包含模板/版本/来源 ID、分类、结构标签、完整性、验证等级与索引代次；筛选字段按查询需要建立索引。</li>
+<li>默认检索可用的当前版本，历史版本显式查询。新版本索引成功后再切换可见版本；搜索结果必须标记版本与索引新鲜度。</li>
+<li>index_jobs 支持幂等 upsert、删除墓碑、超时重试、错误记录和可重建；迟到旧任务不能覆盖新代次结果。</li>
+<li>未来图片向量只覆盖真实有预览的模板，记录覆盖率；不可用少量图片声称全库支持视觉检索。</li></ul>
+<p>查询路径：需求解析 → 分类/质量过滤 → 语义召回 → 层级、列表方向、控件等结构排序 → 获取证据与完整模板 → Agent 决策 → 重建预检。Qdrant 得分不是可重建或可生产的证明。</p>
+<p>模型与本地/云端运行方式、预览生成覆盖率、正式集合命名和性能预算仍是实施前决策项，不在本文虚构已选配置。</p></section><section id="evidence"><h1>11．证据、质量与权限</h1>
+<p>事实、分析、目标要求分别保存；每条分析附 evidenceRef、方法/模型版本、置信度和审核状态。分析输出不能替代真实图像与序列化参数。</p>
+<p>预览记录采集类型（原工程/重建）、Unity与管线、分辨率、Canvas 缩放、安全区、交互状态、动画时间点、随机种子及资源版本。缺少原工程截图时不得把重建图标为原始效果。</p>
+<table><thead><tr><th>质量维度</th><th>状态设计</th></tr></thead><tbody><tr><td>提取</td><td>完整／部分／失败</td></tr><tr><td>依赖</td><td>完整／缺失／不支持</td></tr><tr><td>布局重建</td><td>未测试／通过／失败</td></tr><tr><td>视觉重建</td><td>未测试／部分支持／通过／失败</td></tr><tr><td>人工审核</td><td>未审核／已确认／拒绝</td></tr></tbody></table>
+<p>保留 findings 明细：对象位置、错误码、严重性、影响、证据、修复建议。不把多个维度压成一个 success。</p>
+<p class="rule">资产使用权限记录参考、复制、再生成范围与来源凭据，未知不得当作允许。运行账号按导入、读取、索引和迁移分权；不使用数据库超级用户作为应用账号。密码和 API 密钥不得写入数据包、文档、Git 或日志。</p>
+<p>数据库与文件有备份、保留期和恢复演练；Qdrant 可以重建但仍可保存快照减少恢复时间。Track 清空操作不允许访问本库清理入口。</p></section><section id="roadmap"><h1>12．开发阶段与验收门槛</h1><table><thead><tr><th>阶段</th><th>实施产物</th><th>通过条件</th></tr></thead><tbody><tr><td>P0 契约固定</td><td>模板/资源/证据 JSON Schema；字段字典；动画特效样例；数据库逻辑关系</td><td>示例可机器校验，所有节点/组件/资源引用闭合；明确未知和不支持策略</td></tr><tr><td>P1 正式库与导入</td><td>独立数据库迁移、权限、版本/文件去重、导入事务与检查点</td><td>相同包重复和并发导入不重复建版本；损坏包拒绝；中断可恢复；不影响 Track</td></tr><tr><td>P2 提取与重建</td><td>离线提取器升级，UnityCLI 参数适配，预览/对比报告</td><td>登录窗口与含滚动列表/嵌套单元的窗口可往返，组件引用/九宫格/TMP 验证</td></tr><tr><td>P3 动画特效</td><td>动画曲线/状态机、粒子/材质依赖、Shader 意图及适配报告</td><td>指定时间点与状态验证；未知模块显式诊断；近似与等价区分</td></tr><tr><td>P4 风格与生图</td><td>源风格证据、项目风格覆盖、控件生成参数、实际生图与装配</td><td>目标尺寸/透明度/拉伸/文字区通过，生成物与目标节点可追溯</td></tr><tr><td>P5 Qdrant</td><td>选模评估、索引 outbox、结构排序、增量与重建</td><td>固定查询集人工评估；索引停机可补偿；模型切换不混用；可追溯版本</td></tr><tr><td>P6 全量生产化</td><td>SV 全量重提取/转换、多来源导入、资源限制、备份恢复</td><td>成功/参考/失败数量闭合；随机复验；批量内存受控；恢复演练通过</td></tr></tbody></table>
+<p>实施顺序先保证一个真实窗口正确，再扩展复杂组件、动画特效和大批量。服务器软件安装成功不代表 P1 完成；原型批量入库也不代表上述阶段已通过。</p>
+<h2>12.1 关键验收用例（均为待执行）</h2><table><thead><tr><th>用例</th><th>前置条件</th><th>操作</th><th>预期结果</th></tr></thead><tbody><tr><td>重复与并发</td><td>同一有效数据包</td><td>重复/并发导入</td><td>模板版本和文件不重复；每批次有独立处理记录</td></tr><tr><td>绑定校验</td><td>含未知节点或组件的包</td><td>导入</td><td>明确错误位置；不发布可重建版本</td></tr><tr><td>嵌套覆盖</td><td>含列表项实例且改了文本/尺寸</td><td>提取、入库、重建</td><td>基础版本与覆盖均保留，布局与组件引用正确</td></tr><tr><td>视觉重建</td><td>含九宫格和 TMP 的窗口</td><td>多尺寸重建并预览</td><td>边框不畸变、字体不缺字、裁剪和文本规则正确</td></tr><tr><td>动画特效</td><td>已支持模块和确定测试环境</td><td>指定时间点播放并采集</td><td>参数/轨道绑定正确；近似表现有明确结论</td></tr><tr><td>不支持脚本</td><td>依赖自定义组件的源预制</td><td>提取并尝试重建</td><td>不执行源脚本；产生能力缺口诊断</td></tr><tr><td>索引故障</td><td>Qdrant 不可用</td><td>导入后恢复索引服务</td><td>数据库数据不丢；待办重试后可检索，旧任务不覆盖新版本</td></tr><tr><td>故障恢复</td><td>中途停止批量导入</td><td>按检查点恢复</td><td>无伪成功、无重复发布；最终计数可核对</td></tr><tr><td>跨来源</td><td>两个项目同名登录窗口</td><td>导入并查询</td><td>两个候选独立存在，正确显示来源、版本和质量</td></tr></tbody></table></section><section id="references"><h1>13．关联文档与实施约束</h1>
+<p><a href="GameAI-UI布局与视觉表现模板库开发纲要.html">原 UI 布局与视觉表现模板库开发纲要</a>：原型背景与历史记录。</p>
+<p><a href="GameAI-UI离线重建测试报告.html">UI 离线重建测试报告</a>：已有样例证据，不能替代新契约验收。</p>
+<p>沿用 game-cli/src/GameAI.Cli 的 C#/.NET 8 与 game-cli/src/GameAI.Server 的 Node.js 服务；UnityCLI 使用独立 Unity 包。中间文件进入 game-cli/temp/，正式文档进入 docs/，不提交凭据和 Unity 缓存。</p>
+<p class="rule">本文只固定开发方向与验收依据，不创建流程任务、不迁移现有数据、不修改服务器配置。实施时先提交可校验契约和数据库迁移，再推进功能代码。</p></section><section id="baseline-package"><h1>14．完整样例包与身份规则（v1.1 新增）</h1>
+<p>先建设受控的合成样例 UILibraryReference.prefab：主窗口包含 ScrollRect、两个嵌套列表项实例、九宫格按钮和 TMP 文本；增加窗口淡入动画与一个使用贴图的简单粒子特效。它是测试夹具，不表示登录需求必须增加列表或特效。</p>
+<p>同时选一个真实来源窗口作回归样例；受控样例验证能力，真实样例验证提取适应性。正式完整包不得包含虚构哈希、未解析引用或省略的组件。第 8 节仍是人读示意，不充当完整包。</p>
+<table><thead><tr><th>交付件</th><th>内容与检查</th></tr></thead><tbody><tr><td>manifest 与 schemas</td><td>固定 schema 标识；每文件长度与 SHA-256；JSON Schema 校验必填、枚举、类型与有限数值；跨文件语义校验由独立校验器执行</td></tr><tr><td>templates / resources / blobs</td><td>根窗口、列表项版本、字体及 atlas、Sprite 子图、控制器/Clip、粒子、材质与 Shader 意图；全部引用闭合</td></tr><tr><td>expected / evidence</td><td>环境锁定文件、预期节点/组件/引用清单、计算后矩形、状态和时间点预览；来源与重建图明确区分</td></tr><tr><td>negative fixtures</td><td>缺失引用、错误哈希、非法层级循环、同源子资产冲突、未知组件、迟到索引任务；每个预期错误码明确</td></tr><tr><td>roundtrip report</td><td>提取→校验→入库→读取→装配→验证，每步记录输入输出版本与结果；支持重复和并发执行</td></tr></tbody></table>
+<h2>14.1 资产身份与字节去重分离</h2>
+<p class="rule">源对象身份为 sourceId + GUID + localFileId；localFileId 以十进制字符串传输，避免 JavaScript 大整数精度丢失。一个图集多个 Sprite、一个文件多个 Clip 必须有独立对象身份。同字节文件可以共享 blob，但不因此合并语义不同的资源身份。</p>
+<p>模板内节点/组件采用稳定局部 ID；实例 ID 与被引用模板身份分开。没有可靠源 ID 的对象使用显式合成标识和生成规则版本，不使用会随重命名变化的路径作为永久身份。</p>
+<p>保留 sourceSerializationVersion、extractorVersion、adapterVersion、Unity/包版本。未知字段逐项记录“无重建影响／可能影响／阻止重建”，不能统一忽略。</p></section><section id="support-matrix"><h1>15．第一版组件支持矩阵（开发目标）</h1>
+<p class="rule">以下是第一版目标，不是当前已支持声明。实现必须维护到字段级的机器可读适配表：源类型/版本、字段、提取方式、目标映射、默认值、未知值策略、测试用例。只有通过对应测试才能将能力标为已支持。</p>
+<table><thead><tr><th>组件／能力</th><th>提取目标</th><th>重建目标</th><th>边界</th></tr></thead><tbody><tr><td>RectTransform / CanvasGroup</td><td>完整支持范围内字段</td><td>精确参数与内部引用</td><td>保持 activeSelf、层级与顺序，不主动打开隐藏节点</td></tr><tr><td>Canvas / CanvasScaler</td><td>组件事实与场景上下文</td><td>固定渲染模式和测试环境</td><td>来源不存在 Canvas 时记录未知，不假设参考分辨率</td></tr><tr><td>Image / RawImage / Mask / RectMask2D</td><td>图片引用、裁剪、模式与颜色</td><td>Simple/Sliced 与样例裁剪</td><td>Filled/Tiled 等未验证模式报告不支持，不静默降级</td></tr><tr><td>Button / Selectable</td><td>目标图形、导航、颜色状态</td><td>ColorTint / SpriteSwap 首批</td><td>Animation 状态过渡归动画专项；业务回调排除</td></tr><tr><td>ScrollRect / LayoutGroup / LayoutElement / ContentSizeFitter</td><td>参数、内部连接和计算上下文</td><td>样例采用方向与布局组合</td><td>记录布局刷新后矩形；不把计算值覆盖源配置</td></tr><tr><td>Text / TMP</td><td>字体依赖、文本与排版参数</td><td>显式支持字体包版本</td><td>字体 atlas、fallback 闭合；动态字库缺字策略可验证</td></tr><tr><td>嵌套预制／变体</td><td>源版本及覆盖差异</td><td>样例覆盖的增删与属性覆写</td><td>未适配覆盖操作阻止可重建发布</td></tr><tr><td>AnimationClip / Animator</td><td>曲线、对象轨道与状态参数</td><td>淡入样例及明确支持字段</td><td>BlendTree、复杂层或脚本行为未测试时仅参考</td></tr><tr><td>ParticleSystem</td><td>模块原始证据与依赖</td><td>固定种子的简单粒子样例</td><td>复杂碰撞、子发射、拖尾等逐项扩展，未支持明确报告</td></tr><tr><td>自定义脚本 / 第三方 Tween / VFX Graph</td><td>存在性、类型与可读证据</td><td>第一版不执行、不自动还原</td><td>原始资源可作参考，不声称其行为可移植</td></tr><tr><td>自定义 Shader</td><td>参数事实与实现意图</td><td>目标管线显式替代适配</td><td>替代效果只能判视觉近似，不承诺原 Shader 等价</td></tr></tbody></table></section><section id="assembly-plan"><h1>16．版本化装配方案契约</h1>
+<p>新增 assembly plan，位于源模板和最终产物之间。Agent 提出方案，校验器决定可执行性，UnityCLI 依据固定方案执行。方案不可修改源模板版本。</p>
+<p>建议新增 assembly.plans、assembly.plan_versions、assembly.runs、assembly.outputs，作为独立装配职责域；run 引用固定 plan_version，产物引用新资源或模板版本。与生成任务通过 ID 关联，不保存重复源资源。</p>
+<pre>{
+  &quot;schemaVersion&quot;: &quot;ui-assembly-plan/1 (proposed)&quot;,
+  &quot;planId&quot;: &quot;readable-example&quot;,
+  &quot;inputs&quot;: {
+    &quot;templateVersionId&quot;: &quot;source-login-v1&quot;,
+    &quot;targetStyleVersionId&quot;: &quot;project-style-v1&quot;
+  },
+  &quot;environment&quot;: {
+    &quot;unityVersion&quot;: &quot;2022.3.62f2&quot;,
+    &quot;adapterVersion&quot;: &quot;待固定的适配器版本&quot;
+  },
+  &quot;output&quot;: {
+    &quot;prefabPath&quot;: &quot;Assets/Generated/UI/UILogin.prefab&quot;,
+    &quot;existingAssetPolicy&quot;: &quot;fail&quot;
+  },
+  &quot;operations&quot;: [
+    {
+      &quot;id&quot;: &quot;replace-button&quot;,
+      &quot;op&quot;: &quot;bindResource&quot;,
+      &quot;nodeId&quot;: &quot;loginButtonBackground&quot;,
+      &quot;componentId&quot;: &quot;buttonImage&quot;,
+      &quot;property&quot;: &quot;sprite&quot;,
+      &quot;resourceVersionId&quot;: &quot;generated-button-v1&quot;
+    }
+  ],
+  &quot;validationProfileId&quot;: &quot;login-validation-v1&quot;
+}</pre>
+<p>示例为结构说明，UUID、版本和输入文件必须在正式样例中真实存在。操作白名单包括创建/移除节点、重设父节点、设置支持字段、绑定资源、绑定组件与实例化嵌套模板。设置前校验节点、类型、操作顺序与被引用对象；无效删除或循环禁止执行。</p>
+<ul class="rule"><li>方案输入锁定模板、资源、风格、适配器与验证配置版本，保存规范化哈希。不得在执行时解析为任意“最新”。</li>
+<li>仍待生图的槽位不算可执行；生图完成并选定资源版本后生成新的执行方案版本。重试装配不能偷偷重新生图。</li>
+<li>dry-run 输出解析结果、变更列表、缺失项和兼容性，禁止写入正式资源或覆盖用户场景。</li>
+<li>正式执行在隔离环境制作、验证后发布；默认目标已存在则失败。需要替换时显式授权并保留备份/GUID 策略。</li>
+<li>Unity 文件系统与数据库不是一个事务。执行日志记录 prepared/built/validated/published/registered；中断后核对文件哈希与状态再恢复，不重复覆盖。</li>
+<li>相同方案和固定工具输入应生成等价结构、绑定与布局；Unity 序列化字节、粒子逐帧像素或生图像素不默认保证完全相同。</li></ul></section><section id="acceptance-baseline"><h1>17．验收层级、检索测试与容量基线</h1>
+<p>每个验证配置必须有版本与测量方法。以下布局阈值是第一版建议值，实施时在受控样例校准并冻结；不得为某次失败临时放宽。</p>
+<table><thead><tr><th>层级</th><th>通过标准</th></tr></thead><tbody><tr><td>契约完整</td><td>JSON Schema 与跨文件校验通过；需要的节点、组件和资源引用 100% 解析；每项不支持能力有诊断</td></tr><tr><td>结构一致</td><td>节点/组件类型、父子层级、Sibling 顺序、内部连接和资源版本符合预期；不存在未声明增删</td></tr><tr><td>布局一致</td><td>指定分辨率和安全区，布局刷新后采集矩形；建议最大位置/尺寸误差 1 像素；裁剪、列表方向、文本溢出和触控范围另行验证</td></tr><tr><td>视觉近似</td><td>固定环境/状态/时间点；图像差异作为辅助，文字、边框、透明度、遮挡、动态效果和人工审核分别记录，不用单一相似度自动通过</td></tr><tr><td>行为验证</td><td>仅验支持的 UI 行为：选中、按下、滚动、动画状态与结束结果；不代表原业务脚本已恢复</td></tr><tr><td>生产可用</td><td>目标工程适配、资源权限、必要人工审核通过；参考件不得凭索引命中自动升级为生产可用</td></tr></tbody></table>
+<h2>17.1 检索质量</h2><p>先建立至少 20 条人工标注查询，覆盖登录/弹窗/滚动列表、中文意图/英文控件、同名不同布局、缺失资源和无匹配结果。记录相关候选集，比较关键词/结构基线与向量检索的 Recall@5、排序质量、无匹配处理与延迟。样例不足时扩大测试集，不以少数演示认定全库效果。具体目标数值须在模型选型实验后冻结。</p>
+<h2>17.2 容量与备份</h2><p>先用 50 个代表性模板测量布局 JSON、原图、字体图集、预览及去重后总量；记录峰值内存、批次吞吐、数据库/WAL 增长、备份大小和恢复耗时。根据测量确定单文件上限、批次大小、并发度与备份窗口。正式导入前必须做一次可验证恢复，不以“已生成备份文件”代替恢复成功。</p>
+<h2>17.3 下一步交付顺序</h2><ol><li>真实引用闭合的受控样例包与三个契约 Schema。</li><li>字段级组件矩阵和支持范围校验器。</li><li>装配方案 Schema、dry-run、恢复与产物登记机制。</li><li>结构/布局/视觉验证配置与测试报告。</li><li>之后实施正式数据库与索引，最后全量导入。</li></ol>
+<p>本次 v1.1 更新固定这些交付要求，并未创建真实样例资产、可执行 Schema、数据库迁移或运行验收；所有新用例仍为待执行。</p></section><section id="implementation-20261013"><h1>18．首个装配适配器实现记录（2026-10-13）</h1><p>已实现 GameCLI ui-library assemble，将 ui-template/1 快照与受限布局方案编译成 ui-assembly/1 文件；UnityCLI prefab restore 可校验和读取该文件。此功能是新架构的最小垂直切片，不等于 P0–P6 完成，也没有切换数据库。</p><p>实际 ui-assembly-plan/1 采用 sourceSha256、outputPrefab、operations 四字段（含 schemaVersion）；仅支持 setRect 的 anchorMin、anchorMax、pivot、anchoredPosition、sizeDelta。第16节 proposed 是后续完整方案草案，不能直接传入命令；未来扩展必须使用明确格式升级。</p><p>源哈希按读入 UTF-8 文本计算（不含 BOM，保留换行），编译产物记录 sourceSha256、planSha256、snapshotSha256；它们用于内容校验，不是权限签名。需要现有 ui-template/1 快照，不自动改为 v2。</p><p>正式执行前应运行 Unity dry-run；输出文件必须全新，预制目标由方案固定，已有预制遵守 UnityCLI 显式 --replace 规则。此版本不包含数据库事务、发布恢复日志或目标管线锁定，因此不能声明已具备完整生产装配能力。</p><h2>验证结果</h2><ul><li>GameCLI Release 构建：0 警告、0 错误。</li><li>18 项离线提取及装配断言通过：确定性、源不变、源哈希、节点、操作和路径错误等。</li><li>Unity 编译后 dry-run 与正式 restore 成功；递归 inspect 确认 LoginButton 为 512×128。</li><li>篡改 snapshotJson 后 Unity 拒绝执行，错误为 Assembly content hash mismatch。</li></ul><p>样例是两个 RectTransform 的结构测试，不是完整登录 UI、美术交付或动画特效样例。真实完整包、字段级支持矩阵、资源绑定和新库 Schema 仍待实施。</p><h2>代码和样例</h2><p>GameCLI/Services/UiLibrary/AssemblyPlanCompiler.cs；GameCLI/Plugins/UiLibrary/AssembleCommand.cs；GameCLI/Contracts/ui-assembly-plan.schema.json；Tests/Fixtures/UiAssembly。Unity 包中 Editor/Services/UnityCliAssemblyInput.cs；现有 restore 接口消费新封装。</p><h2>调用顺序（从仓库根执行）</h2><pre>dotnet game-cli/src/GameAI.Cli/GameCLI/bin/Release/net8.0/GameCLI.dll ui-library assemble --snapshot game-cli/src/GameAI.Cli/Tests/Fixtures/UiAssembly/snapshot.json --plan game-cli/src/GameAI.Cli/Tests/Fixtures/UiAssembly/plan.json --output game-cli/temp/new-assembly.json
+app/client/Library/UnityCLI/UnityCLI.exe --project app/client --format json prefab restore --json G:/gameai/ugame-ai-cli/game-cli/temp/new-assembly.json --prefab Assets/GameAI/Tests/UiAssembly/UILoginAssembly.prefab --dry-run</pre><p>示例目标已经存在；重复验证需显式 --replace，并仍先 dry-run。正式创建才省略 --dry-run。上方绝对路径为本机示例，实际按工程位置调整。</p></section><section id="formal-library-first"><h1>19．正式库首件接入（2026-10-13）</h1><p>新增 asset-library 命令组，通过 GameAI.Server 专用适配器访问独立 gameai_asset_library 数据库；禁止回退到 Track 连接。首次只接收明确指定的根 GUID 及其依赖闭包，不隐式上传整个导出目录。</p><h2>19.1 实现入口</h2><ul><li>asset-library migrate --server &lt;服务目录&gt;：专用库建表，迁移校验和防止已应用 SQL 被重写。</li><li>asset-library upload --server &lt;服务目录&gt; &lt;导出目录&gt; &lt;根GUID&gt;：验证现有 ui-export/1 数据包，显式转换为 ui-template/2，保留原始布局与视觉证据。</li><li>asset-library index-init --server &lt;服务目录&gt;：读取实际本地模型 digest 和维度，创建独立索引代次。</li><li>asset-library index --server &lt;服务目录&gt; &lt;profileId&gt;：执行待索引任务，失败可重试，成功 upsert 后回写数据库。</li><li>asset-library search --server &lt;服务目录&gt; &lt;profileId&gt; &lt;查询文本&gt;：查询真实向量并回读 PostgreSQL。</li><li>asset-library report --server &lt;服务目录&gt; &lt;版本UUID&gt; &lt;空输出目录&gt;：从服务器生成可读层级、原图、资源参数和诊断报告。</li></ul><h2>19.2 配置与连接</h2><p>凭据在服务目录被 Git 忽略的 .env.asset-library 中，字段为 ASSET_DATABASE_URL、ASSET_QDRANT_URL、ASSET_QDRANT_KEY、ASSET_OLLAMA_URL、ASSET_EMBEDDING_MODEL。不得复制真实值到文档。当前采用 SSH 回环转发；game-cli/tools/connect-asset-library.ps1 提供连接入口，转发端口为 15439、16339、11439。隧道关闭后需重新连接才能执行远程命令，静态验收报告不受影响。</p><h2>19.3 明确限制</h2><p>第一版不是纲要全部功能完成。分类来自名称/结构启发式；风格标记 not_analyzed；动画/特效保存源证据但不代表可重建；当前只提供模板版本语义候选排序，未完成结构重排与固定检索评测集。资源参数按原资源图保留，复合资源子对象 fileId 在绑定中保存，尚未全部拆成独立子资源身份。</p><p>只索引当前首件及其依赖，暂不自动推广到复杂 UI 或全库。不同模型 digest 创建不同 profile；历史版本切换和删除墓碑仍需在批量生产前完成。资源版本暂采用闭包级哈希，正确固定依赖但可能因其他资源变化产生保守的新版本，后续优化细粒度去重。</p><p>源图片成功入库与完整视觉重建是不同验收。首件 LoginView 为 reference-only，含 132 个节点、37 项资源、28 张可查看源图片；必要依赖 QueueConfirmView 25 个节点。保持所有能力缺口可见，不以向量检索命中冒充完整生产。</p><h2>19.4 首件实测结果</h2><p>2026-10-13 已将 SV LoginView 及必要依赖 QueueConfirmView 上传至独立 PostgreSQL；数据库核对为 2 个模板、2 个版本、37 个资源版本。Qdrant 精确计数为 2。重复上传返回同一批次与版本，重复索引无待处理任务。</p><p>本地模型 qwen3-embedding:0.6b，1024 维，Cosine；profile 为 ui_b381414db6f170d7336f253c，模型 digest 为 ac6da0dfba84a81fdbfbaf330198c33cd77c4cdfc53e8bc50eb581914a15621d。模型运行镜像固定为 ollama/ollama@sha256:adca95a12c2b386a8f9a995e7fa0600e187e3323b5e5522f5a6c3b1ec73eff99，服务仅绑定服务器回环地址。</p><p>中文查询“登录界面，服务器选择和登录按钮”：LoginView 第一，分数 0.6865；QueueConfirmView 第二，分数 0.4105。样本只有两件，不能据此推断全库检索质量。20 项代码测试通过，1 项独立数据库测试跳过；远程首件上传、索引、回读与幂等检查另行实测通过。</p><p><a href="../deliveries/sv-login-formal-review/index.html">打开首件人工验收报告</a>。报告包括原图、节点树、源证据、诊断与检索结果。等待用户确认后再选择更复杂 UI，禁止自动扩大上传范围。</p></section><section id="authorized-change-guard"><h1>20．授权变更校验（2026-10-13）</h1><p>最终结果依据“原始模板＋用户授权变更”验收。换皮默认保留；明确要求允许增加、删除、布局和功能调整。以节点和组件 ID 比较字段，而非只比较数量。自定义脚本不迁移不等于删除入口。</p><h2>工具入口</h2><pre>GameCLI ui-library guard --baseline source.json --candidate candidate.json --output audit.json
+GameCLI ui-library guard --baseline source.json --candidate candidate.json --approval approval.json --output assembly.json
+UnityCLI --project app/client prefab restore --json assembly.json --prefab Assets/.../UIName.prefab --dry-run</pre><p>audit 只列差异，不能作为自动批准。approval 使用 ui-change-approval/1，固定源哈希、目标路径、真实指令来源和逐项 before/after。严格匹配后生成 ui-assembly/2；Unity 在贴图导入和预制写入前重新验证。正式创建省略 --dry-run，已有目标仍须显式 --replace。</p><h2>实测</h2><ul><li>24 项离线提取、装配和变更校验断言通过；明确新增、删除、改名通过，未授权状态和同数量节点替换拒绝。</li><li>Unity 编译和无变更封装 dry-run 通过；篡改 active 后即使重新计算哈希也被拒绝。</li><li>SV 原始登录与上一版精简候选的差异被拒绝，没有写入新的预制。</li></ul><h2>边界</h2><p>该校验确保结果与给定清单一致，不证明授权文本真实性；宿主仍必须核对真实用户指令。原始 restore/create 入口保留，无基线新建不强制使用。已有模板改造技能禁止降级入口绕过；Track 服务强制审批身份绑定、功能运行测试和所有入口统一门禁尚未接入。</p></section></main></body></html>

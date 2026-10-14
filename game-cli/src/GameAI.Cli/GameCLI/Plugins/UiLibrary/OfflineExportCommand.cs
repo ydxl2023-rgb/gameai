@@ -15,7 +15,7 @@ namespace GameCLI.Plugins.UiLibrary
             Dictionary<string, string> options = new(StringComparer.Ordinal);
             for (int index = 0; index < args.Length; index += 2)
             {
-                if (index + 1 >= args.Length || !new[] { "--input", "--output", "--source-key", "--limit" }.Contains(args[index]) || !options.TryAdd(args[index], args[index + 1]))
+                if (index + 1 >= args.Length || !new[] { "--input", "--output", "--source-key", "--limit", "--offset" }.Contains(args[index]) || !options.TryAdd(args[index], args[index + 1]))
                 {
                     throw new ArgumentException(Description);
                 }
@@ -30,7 +30,7 @@ namespace GameCLI.Plugins.UiLibrary
                 throw new ArgumentException("Positive limit and nonempty source key required.");
             }
             OfflinePrefabExporter exporter = new(options["--input"], options["--output"], options["--source-key"], cancellationToken);
-            System.Text.Json.Nodes.JsonObject report = exporter.Run(limit);
+            System.Text.Json.Nodes.JsonObject report = exporter.Run(limit, options.TryGetValue("--offset", out string? offset) ? Math.Max(0, int.Parse(offset)) : 0);
             Console.WriteLine(JsonSerializer.Serialize(report));
             return Task.FromResult(report["success"]!.GetValue<bool>() ? 0 : 2);
         }

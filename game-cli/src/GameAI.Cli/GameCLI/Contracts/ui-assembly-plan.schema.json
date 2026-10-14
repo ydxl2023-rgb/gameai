@@ -1,0 +1,72 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Bounded layout assembly plan v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "sourceSha256",
+    "outputPrefab",
+    "operations"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": "ui-assembly-plan/1"
+    },
+    "sourceSha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "outputPrefab": {
+      "type": "string",
+      "pattern": "^Assets/(?:[^/]+/)*UI[^/]*\\.prefab$"
+    },
+    "operations": {
+      "type": "array",
+      "maxItems": 2048,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "op",
+          "nodeId",
+          "field",
+          "value"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "op": {
+            "const": "setRect"
+          },
+          "nodeId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "field": {
+            "enum": [
+              "anchorMin",
+              "anchorMax",
+              "pivot",
+              "anchoredPosition",
+              "sizeDelta"
+            ]
+          },
+          "value": {
+            "type": "array",
+            "minItems": 2,
+            "maxItems": 2,
+            "items": {
+              "type": "number",
+              "minimum": -3.4028234663852886e+38,
+              "maximum": 3.4028234663852886e+38
+            }
+          }
+        }
+      }
+    }
+  }
+}

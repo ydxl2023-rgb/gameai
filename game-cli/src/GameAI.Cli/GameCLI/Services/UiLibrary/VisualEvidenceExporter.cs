@@ -16,7 +16,7 @@ namespace GameCLI.Services.UiLibrary
 
         public VisualEvidenceExporter(string project, string output, Dictionary<string, string> paths, CancellationToken cancellation, HashSet<string> scriptTypes)
         {
-            this.scriptTypes = scriptTypes;
+            this.scriptTypes = new HashSet<string>(scriptTypes) { "024d161225ddfa040a6eae59524a1995" };
             this.project = project;
             this.output = output;
             this.paths = paths;
@@ -158,9 +158,9 @@ namespace GameCLI.Services.UiLibrary
                 {
                     descriptor["importer"] = Sanitize(UnityYaml.ParseMetadata(File.ReadAllText(metadata))!);
                 }
-                if (new[] { ".png", ".jpg", ".jpeg", ".tga", ".psd", ".exr", ".tif", ".tiff", ".dds", ".ttf", ".otf" }.Contains(extension))
+                if (new[] { ".png", ".jpg", ".jpeg", ".tga", ".psd", ".exr", ".tif", ".tiff", ".dds", ".ttf", ".otf", ".ttc" }.Contains(extension))
                 {
-                    descriptor["kind"] = extension is ".ttf" or ".otf" ? "font" : "texture";
+                    descriptor["kind"] = extension is ".ttf" or ".otf" or ".ttc" ? "font" : "texture";
                     Directory.CreateDirectory(Path.Combine(output, "blobs"));
                     string relative = "blobs/" + hash + extension;
                     File.WriteAllBytes(Path.Combine(output, relative), bytes);

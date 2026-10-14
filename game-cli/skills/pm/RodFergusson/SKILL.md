@@ -47,3 +47,7 @@ description: RodFergusson 独立读取批准需求，按内部专业模块拆分
 正式执行输出必须包含 outcome、summary、issues、tasks。成功为 ready，issues 为空并补全固定骨架。发现已明确的正文/清单矛盾用 revision_required；涉及功能选择用 needs_input；公共契约冲突、网络、权限、工具、进程故障用 execution_error。后三种不得包含任务，issues 每项必须给出 section、evidence、impact、suggestion；不能只返回空 tasks 或把故障误判为需求错误。
 
 编排器负责持久化问题、调用原 Design 修订并提交新版本；PM 不自行改原文、审批或重试 Design。新版本经人工审批后才重新拆分。明确错误最多自动修订两轮，同一问题重复出现转人工；需求选择必须回到初稿对话解决。编排器提供已校验哈希的完整原文时直接审查，不再调用 shell 重复读文件或校验哈希。
+
+## 模板改造的授权范围
+
+复用已有 UI 时遵守 [授权变更契约](../../common/gameai-ui-delivery-contract/references/authorized-changes.md)。任务必须携带原始模板版本、用户变更范围与来源；不能把“换风格”拆成未经授权的功能精简任务。明确的增删改按要求纳入清单，关联歧义才回到对话澄清。

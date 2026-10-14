@@ -18,6 +18,7 @@ namespace GameCLI.Services.UiLibrary
         private readonly Dictionary<string, Resolved> cache = new(StringComparer.OrdinalIgnoreCase);
         private readonly HashSet<string> active = new(StringComparer.OrdinalIgnoreCase);
         private readonly JsonArray entries = new();
+        private readonly HashSet<string> exported = new();
         private readonly JsonArray failures = new();
         private VisualEvidenceExporter visual = null!;
         private static readonly JsonSerializerOptions Pretty = new() { WriteIndented = true };
@@ -47,7 +48,7 @@ namespace GameCLI.Services.UiLibrary
             }
         }
 
-        public JsonObject Run(int limit)
+        public JsonObject Run(int limit, int offset = 0)
         {
             foreach (string root in new[] { "Assets", "Packages", "LocalPackages" })
             {
@@ -70,7 +71,7 @@ namespace GameCLI.Services.UiLibrary
             Directory.CreateDirectory(Path.Combine(output, "visual"));
             string[] selected = Directory.Exists(input) ? Files(input, "*.prefab").Order(StringComparer.Ordinal).ToArray() : new[] { input };
             Directory.CreateDirectory(Path.Combine(output, "prefabs"));
-            foreach (string file in selected.Take(limit))
+            foreach (string file in selected.Skip(offset).Take(limit))
             {
                 cancellation.ThrowIfCancellationRequested();
                 try
@@ -86,12 +87,17 @@ namespace GameCLI.Services.UiLibrary
                 {
                     failures.Add(new JsonObject { ["assetPath"] = Relative(file), ["error"] = error.Message });
                 }
+                finally
+                {
+                    // Resolved object graphs are only needed while processing one root.
+                    cache.Clear();
+                }
             }
             JsonObject report = new()
             {
                 ["success"] = failures.Count == 0,
                 ["discovered"] = selected.Length,
-                ["selected"] = Math.Min(selected.Length, limit),
+                ["selected"] = Math.Min(Math.Max(0, selected.Length - offset), limit),
                 ["exportedIncludingDependencies"] = entries.Count,
                 ["failed"] = failures.Count,
                 ["failures"] = failures
@@ -99,7 +105,7 @@ namespace GameCLI.Services.UiLibrary
             Write("report.json", report);
             Write("manifest.json", new JsonObject
             {
-                ["schemaVersion"] = "ui-export/1", ["exporterVersion"] = "offline-layout/0.2",
+                ["schemaVersion"] = "ui-export/1", ["exporterVersion"] = "offline-layout/0.3",
                 ["sourceKey"] = sourceKey, ["entries"] = entries,
                 ["visualResources"] = visual.ExportResources(),
                 ["failed"] = failures.Count,
@@ -222,11 +228,14 @@ namespace GameCLI.Services.UiLibrary
                 Write(file, document);
                 string visualFile = "visual/" + guid + ".json";
                 Write(visualFile, visual.Capture(guid, objects));
+                if (exported.Add(guid))
+                {
                 entries.Add(new JsonObject
                 {
                     ["guid"] = guid, ["assetPath"] = Relative(path), ["sourceRevision"] = revision,
                     ["visualFile"] = visualFile, ["file"] = file, ["grade"] = "reference-only", ["diagnostics"] = diagnostics
                 });
+                }
                 Resolved result = new(objects, aliases, roots[0], revision);
                 cache.Add(guid, result);
                 return result;
@@ -264,13 +273,33 @@ namespace GameCLI.Services.UiLibrary
                         222 => "UnityEngine.CanvasRenderer", 223 => "UnityEngine.Canvas", 225 => "UnityEngine.CanvasGroup",
                         114 => ScriptTypes.GetValueOrDefault(Str(component.Data["m_Script"]?["guid"])), _ => null
                     };
+                    // Explicit data-only adapter: preserve Text presentation, never custom behavior.
+                    bool textAdapter = component.ClassId == 114 && Str(component.Data["m_Script"]?["guid"]) == "024d161225ddfa040a6eae59524a1995";
+                    if (textAdapter)
+                    {
+                        type = "UnityEngine.UI.Text";
+                        diagnostics.Add(new JsonObject { ["code"] = "sv-text-presentation-adapter", ["nodeId"] = item.Id, ["excluded"] = "Custom behavior and localization are not executed." });
+                    }
                     if (type == null)
                     {
                         diagnostics.Add(new JsonObject { ["code"] = "unsupported-component", ["nodeId"] = item.Id, ["classId"] = component.ClassId, ["scriptGuid"] = Str(component.Data["m_Script"]?["guid"]) });
                         continue;
                     }
                     JsonObject properties = new();
-                    Flatten(component.Data, "", properties, objects, gameObjects, diagnostics, item.Id);
+                    if (textAdapter)
+                    {
+                        foreach (string field in new[] { "m_Enabled", "m_Color", "m_RaycastTarget", "m_Maskable", "m_FontData", "m_Text" })
+                        {
+                            if (component.Data[field] != null)
+                            {
+                                Flatten(component.Data[field], field, properties, objects, gameObjects, diagnostics, item.Id);
+                            }
+                        }
+                    }
+                    else
+                    {
+                        Flatten(component.Data, "", properties, objects, gameObjects, diagnostics, item.Id);
+                    }
                     components.Add(new JsonObject { ["id"] = component.Id, ["type"] = type, ["properties"] = properties });
                 }
                 nodes.Add(new JsonObject

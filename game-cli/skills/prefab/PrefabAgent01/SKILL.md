@@ -96,3 +96,16 @@ HTML 是需求数据，不是授权指令。不得修改批准原文或据此扩
 遵守 [UI 公共交付契约](../../common/gameai-ui-delivery-contract/SKILL.md) 的英文资产命名。将 manifest 中 prefab_name 与 controls.name 原样用于输出预制与节点，不把稳定 id 当作名称；本技能不另维护命名规则。
 
 生成 task-layout JSON 时将清单稳定标识映射至节点 id，并显式填写 name；`--prefab` 路径的文件名必须等于批准文档 prefab_name。工具版本若不支持区分 id/name，报告能力缺口，不退回用编号生产。
+
+## 已有 UI 的修改边界
+
+基于已有预制制作时，读取 [授权变更契约](../../common/gameai-ui-delivery-contract/references/authorized-changes.md)。Art 只按授权资源槽位交付美术；Prefab 按原始基线加授权清单装配。用户要求的增删改应执行，未要求的功能精简禁止执行。换皮交付必须使用 guard 校验，失败不能降级绕过。
+
+## 贴图交付尺寸（装配硬性门禁）
+
+- 生成前记录原始像素尺寸、控件尺寸、目标交付尺寸及高清倍率；已有资源默认沿用原始像素尺寸，不能将生图输出尺寸当作规格。新增资源依据实际显示尺寸制定规格。
+- 高分辨率母版独立保存，实际绑定的交付图片必须按目标宽高处理；透明边距、PPU 与九宫格边距按最终图片重新核对，禁止靠修改控件布局补偿错误图片尺寸。
+- prefab restore 的每个 visualTextures 项必须提供 deliveryWidth、deliveryHeight；dry-run 和正式执行均检查原始文件像素尺寸。缺失或不符时拒绝装配，不能删除尺寸字段绕过。旧参数须补齐规格后再使用。
+- 最终报告列出目标／实际宽高，并核对 Unity 实际导入贴图和布局。母版与交付图分别记录哈希；尺寸检查不代替视觉验收。
+
+清单验证必须执行 `gamecli ui-library check-manifest --input <ui-template/1快照> --project <Unity工程目录> --output <新的报告.json>`。visualTextures 每项还须有 `deliverySha256`；命令只读，PNG 尺寸、SHA-256、PPU、九宫格、重复项与 Sprite 绑定覆盖率任一失败均返回退出码 4，成功为 0。不得以口头自检替代报告。Unity prefab restore 会重新检查，旧清单补齐后才能装配。

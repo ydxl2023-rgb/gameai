@@ -125,10 +125,11 @@ export const allowedComponents = new Set([
     'TMPro.TextMeshProUGUI', 'TMPro.TMP_InputField', 'TMPro.TMP_Dropdown'
 ]);
 
-export async function loadBatch(input)
+export async function loadBatch(input, manifestName = "manifest.json")
 {
+    requireValue(manifestName === path.basename(manifestName), "Manifest name must be a filename");
     const root = await realpath(input);
-    const manifest = JSON.parse(await readFile(path.join(root, 'manifest.json'), 'utf8'));
+    const manifest = JSON.parse(await readFile(path.join(root, manifestName), 'utf8'));
     requireValue(manifest.schemaVersion === 'ui-export/1' && typeof manifest.sourceKey === 'string' && manifest.sourceKey.trim(), 'Invalid manifest');
     // Offline exports declare completeness; never silently import a failed directory scan.
     requireValue(!manifest.failed || manifest.failed === 0, 'Export contains failures; inspect report.json and export a complete subset before import');

@@ -1,0 +1,17 @@
+{
+  "schemaVersion": "ui-assembly-plan/1",
+  "sourceSha256": "21c146e1ff9a822a7c1a77e22b9f839b671a428bb1d39181d38085773350e631",
+  "outputPrefab": "Assets/GameAI/Tests/UiAssembly/UILoginAssembly.prefab",
+  "operations": [
+    {
+      "id": "resize-button",
+      "op": "setRect",
+      "nodeId": "button",
+      "field": "sizeDelta",
+      "value": [
+        512,
+        128
+      ]
+    }
+  ]
+}
