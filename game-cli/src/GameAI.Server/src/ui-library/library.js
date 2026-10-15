@@ -191,6 +191,10 @@ export async function loadBatch(input, manifestName = "manifest.json")
                 closure.set(id, resource);
                 resource.dependencies.forEach(visitVisual);
             };
+            for (const id of visual.evidenceResourceIds ?? [])
+            {
+                visitVisual(id);
+            }
             for (const binding of [...visual.bindings, ...visual.components])
             {
                 requireValue(nodeIds.has(binding.nodeId), 'Unknown visual node');

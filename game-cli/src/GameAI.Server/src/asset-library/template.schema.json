@@ -272,6 +272,31 @@
         "evidence",
         "observations"
       ]
+    },
+    "sourceFeatures": {
+      "type": "object",
+      "required": [
+        "schemaVersion",
+        "extractionComplete",
+        "blockers"
+      ],
+      "properties": {
+        "schemaVersion": {
+          "const": "ui-source-features/1"
+        },
+        "extractionComplete": {
+          "type": "boolean"
+        },
+        "blockers": {
+          "type": "array"
+        }
+      }
+    },
+    "fontFallbackPolicy": {
+      "type": [
+        "object",
+        "null"
+      ]
     }
   }
 }

@@ -7,6 +7,17 @@ internal static class ManifestChecks
     internal static void Run(string project)
     {
         byte[] png = Convert.FromBase64String("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aUeEAAAAASUVORK5CYII=");
+        JsonObject features = PngFeatures.Analyze(png);
+        if (features["pixelAnalysisStatus"]?.ToString() != "complete" || (int?)features["width"] != 1 || (long?)features["visiblePixels"] != 1)
+        {
+            throw new InvalidOperationException("Pixel extraction failed: " + features.ToJsonString());
+        }
+        byte[] unsupported = (byte[])png.Clone();
+        unsupported[28] = 1;
+        if (PngFeatures.Analyze(unsupported)["pixelAnalysisStatus"]?.ToString() != "unsupported")
+        {
+            throw new InvalidOperationException("Unsupported PNG must not be certified complete.");
+        }
         File.WriteAllBytes(Path.Combine(project, "Assets", "Pixel.png"), png);
         JsonObject source = JsonNode.Parse("""
             {"schemaVersion":"ui-template/1","visualTextures":[{"path":"Assets/Pixel.png","deliveryWidth":1,"deliveryHeight":1,"settings":{"spriteMode":1,"spritePixelsToUnits":100,"spriteBorder":{"x":0,"y":0,"z":0,"w":0}}}],"prefab":{"nodes":[{"id":"n","components":[{"properties":{"m_Sprite":{"assetPath":"Assets/Pixel.png"},"m_Enabled":1}}]}]}}

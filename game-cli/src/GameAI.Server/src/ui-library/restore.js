@@ -33,6 +33,13 @@ export async function prepareRestore(pool, versionId, output, assetRoot)
         const resource = row?.descriptor;
         const sprite = binding.property === 'm_Sprite';
         const font = binding.property === 'm_FontData.m_Font';
+        if (font && (!resource?.blob || !row?.bytes) && visual.document.fontFallbackPolicy?.policy === 'target-default')
+        {
+            // UnityCLI initializes UI.Text with its built-in default font. Do not overwrite it with a missing reference.
+            delete component.properties[binding.property];
+            warnings.push({ code: 'font-default-substitution', nodeId: node.id, sourceResourceId: binding.resourceId, reason: visual.document.fontFallbackPolicy.reason });
+            continue;
+        }
         if ((!sprite && !font) || !resource?.blob || !row.bytes)
         {
             blockers.push({ code: 'unsupported-or-missing-visual-resource', binding });

@@ -105,7 +105,7 @@ namespace GameCLI.Services.UiLibrary
             Write("report.json", report);
             Write("manifest.json", new JsonObject
             {
-                ["schemaVersion"] = "ui-export/1", ["exporterVersion"] = "offline-layout/0.3",
+                ["schemaVersion"] = "ui-export/1", ["exporterVersion"] = "offline-layout/0.4",
                 ["sourceKey"] = sourceKey, ["entries"] = entries,
                 ["visualResources"] = visual.ExportResources(),
                 ["failed"] = failures.Count,

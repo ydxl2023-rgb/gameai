@@ -32,6 +32,7 @@ namespace GameCLI.Services.UiLibrary
         {
             JsonArray bindings = new();
             JsonArray components = new();
+            JsonArray inventory = new();
             Dictionary<string, string> nodes = objects.Values.Where(item => item.ClassId is 4 or 224)
                 .ToDictionary(item => item.Data["m_GameObject"]?["fileID"]?.ToString() ?? "", item => item.Id);
             foreach (UnityYaml.AssetObject item in objects.Values)
@@ -42,7 +43,21 @@ namespace GameCLI.Services.UiLibrary
                 {
                     continue;
                 }
-                // Custom MonoBehaviours are excluded. Only standard visual fields are observed on UGUI scripts.
+                bool supportedScript = item.ClassId == 114 && scriptTypes.Contains(item.Data["m_Script"]?["guid"]?.ToString() ?? "");
+                inventory.Add(new JsonObject
+                {
+                    ["nodeId"] = node,
+                    ["componentId"] = item.Id,
+                    ["classId"] = item.ClassId,
+                    ["status"] = item.ClassId != 114 || supportedScript ? "captured" : "excluded-custom-component",
+                    ["scriptGuid"] = item.ClassId == 114 ? item.Data["m_Script"]?["guid"]?.DeepClone() : null,
+                    ["requiresPrinciple"] = item.ClassId == 114 && (!supportedScript || item.Data["m_Script"]?["guid"]?.ToString() == "024d161225ddfa040a6eae59524a1995"),
+                    ["parameters"] = item.ClassId != 114 || supportedScript ? Sanitize(item.Data) : null,
+                    ["excludedFields"] = ExcludedFields(item.Data),
+                    ["sourceEvidence"] = item.Data.DeepClone(),
+                    ["executable"] = false
+                });
+                // Keep every source component accounted for, without executing custom behavior.
                 if (item.ClassId == 114 && scriptTypes.Contains(item.Data["m_Script"]?["guid"]?.ToString() ?? ""))
                 {
                     foreach (KeyValuePair<string, JsonNode?> property in item.Data.Where(pair => new[] { "m_Sprite", "m_Texture", "m_Material", "m_fontAsset", "m_sharedMaterial", "m_FontData", "m_SpriteState" }.Contains(pair.Key)))
@@ -65,18 +80,28 @@ namespace GameCLI.Services.UiLibrary
                             ["classId"] = item.ClassId,
                             ["parameters"] = safe,
                             ["dependencies"] = References(safe),
-                            ["limitations"] = new JsonArray("Requires target-Unity mapping; source business code, animation events and script callbacks are excluded.")
+                            ["limitations"] = new JsonArray("Requires target-Unity mapping; callback exclusions are recorded explicitly."),
+                            ["excludedFields"] = ExcludedFields(item.Data),
+                            ["sourceEvidence"] = item.Data.DeepClone(),
+                            ["executable"] = false
                         };
                         resources[id] = evidence;
                         components.Add(new JsonObject { ["nodeId"] = node, ["componentId"] = item.Id, ["resourceId"] = id });
                     }
                 }
             }
+            JsonArray evidenceResources = References(inventory);
+            foreach (JsonNode? reference in evidenceResources)
+            {
+                Collect(reference!.ToString());
+            }
             return new JsonObject
             {
+                ["evidenceResourceIds"] = evidenceResources,
                 ["schemaVersion"] = "ui-visual/1",
                 ["bindings"] = bindings,
                 ["components"] = components,
+                ["sourceComponentInventory"] = inventory,
                 ["purpose"] = "Source appearance evidence for post-whitebox generation, not a ready-to-run target asset package."
             };
         }
@@ -168,6 +193,7 @@ namespace GameCLI.Services.UiLibrary
                     if (extension == ".png" && bytes.Length >= 24 && bytes.Take(8).SequenceEqual(new byte[] { 137, 80, 78, 71, 13, 10, 26, 10 }))
                     {
                         descriptor["width"] = System.Buffers.Binary.BinaryPrimitives.ReadInt32BigEndian(bytes.AsSpan(16, 4));
+                        descriptor["textureFeatures"] = PngFeatures.Analyze(bytes);
                         descriptor["height"] = System.Buffers.Binary.BinaryPrimitives.ReadInt32BigEndian(bytes.AsSpan(20, 4));
                     }
                 }
@@ -185,13 +211,16 @@ namespace GameCLI.Services.UiLibrary
                     {
                         if (item.ClassId == 114)
                         {
+                            records.Add(new JsonObject { ["fileId"] = item.Id, ["classId"] = item.ClassId, ["sourceEvidence"] = item.Data.DeepClone(), ["executable"] = false, ["requiresAdapter"] = true });
                             descriptor["limitations"] = new JsonArray("Custom/optional-package serialized script data excluded; adapter required.");
                             descriptor["status"] = "adapter-required";
                             continue;
                         }
-                        records.Add(new JsonObject { ["fileId"] = item.Id, ["classId"] = item.ClassId, ["parameters"] = Sanitize(item.Data) });
+                        records.Add(new JsonObject { ["fileId"] = item.Id, ["classId"] = item.ClassId, ["parameters"] = Sanitize(item.Data), ["sourceEvidence"] = item.Data.DeepClone(), ["executable"] = false });
                     }
                     descriptor["records"] = records;
+                    descriptor["excludedFields"] = new JsonArray(UnityYaml.Parse(System.Text.Encoding.UTF8.GetString(bytes)).Values
+                        .SelectMany(item => ExcludedFields(item.Data).Select(field => field!.DeepClone())).ToArray());
                 }
                 else
                 {
@@ -225,6 +254,10 @@ namespace GameCLI.Services.UiLibrary
                     }
                     foreach (KeyValuePair<string, JsonNode?> pair in map)
                     {
+                        if (pair.Key == "m_Script")
+                        {
+                            continue;
+                        }
                         Walk(pair.Value);
                     }
                 }
@@ -238,6 +271,36 @@ namespace GameCLI.Services.UiLibrary
             }
             Walk(value);
             return new JsonArray(result.Order(StringComparer.Ordinal).Select(value => JsonValue.Create(value) as JsonNode).ToArray());
+        }
+
+        private static JsonArray ExcludedFields(JsonNode source)
+        {
+            JsonArray result = new();
+            void Visit(JsonNode? value, string path)
+            {
+                if (value is JsonObject map)
+                {
+                    foreach (KeyValuePair<string, JsonNode?> pair in map)
+                    {
+                        string next = path + "/" + pair.Key;
+                        if (new[] { "m_Events", "m_PersistentCalls", "m_StateMachineBehaviours" }.Contains(pair.Key)
+                            && pair.Value != null && pair.Value.ToJsonString() is not "[]" and not "{}")
+                        {
+                            result.Add(new JsonObject { ["path"] = next, ["reason"] = "Source callbacks require explicit adapter; not executable in target." });
+                        }
+                        Visit(pair.Value, next);
+                    }
+                }
+                else if (value is JsonArray array)
+                {
+                    for (int index = 0; index < array.Count; index++)
+                    {
+                        Visit(array[index], path + "/" + index);
+                    }
+                }
+            }
+            Visit(source, "");
+            return result;
         }
 
         private static JsonNode Sanitize(JsonNode source)

@@ -1,4 +1,5 @@
 import { hash, canonical } from '../ui-library/library.js';
+import { searchText } from './search-text.js';
 
 async function request(base, pathname, method = 'GET', body, key)
 {
@@ -58,7 +59,7 @@ async function discover(config)
         throw new Error('Configured local embedding model is not installed.');
     }
     const sample = await embed(config, '登录界面 login window');
-    const profile = { model: config.model, digest: model.digest, dimensions: sample.length, distance: 'Cosine', summaryVersion: 1, queryInstructionVersion: 1 };
+    const profile = { model: config.model, digest: model.digest, dimensions: sample.length, distance: 'Cosine', summaryVersion: 4, queryInstructionVersion: 1 };
     return { profile, id: `ui_${hash(profile).slice(0,24)}` };
 }
 
@@ -82,7 +83,9 @@ export async function initializeIndex(pool)
         await request(config.qdrant, `/collections/${id}/index`, 'PUT', { field_name: field, field_schema: 'keyword' }, config.key);
     }
     await pool.query('INSERT INTO search.embedding_profiles VALUES($1,$2) ON CONFLICT DO NOTHING', [id, profile]);
-    await pool.query('INSERT INTO search.index_jobs(version_id,profile_id) SELECT version_id,$1 FROM search.documents ON CONFLICT DO NOTHING', [id]);
+    await pool.query(`INSERT INTO search.index_jobs(version_id,profile_id)
+        SELECT id,$1 FROM (SELECT DISTINCT ON(template_id) id FROM catalog.template_versions ORDER BY template_id,created_at DESC,id DESC) latest
+        JOIN search.documents d ON d.version_id=latest.id ON CONFLICT DO NOTHING`, [id]);
     return { success: true, profileId: id, profile };
 }
 
@@ -109,6 +112,10 @@ async function checkedProfile(pool, id)
 export async function indexPending(pool, id)
 {
     const { config, profile } = await checkedProfile(pool, id);
+    if (![3, 4].includes(profile.summaryVersion))
+    {
+        throw new Error('Create a summaryVersion 3 profile before indexing source feature chunks.');
+    }
     const client = await pool.connect();
     const results = [];
     try
@@ -119,15 +126,33 @@ export async function indexPending(pool, id)
             FROM search.index_jobs j JOIN search.documents d USING(version_id)
             JOIN catalog.template_versions v ON v.id=j.version_id
             JOIN catalog.templates t ON t.id=v.template_id JOIN catalog.sources s ON s.id=t.source_id
-            WHERE j.profile_id=$1 AND j.status!='done' ORDER BY j.version_id LIMIT 100`, [id]);
+            WHERE j.profile_id=$1 AND j.status!='done'
+            AND ($2::int<>4 OR v.id=(SELECT newest.id FROM catalog.template_versions newest WHERE newest.template_id=v.template_id ORDER BY newest.created_at DESC,newest.id DESC LIMIT 1))
+            ORDER BY j.version_id LIMIT 100`, [id, profile.summaryVersion]);
         for (const row of rows)
         {
             try
             {
-                const vector = validateVector(await embed(config, row.summary), profile.dimensions);
-                await request(config.qdrant, `/collections/${id}/points?wait=true`, 'PUT', {
-                    points: [{ id: row.version_id, vector, payload: { versionId: row.version_id, name: row.name, source: row.source_key, category: row.metadata.category, readiness: row.metadata.readiness } }],
-                }, config.key);
+                const chunks = featureChunks(profile.summaryVersion === 4 ? searchText(row.name, '', row.metadata) : row.summary);
+                const pointIds = chunks.map((_, chunk) =>
+                {
+                    const hex = hash([row.version_id, chunk]).slice(0, 32);
+                    return `${hex.slice(0,8)}-${hex.slice(8,12)}-${hex.slice(12,16)}-${hex.slice(16,20)}-${hex.slice(20)}`;
+                });
+                const stored = await request(config.qdrant, `/collections/${id}/points`, 'POST', { ids: pointIds, with_payload: false, with_vector: false }, config.key);
+                const completed = new Set(stored.result.map(point => point.id));
+                for (let chunk = 0; chunk < chunks.length; chunk++)
+                {
+                    if (completed.has(pointIds[chunk]))
+                    {
+                        continue;
+                    }
+                    const vector = validateVector(await embed(config, `${row.name}\n${chunks[chunk]}`), profile.dimensions);
+                    const pointId = pointIds[chunk];
+                    await request(config.qdrant, `/collections/${id}/points?wait=true`, 'PUT', {
+                        points: [{ id: pointId, vector, payload: { versionId: row.version_id, chunk, chunkCount: chunks.length, name: row.name, source: row.source_key, category: row.metadata.category, readiness: row.metadata.readiness, extractionComplete: row.metadata.sourceFeatures?.extractionComplete ?? false, featureCounts: Object.fromEntries(Object.entries(row.metadata.sourceFeatures ?? {}).filter(([, value]) => Array.isArray(value)).map(([name, value]) => [name, value.length])) } }],
+                    }, config.key);
+                }
                 await client.query("UPDATE search.index_jobs SET status='done',attempts=attempts+1,last_error=NULL,updated_at=now() WHERE version_id=$1 AND profile_id=$2", [row.version_id, id]);
                 results.push({ versionId: row.version_id, status: 'done' });
             }
@@ -154,17 +179,37 @@ export async function search(pool, id, query)
     }
     const { config, profile } = await checkedProfile(pool, id);
     const vector = validateVector(await embed(config, query, true), profile.dimensions);
-    const result = await request(config.qdrant, `/collections/${id}/points/query`, 'POST', { query: vector, limit: 10, with_payload: true }, config.key);
+    const result = await request(config.qdrant, `/collections/${id}/points/query`, 'POST', { query: vector, limit: 50, with_payload: true }, config.key);
     const hits = [];
+    const seen = new Set();
     for (const point of result.result.points)
     {
+        const versionId = point.payload?.versionId ?? point.id;
+        if (seen.has(versionId))
+        {
+            continue;
+        }
+        seen.add(versionId);
         const { rows: [row] } = await pool.query(`SELECT v.id,v.quality,t.name,d.metadata FROM catalog.template_versions v
             JOIN catalog.templates t ON t.id=v.template_id JOIN search.documents d ON d.version_id=v.id
-            WHERE v.id=$1`, [point.id]);
+            WHERE v.id=$1 AND EXISTS(SELECT 1 FROM search.index_jobs j WHERE j.version_id=v.id AND j.profile_id=$2 AND j.status='done')
+            AND ($3::int<>4 OR v.id=(SELECT newest.id FROM catalog.template_versions newest WHERE newest.template_id=v.template_id ORDER BY newest.created_at DESC,newest.id DESC LIMIT 1))`, [versionId, id, profile.summaryVersion]);
         if (row)
         {
             hits.push({ ...row, score: point.score });
         }
     }
     return { success: true, profileId: id, query, hits, note: 'Similarity ranks candidates; it is not an acceptance score.' };
+}
+
+export function featureChunks(text)
+{
+    // Split by Unicode code points; no source text is dropped and no surrogate is cut.
+    const chars = Array.from(text);
+    const chunks = [];
+    for (let start = 0; start < chars.length; start += 1800)
+    {
+        chunks.push(chars.slice(start, start + 1800).join(''));
+    }
+    return chunks;
 }

@@ -1,3 +1,4 @@
+import { visualFeatures } from '../ui-library/features.js';
 import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import pg from 'pg';
@@ -49,8 +50,20 @@ export async function migrate(pool)
             await client.query(sql);
             await client.query('INSERT INTO ingestion.schema_migrations(version,checksum) VALUES(1,$1)', [checksum]);
         }
+        const featuresSql = await readFile(new URL('./features-v2.sql', import.meta.url), 'utf8');
+        const featuresChecksum = hash(featuresSql);
+        const { rows: [featuresPrior] } = await client.query('SELECT checksum FROM ingestion.schema_migrations WHERE version=2');
+        if (featuresPrior && featuresPrior.checksum !== featuresChecksum)
+        {
+            throw new Error('Applied feature migration changed.');
+        }
+        if (!featuresPrior)
+        {
+            await client.query(featuresSql);
+            await client.query('INSERT INTO ingestion.schema_migrations(version,checksum) VALUES(2,$1)', [featuresChecksum]);
+        }
         await client.query('COMMIT');
-        return { success: true, schema: 'asset-library/1' };
+        return { success: true, schema: 'asset-library/2' };
     }
     catch (error)
     {
@@ -118,7 +131,13 @@ export function convertEntry(entry, templateId, dependencies, resources)
         bindings: bindings.map(binding => ({ ...binding, refId: binding.resourceId })),
         environment: entry.metadata,
         diagnostics: entry.diagnostics,
-        visualProfile: { status: 'not_analyzed', evidence: 'source-resources', observations: null },
+        sourceFeatures: visualFeatures(entry.visuals, entry.visual, entry.document),
+        fontFallbackPolicy: entry.visual?.fontFallbackPolicy ?? null,
+        visualProfile: {
+            status: entry.visuals?.filter(resource => resource.kind === 'texture').length > 0 && entry.visuals.filter(resource => resource.kind === 'texture').every(resource => resource.textureFeatures?.styleAnalysisStatus === 'complete') ? 'source-analyzed' : 'not_analyzed',
+            evidence: 'source-resources',
+            observations: (entry.visuals ?? []).filter(resource => resource.kind === 'texture').map(resource => ({ resourceId: resource.id, style: resource.textureFeatures?.style ?? null })),
+        },
     };
 }
 
@@ -127,7 +146,8 @@ export async function upload(pool, directory, rootGuid)
     const batch = await loadBatch(directory);
     const entries = selectClosure(batch, rootGuid);
     const sourceId = identity('source', batch.sourceKey);
-    const batchId = identity('batch', sourceId, batch.batchHash, rootGuid);
+    const ingestionHash = hash({ packageHash: batch.batchHash, adapter: 'feature-evidence/2' });
+    const batchId = identity('batch', sourceId, ingestionHash, rootGuid);
     const client = await pool.connect();
     try
     {
@@ -183,7 +203,7 @@ export async function upload(pool, directory, rootGuid)
             const versionId = identity('template-version', templateId, digest);
             versions.set(entry.guid, versionId);
             await client.query('INSERT INTO catalog.templates VALUES($1,$2,$3,$4,$5) ON CONFLICT DO NOTHING', [templateId, sourceId, entry.guid, entry.document.prefab.name, entry.assetPath]);
-            const quality = { extraction: entry.grade, layoutRebuild: 'not_tested', visualRebuild: 'not_tested', humanReview: 'pending' };
+            const quality = { extractionComplete: document.sourceFeatures.extractionComplete, extraction: entry.grade, layoutRebuild: 'not_tested', visualRebuild: 'not_tested', humanReview: 'pending' };
             await client.query('INSERT INTO catalog.template_versions(id,template_id,content_hash,document,source_snapshot,visual_evidence,quality,provenance) VALUES($1,$2,$3,$4,$5,$6,$7,$8) ON CONFLICT DO NOTHING',
                 [versionId, templateId, digest, document, entry.document, entry.visual, quality, { ...entry.metadata, assetPath: entry.assetPath, sourceRevision: entry.sourceRevision }]);
             for (const [alias, dependencyId] of dependencies)
@@ -199,13 +219,14 @@ export async function upload(pool, directory, rootGuid)
                 await client.query('INSERT INTO catalog.template_bindings VALUES($1,$2,$3) ON CONFLICT DO NOTHING', [versionId, ordinal, binding]);
             }
             const summary = summarize({ name: entry.document.prefab.name, asset_path: entry.assetPath, document: entry.document, visual_resources: entry.visuals, diagnostics: entry.diagnostics, has_visual: Boolean(entry.visual), grade: entry.grade });
-            const text = `${summary.category === 'login' ? '登录界面 login window. ' : ''}${entry.document.prefab.name}. ${entry.assetPath}. ${canonical(summary)}`;
+            summary.sourceFeatures = visualFeatures(entry.visuals, entry.visual, entry.document);
+            const text = `${summary.category === 'login' ? '鐧诲綍鐣岄潰 login window. ' : ''}${entry.document.prefab.name}. ${entry.assetPath}. ${canonical(summary)}`;
             await client.query('INSERT INTO search.documents VALUES($1,$2,$3,$4) ON CONFLICT DO NOTHING', [versionId, text, hash(text), summary]);
             await client.query('INSERT INTO search.index_jobs(version_id,profile_id) SELECT $1,id FROM search.embedding_profiles ON CONFLICT DO NOTHING', [versionId]);
             imported.push({ versionId, templateId, name: entry.document.prefab.name, root: entry.guid === rootGuid, nodes: entry.document.prefab.nodes.length, resources: resources.length, quality });
         }
         const result = { success: true, batchId, repeated: false, source: batch.sourceKey, versions: imported, resourceVersions: resourceVersions.size };
-        await client.query('INSERT INTO ingestion.import_batches(id,source_id,batch_hash,root_guid,result) VALUES($1,$2,$3,$4,$5)', [batchId, sourceId, batch.batchHash, rootGuid, result]);
+        await client.query('INSERT INTO ingestion.import_batches(id,source_id,batch_hash,root_guid,result) VALUES($1,$2,$3,$4,$5)', [batchId, sourceId, ingestionHash, rootGuid, result]);
         await client.query('COMMIT');
         return result;
     }

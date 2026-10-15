@@ -17,6 +17,8 @@ namespace GameCLI.Plugins.UiLibrary
             new AssembleCommand(),
             new ChangeGuardCommand(),
             new ManifestCheckCommand(),
+            new VerificationCommand("build-contract"),
+            new VerificationCommand("verify-delivery"),
             new RestoreCommand(),
             new LibraryCommand("search"),
             new LibraryCommand("validate"),

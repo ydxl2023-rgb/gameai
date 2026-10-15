@@ -13,6 +13,7 @@ internal static class Program
         try
         {
             ManifestChecks.Run(project);
+            VerificationChecks.Run(project);
             const string childGuid = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
             const string parentGuid = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
             string child = Path.Combine(assets, "Child.prefab");

@@ -49,6 +49,35 @@ test('reject invalid identity and asset traversal', async () =>
     await assert.rejects(prepareRestore(fixture(), '1', '', 'Assets/../Escape'), /destination/);
 });
 
+test('approved missing font retains Unity default and records substitution', async () =>
+{
+    const directory = await mkdtemp(path.join(tmpdir(), 'restore-default-font-'));
+    const pool = fixture(true);
+    const query = pool.query;
+    pool.query = async sql =>
+    {
+        const result = await query(sql);
+        if (sql.includes('visual_bindings'))
+        {
+            result.rows[0].document.bindings[0].property = 'm_FontData.m_Font';
+            result.rows[0].document.fontFallbackPolicy = { policy: 'target-default', reason: 'user-approved fallback' };
+        }
+        if (sql.includes('ui_library.versions'))
+        {
+            result.rows[0].document.prefab.nodes[0].components[0].type = 'UnityEngine.UI.Text';
+        }
+        return result;
+    };
+    try
+    {
+        const result = await prepareRestore(pool, '1', directory, 'Assets/Test');
+        assert.equal(result.success, true);
+        assert.ok(result.warnings.some(item => item.code === 'font-default-substitution'));
+        assert.equal(result.imports.length, 0);
+    }
+    finally { await rm(directory, { recursive: true, force: true }); }
+});
+
 test('hidden visual hierarchy is blocked rather than exported as a successful blank preview', async () =>
 {
     const directory = await mkdtemp(path.join(tmpdir(), 'restore-hidden-'));
