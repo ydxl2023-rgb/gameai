@@ -1,0 +1,22 @@
+{
+  "schemaVersion": "ui-task-plan/1",
+  "requestId": "06e60827-0a2b-4bbd-bda7-93e5d2e68b71",
+  "projectId": "543210a7-94d0-4f13-9e9e-35e16ee5ea0e",
+  "requirementVersionId": "18fd4fdc-ecf2-438f-b0ef-437a440c9ea1",
+  "parentTaskId": "a40836f2-a82b-4171-b27c-23e7ec12682c",
+  "contract": {
+    "id": "a76d7a73-8fb4-4b67-9161-80060f7eea7e",
+    "version": 1,
+    "sha256": "0a7bf43cdc5850be71ce0b9ec909fa53253395501a3f249e6dc979c98fc38492"
+  },
+  "windows": [
+    {
+      "windowId": "W01",
+      "stages": [
+        "prefab-whitebox",
+        "art-resources",
+        "prefab-assembly"
+      ]
+    }
+  ]
+}

@@ -20,6 +20,7 @@ namespace GameCLI
             {
                 new DesignPlugin(),
                 new PMPlugin(),
+                new GameCLI.Plugins.Tasks.TaskPlugin(),
                 new ArtPlugin(),
                 new DevelopmentPlugin(),
                 new GameCLI.Plugins.Prefab.PrefabPlugin(),

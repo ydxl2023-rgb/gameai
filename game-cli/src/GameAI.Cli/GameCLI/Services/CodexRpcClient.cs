@@ -216,6 +216,15 @@ namespace GameCLI.Services
                             if (message.TryGetProperty("error", out JsonElement error))
                             {
                                 string code = error.TryGetProperty("code", out JsonElement value) ? value.ToString() : "unknown";
+                                // Expose structured size diagnostics without logging provider text or prompt content.
+                                if (error.TryGetProperty("data", out JsonElement data) && data.ValueKind == JsonValueKind.Object
+                                    && data.TryGetProperty("input_error_code", out JsonElement inputCode) && inputCode.GetString() == "input_too_large"
+                                    && data.TryGetProperty("max_chars", out JsonElement maximum) && maximum.TryGetInt64(out long maxChars)
+                                    && data.TryGetProperty("actual_chars", out JsonElement actual) && actual.TryGetInt64(out long actualChars))
+                                {
+                                    completion.TrySetException(new InvalidOperationException($"CODEX_INPUT_TOO_LARGE: actual_chars={actualChars}, max_chars={maxChars}. Preserve the source document and use lossless context transport."));
+                                    continue;
+                                }
                                 completion.TrySetException(new InvalidOperationException("Codex rejected an RPC request (code " + code + "). Check Codex version, login and configuration."));
                             }
                             else

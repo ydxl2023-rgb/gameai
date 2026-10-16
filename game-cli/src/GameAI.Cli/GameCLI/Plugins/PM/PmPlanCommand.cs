@@ -65,7 +65,7 @@ namespace GameCLI.Plugins.PM
                 }
 
                 // One fixed PM combines its UI and Art planning modules in one conversation.
-                string instructions = "当前仅由 RodFergusson 执行。读取云端固定骨架和完整批准 HTML，使用 UI 与 Art 模块补充每项 title、description、acceptance 及计划 summary。必须原样返回骨架的 id、role、source_refs、depends_on；窗口和阶段由 id 固定，不增删任务，不按控件拆单，不生成 Development 或 QA。若原文与清单矛盾或范围未定，停止并报告错误，不返回虚构的成功计划。不改文件、不建单、不调用其他 PM。严格使用 schema。成功返回 outcome=ready、issues=[]。明确文档矛盾返回 revision_required；需要用户决策返回 needs_input；工具或执行故障返回 execution_error。后三者 tasks=[]，issues 逐项包含 section、evidence、impact、suggestion，summary 给出真实原因。编排器已核验传入文档哈希，无需启动命令重复校验。";
+                string instructions = "当前仅由 RodFergusson 执行。读取云端固定骨架和完整批准 HTML，使用 UI 与 Art 模块补充每项 title、description、acceptance 及计划 summary。必须原样返回骨架的 id、role、source_refs、depends_on；窗口和阶段由 id 固定，不增删任务，不按控件拆单，不生成 Development 或 QA。若原文与清单矛盾或范围未定，停止并报告错误，不返回虚构的成功计划。不改文件、不建单、不调用其他 PM。严格使用 schema。成功返回 outcome=ready、issues=[]。明确文档矛盾返回 revision_required；需要用户决策返回 needs_input；工具或执行故障返回 execution_error。后三者 tasks=[]，issues 逐项包含 section、evidence、impact、suggestion，summary 给出真实原因。编排器已核验传入文档哈希。附件未内联时，必须使用只读文件工具从权威文档路径读取 JSON 数据块，按窗口、节点或绑定分批检查，禁止整文件打印；读取失败属于 execution_error，不能假称缺少需求或省略附件。不得修改批准文件。";
                 using CancellationTokenSource timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
                 timeout.CancelAfter(TimeSpan.FromMinutes(15));
                 AgentRunResult result = await CodexAgentRunner.RunAsync(values.GetValueOrDefault("--codex", "codex"), project, "PM", instructions, PmPlanContract.Schema, prompt, null, Guid.NewGuid().ToString("N"), executionId, value => Console.Error.Write(value), timeout.Token, values["--key"]);

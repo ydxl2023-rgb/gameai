@@ -1,3 +1,4 @@
+import {initializeWorkflowRecovery} from './review-http.js';
 import { createGameCliServer } from '../server.js';
 import { handleTrackRequest } from './http.js';
 
@@ -19,3 +20,5 @@ app.server.on('error', (error: Error) =>
 app.server.listen(port, '127.0.0.1', () => console.log(`GameAI Track：http://127.0.0.1:${port}/track；MCP：/mcp；数据源：${process.env.GAMEAI_STORAGE === 'postgres' ? 'PostgreSQL' : '演示'}`));
 process.once('SIGINT', () => void app.close());
 process.once('SIGTERM', () => void app.close());
+
+void initializeWorkflowRecovery().catch(error => console.error('流程恢复初始化失败', error.message));

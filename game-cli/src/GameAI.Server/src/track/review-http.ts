@@ -16,6 +16,7 @@ import { checkPmRuntime, dispatchPmJob } from './pm-dispatch.js';
 import { dispatchTasks } from '../database/task-dispatch.js';
 import {resumeApprovalWorkflows} from './approval-flow.js';
 import { runTaskChain, resumeTaskFlows } from './task-flow.js';
+import {createWorkflowPump} from './workflow-pump.js';
 
 let writer: ReturnType<typeof createPool> | undefined;
 let config: Record<string,string | undefined> | undefined;
@@ -27,6 +28,37 @@ function reply(response: ServerResponse, status: number, body: unknown)
     response.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
     response.end(JSON.stringify(body));
 }
+let initialization: Promise<void> | undefined;
+export function initializeWorkflowRecovery(): Promise<void>
+{
+    if (!databaseEnabled()) return Promise.resolve();
+    if (!initialization)
+    {
+        initialization = (async () =>
+        {
+            config = parseEnv(await readFile(new URL('../../.env.workflow', import.meta.url),'utf8'));
+            if (!config.PGUSER || !config.PGPASSWORD || !config.SUBMISSION_TOKEN)
+            {
+                throw new Error('Configuration missing');
+            }
+            writer = createPool({ user:config.PGUSER,password:config.PGPASSWORD });
+            const revisionWriter=writer;
+            const pump=createWorkflowPump({
+                revisions:()=>resumeRequirementRevisions(revisionWriter),
+                approvals:()=>resumeApprovalWorkflows(revisionWriter),
+                tasks:()=>resumeTaskFlows(revisionWriter)
+            },(name:string,error:Error)=>console.error(`流程恢复失败 (${name})`,error.message));
+            setInterval(pump,10000).unref();
+            void pump();
+        })().catch(error =>
+        {
+            initialization = undefined;
+            throw error;
+        });
+    }
+    return initialization;
+}
+
 export async function handleReviewRequest(request: IncomingMessage, response: ServerResponse)
 {
     if (!databaseEnabled())
@@ -38,21 +70,8 @@ export async function handleReviewRequest(request: IncomingMessage, response: Se
     const project = process.env.GAMEAI_PROJECT_KEY ?? 'DEMO';
     try
     {
-        if (!writer)
-        {
-            config = parseEnv(await readFile(new URL('../../.env.workflow', import.meta.url),'utf8'));
-            if (!config.PGUSER || !config.PGPASSWORD || !config.SUBMISSION_TOKEN)
-            {
-                throw new Error('Configuration missing');
-            }
-            writer = createPool({ user:config.PGUSER,password:config.PGPASSWORD });
-            const revisionWriter=writer;
-            const pump=()=>void resumeRequirementRevisions(revisionWriter).catch(error=>console.error('需求修订调度失败',error.message));
-            setInterval(pump,10000).unref();
-            pump();
-            void resumeApprovalWorkflows(writer).catch(() => console.error('审批后自动执行恢复失败。'));
-            void resumeTaskFlows(writer).catch(() => console.error('自动推进恢复失败，等待核实。'));
-        }
+        await initializeWorkflowRecovery();
+        if (!writer) throw new Error('Workflow writer unavailable');
         // Cookies represent authenticated humans only. Worker submission credentials cannot approve.
         const sessionId = /(?:^|;\s*)gameai_review=([a-f0-9]{64})(?:;|$)/.exec(request.headers.cookie ?? '')?.[1] ?? '';
         for (const [key,value] of sessions)

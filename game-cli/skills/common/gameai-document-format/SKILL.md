@@ -173,4 +173,4 @@ Design 需求文档必须按 [Design 文档存放规范](../../design/ShigeruMiy
 
 ## UI 公共交付契约
 
-窗口边界、预制与节点英文命名、manifest 格式、资源引用及任务粒度统一遵守 [UI 公共交付契约](../gameai-ui-delivery-contract/SKILL.md)。本技能只维护文档呈现与排版，不再复制这些规则。
+窗口边界、预制与节点英文命名、生产契约格式、资源引用及任务粒度统一遵守 [UI 公共交付契约](../gameai-ui-delivery-contract/SKILL.md)。本技能只维护文档呈现与排版，不再复制这些规则。

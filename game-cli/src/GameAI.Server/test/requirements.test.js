@@ -1,3 +1,4 @@
+import {reviewedHtml} from './ui-production-fixture.js';
 import {setAgentAutomation} from '../src/database/agent-automation.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -32,7 +33,7 @@ test('document submission, byte integrity, identity, versions and approval repla
         const user=(await c.query('INSERT INTO gameai.users(subject,display_name,enabled) VALUES($1,$1,true) RETURNING id',[randomUUID()])).rows[0].id;
         const outsider=(await c.query('INSERT INTO gameai.users(subject,display_name,enabled) VALUES($1,$1,true) RETURNING id',[randomUUID()])).rows[0].id;
         await c.query("INSERT INTO gameai.user_roles VALUES($1,$2,'Design')",[project,user]);
-        const html='<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><title>测试</title></head><body><h1>测试需求</h1></body></html>';
+        const html=reviewedHtml(project);
         const input={request_id:randomUUID(),requirement_key:'TEST-REQ',title:'测试需求',version:'v1',html,sha256:createHash('sha256').update(html).digest('hex'),execution_id:'test-execution',thread_id:'test-thread',summary:'事务内测试'};
         const v1=await submitRequirement(servicePool,projectKey,input);
         assert.equal(v1.status,'待审批');
@@ -47,14 +48,15 @@ test('document submission, byte integrity, identity, versions and approval repla
         assert.equal((await reviewRequirement(servicePool,projectKey,user,decision)).decision,'approved');
         assert.equal((await reviewRequirement(servicePool,projectKey,user,decision)).repeated,true);
         await assert.rejects(reviewRequirement(servicePool,projectKey,user,{...decision,decision:'rejected',reason:'变更决定'}),/已经审批/);
-        const v2=await submitRequirement(servicePool,projectKey,{...input,request_id:randomUUID(),version:'v2'});
+        function nextInput(version) { const html=reviewedHtml(project);return {...input,request_id:randomUUID(),version,html,sha256:createHash('sha256').update(html).digest('hex')}; }
+        const v2=await submitRequirement(servicePool,projectKey,nextInput('v2'));
         await assert.rejects(reviewRequirement(servicePool,projectKey,user,decision),/已更新/);
-        const reject={version_id:v2.version_id,revision:v2.revision,document_hash:input.sha256,decision:'rejected',reason:''};
+        const reject={version_id:v2.version_id,revision:v2.revision,document_hash:v2.document_hash,decision:'rejected',reason:''};
         await assert.rejects(reviewRequirement(servicePool,projectKey,user,reject),/原因/);
         assert.equal((await reviewRequirement(servicePool,projectKey,user,{...reject,reason:'需要修订'})).decision,'rejected');
         assert.equal((await c.query('SELECT count(*)::int n FROM gameai.approvals WHERE project_id=$1',[project])).rows[0].n,2);
-        const v3=await submitRequirement(servicePool,projectKey,{...input,request_id:randomUUID(),version:'v3'});
-        const automatic={version_id:v3.version_id,revision:v3.revision,document_hash:input.sha256,decision:'approved',reason:'',auto_start:true};
+        const v3=await submitRequirement(servicePool,projectKey,nextInput('v3'));
+        const automatic={version_id:v3.version_id,revision:v3.revision,document_hash:v3.document_hash,decision:'approved',reason:'',auto_start:true};
         await assert.rejects(reviewRequirement(servicePool,projectKey,outsider,automatic),/权限/);
         assert.equal((await c.query('SELECT count(*)::int n FROM gameai.approval_workflows WHERE project_id=$1',[project])).rows[0].n,0);
         await reviewRequirement(servicePool,projectKey,user,automatic);
@@ -68,8 +70,8 @@ test('document submission, byte integrity, identity, versions and approval repla
         await assert.rejects(setAgentAutomation(servicePool,projectKey,outsider,{agent:'pm-auto',enabled:true,revision:0}),/权限/);
         assert.equal((await setAgentAutomation(servicePool,projectKey,user,{agent:'pm-auto',enabled:true,revision:0})).auto_execute,true);
         await assert.rejects(setAgentAutomation(servicePool,projectKey,user,{agent:'pm-auto',enabled:false,revision:0}),/设置已改变/);
-        const v4=await submitRequirement(servicePool,projectKey,{...input,request_id:randomUUID(),version:'v4'});
-        const policyApproval={version_id:v4.version_id,revision:v4.revision,document_hash:input.sha256,decision:'approved'};
+        const v4=await submitRequirement(servicePool,projectKey,nextInput('v4'));
+        const policyApproval={version_id:v4.version_id,revision:v4.revision,document_hash:v4.document_hash,decision:'approved'};
         await reviewRequirement(servicePool,projectKey,user,policyApproval);
         const policy=(await c.query('SELECT * FROM gameai.approval_workflows WHERE version_id=$1',[v4.version_id])).rows[0];
         assert.equal(policy.state,'queued');
@@ -79,8 +81,8 @@ test('document submission, byte integrity, identity, versions and approval repla
         assert.deepEqual((await c.query('SELECT agent_policy FROM gameai.approval_workflows WHERE version_id=$1',[v4.version_id])).rows[0].agent_policy,policy.agent_policy);
         const dev=(await c.query("INSERT INTO gameai.agents(project_id,agent_key,role_code,worker_id,enabled,display_name,capacity,auto_execute) VALUES($1,'dev-auto','Development',$2,true,'测试自动开发',1,true) RETURNING id",[project,worker])).rows[0].id;
         await c.query("INSERT INTO gameai.fixed_agents VALUES($1,'Development',$2)",[project,dev]);
-        const v5=await submitRequirement(servicePool,projectKey,{...input,request_id:randomUUID(),version:'v5'});
-        await reviewRequirement(servicePool,projectKey,user,{...policyApproval,version_id:v5.version_id,revision:v5.revision});
+        const v5=await submitRequirement(servicePool,projectKey,nextInput('v5'));
+        await reviewRequirement(servicePool,projectKey,user,{...policyApproval,version_id:v5.version_id,revision:v5.revision,document_hash:v5.document_hash});
         assert.equal((await c.query('SELECT state FROM gameai.approval_workflows WHERE version_id=$1',[v5.version_id])).rows[0].state,'manual_pm');
 
     }

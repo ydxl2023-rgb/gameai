@@ -26,6 +26,7 @@ namespace GameCLI.Agents
                 Console.WriteLine(usage);
                 return 0;
             }
+            using CancellationTokenSource timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             try
             {
                 Dictionary<string, string> values = new();
@@ -36,7 +37,6 @@ namespace GameCLI.Agents
                         throw new ArgumentException(usage);
                     }
                 }
-                using CancellationTokenSource timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
                 int seconds = int.Parse(values.GetValueOrDefault("--timeout", "900"));
                 if (seconds < 1 || seconds > 3600)
                 {
@@ -64,7 +64,9 @@ namespace GameCLI.Agents
             }
             catch (Exception exception) when (exception is ArgumentException or IOException or JsonException or KeyNotFoundException or InvalidOperationException or HttpRequestException or OperationCanceledException or FormatException or System.ComponentModel.Win32Exception)
             {
-                Console.Error.WriteLine(exception.Message);
+                Console.Error.WriteLine(exception is OperationCanceledException && timeout.IsCancellationRequested && !cancellationToken.IsCancellationRequested
+                    ? "AGENT_EXECUTION_TIMEOUT: execution deadline exceeded."
+                    : exception.Message);
                 return 3;
             }
         }

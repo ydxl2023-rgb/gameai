@@ -1,3 +1,4 @@
+import {buildProductionSkeleton,validateDesignDocument} from '../database/design-contract.js';
 import {mkdir,readFile,writeFile} from 'node:fs/promises';
 import {resolve,join,relative,isAbsolute} from 'node:path';
 import {createHash} from 'node:crypto';
@@ -5,7 +6,8 @@ import {hostname} from 'node:os';
 import {projectRoot,platformRoot,tempRoot} from '../paths.js';
 import {runPmCli} from './pm-dispatch.js';
 import {submitRequirement} from '../database/requirements.js';
-import {buildUiDeliverySkeleton} from '../database/ui-delivery-plan.js';
+import {preserveUiTemplateContext} from '../database/ui-template-context.js';
+import {prepareUiDocumentPrompt} from '../database/ui-document-prompt.js';
 
 async function finish(pool, job, state, message)
 {
@@ -32,9 +34,11 @@ export async function runRequirementRevision(pool, job, execute=runPmCli)
         {
             const directory=join(tempRoot,'requirement-revisions',job.id);
             await mkdir(directory,{recursive:true});
+            const sourceDocument=join(directory,'source.html');
+            await writeFile(sourceDocument,source.bytes);
             const prompt=join(directory,'prompt.txt');
             await writeFile(prompt,`这是编排器退回的确定性文档修订，沿用已批准的业务范围，无需重新调研。原需求 ${source.requirement_key}，标题必须原样为 ${source.title}。新版本必须为 ${job.target_version}。\n只修正以下明确问题，保留窗口、控件、资源、交互规则、HTML线框与完整内容。不得修改功能范围，不得自行审批、建单或派工。需要用户决策时返回 questions，不能猜测。自检正文计数、名称、内部编号与清单完全一致，summary逐项说明修复证据；新版本状态待人工审批。\nPM问题报告：${JSON.stringify(job.report)}\n已校验原文 SHA256：${source.sha256}\n原始完整HTML：\n${source.bytes.toString('utf8')}`,'utf8');
-            const run=await execute(['--project',projectRoot,'--prompt-file',prompt,'--key',source.requirement_key,'--version',job.target_version,'--skills',join(platformRoot,'skills'),'--timeout','900'],['design','draft']);
+            const run=await execute(['--project',projectRoot,'--project-id',source.project_id,'--source-document',sourceDocument,'--prompt-file',prompt,'--key',source.requirement_key,'--version',job.target_version,'--skills',join(platformRoot,'skills'),'--timeout','900'],['design','draft']);
             await writeFile(join(directory,'diagnostics.txt'),run.diagnostics??'','utf8');
             await writeFile(join(directory,'output.json'),run.output??'','utf8');
             let response;
@@ -50,8 +54,12 @@ export async function runRequirementRevision(pool, job, execute=runPmCli)
             if (rel.startsWith('..') || isAbsolute(rel)) throw new Error('Design 返回了非法交付路径。');
             payload=JSON.parse((await readFile(file,'utf8')).replace(/^\uFEFF/,''));
             if (payload.requirement_key!==source.requirement_key || payload.version!==job.target_version || payload.title!==source.title) throw new Error('Design 改动了需求编号、标题或目标版本。');
-            const original=buildUiDeliverySkeleton(source.bytes.toString('utf8'),source.version);
-            const revised=buildUiDeliverySkeleton(payload.html,payload.version);
+            // Preserve authoritative attachments even when the model omits their large JSON bodies.
+            if (preserveUiTemplateContext(source.bytes.toString('utf8'),payload.html)!==payload.html) throw new Error('Reviewed document lost pinned template context');
+            validateDesignDocument(payload.html,{projectId:source.project_id});
+            payload.sha256=createHash('sha256').update(payload.html).digest('hex');
+            const original=buildProductionSkeleton(source.bytes.toString('utf8'),source.version);
+            const revised=buildProductionSkeleton(payload.html,payload.version);
             if (JSON.stringify(original.tasks)!==JSON.stringify(revised.tasks)) throw new Error('修订改变了窗口交付骨架，需要人工确认范围。');
             await pool.query("UPDATE gameai.requirement_revisions SET submission=$2 WHERE id=$1 AND state='running'",[job.id,payload]);
         }

@@ -182,3 +182,42 @@ Unity CLI `prefab export` 在原工程只读导出。GameCLI `ui-library validat
 ### 多项目离线UI目录采集
 
 GameCLI `ui-library export --input <目录或prefab> --output <空目录> --source-key <来源编号> [--limit N]` 在 C# 内使用 YamlDotNet 读取源工程文本资产与 .meta，无需打开或安装源工程 Unity CLI。来源 Assets/Packages/LocalPackages 的 GUID 索引隔离，自定义脚本不执行。嵌套层级按实例前缀展开，资源版本引用保持，未支持的结构变化显式诊断；失败批次不能直接入库。当前 Unity 承担后续重建验证，不充当源工程宿主。具体范围见 UI 模板库纲要第13章。
+
+### UI 模板附件与模型输入传输（2026-10-15）
+
+完整模板依据通过 HTML 中的 `ui-template-context` JSON 数据块随版本入库；schema_version=1，payload 配合 SHA-256 校验。提交验证数据块，修订保留原附件且拒绝悄悄替换，独立预制任务 HTML 继承原附件。它不扩展 ui-delivery-manifest，也不改变人工批准的内容哈希。
+
+PM 与 Design 修订输入使用 `ui-document-prompt.js` 的无损对象去重表示：重复 JSON 对象写入 definitions，data 内以 $contextRef 引用。所有字段可完整还原，不以摘要替代组件、动画或授权变更。数据库与交付 HTML 仍保留原始数据。该方式减少重复内容，不承诺任意大小文档都能进入模型上下文；进一步超限仍须显式报错，不截断正文。GameCLI 对结构化 input_too_large 错误显示实际字符数与上限，避免误报登录失败或超时。
+
+UI 模板授权附件提交增加 guardBaselineJson 配对校验：原始提取 sourceSnapshot 仅用于溯源，不能代替授权差异清单使用的适配基线。存在 authorizedChanges 时，必须提供其 sourceSha256 对应的完整 UTF-8 基线文本，提交阶段拒绝缺失或哈希不符。完整差异仍由 GameCLI guard 校验；历史已批准文档的补充基线须保留原授权与目标哈希、实际 guard 证据及审计记录，不修改旧批准文件。
+
+
+### Workflow recovery pump (2026-10-15)
+
+Track initializes recovery at server startup and polls approved queued workflows, active task flows and requirement revisions every 10 seconds. Each lane is single-flight so a slow Agent does not block the other lanes. Database dispatch locks and current authorization/version checks remain authoritative. Paused flows and unknown executions are not blindly restarted; retries retain their three-attempt limit and single-use manual exceptions. UI snapshot whitebox production uses UnityCLI `prefab restore --whitebox` with the same immutable guard input, emits deferred external bindings, and never treats whitebox completion as final visual validation.
+
+
+### Explicit repair cycles
+
+A human single-task retry may set `recovery_cycle: true`. The server records an immutable cycle ID, prior lifetime attempt count and requesting user in task_dispatch_jobs.context and an audit event. Automatic retries inherit this cycle; they cannot create one. The new cycle permits at most three executions while retaining all historical attempts. Existing single-use retry_override retains its exact-count guard and does not itself grant a cycle. Current Agent automation, plan policy, approval, dependency and uncertain-process guards still apply. Specialist execution has an explicit 1800-second deadline and a 32-minute parent watchdog; timeout errors are classified distinctly and continuations reuse existing work.
+
+
+Tool-enabled specialist prompts retain visible approved HTML but reference the immutable on-disk `ui-template-context` by approved document path and SHA-256. They do not repeat packed snapshots in the prompt. The file remains complete and is verified before execution; agents parse selected fields or pass complete files to tools rather than printing entire JSON payloads. PM/Design inline transport remains unchanged. This avoids exhausting model context without deleting production data.
+
+
+## UI production contract task entry (2026-10-16)
+
+`GameCLI task contract validate/register` and `task plan validate/submit` use the trusted local GameAI.Server adapter. PostgreSQL migration 028 stores approved immutable contracts, idempotent plan requests and frozen per-task inputs. The production contract must match the inert JSON block in the latest approved HTML. The server derives the three UI phases and their edges, publishes atomically under the project lock, and retains existing dispatch authorization. Specialist input includes the pinned contract and a server-written `production-input.json`. Legacy PM publication is not automatically migrated. This task-input envelope is not a Unity assembly package; resource resolution and downstream Unity validation remain separate. See `GameCLI-UI任务契约与建单.html` for commands and limitations.
+
+
+### UI 契约建单入口统一（2026-10-16）
+PM start 要求批准 HTML 含 ui-production-contract；publish 在同一数据库事务中登记契约、创建主任务并调用 submitTaskPlan，保存每条任务冻结输入。旧文本任务插入循环已移除，Prefab/Art 无契约禁止派发。CLI 独立提交仍要求已有主任务；正常 PM 发布负责创建主任务。旧批准文档必须补齐契约并重新审批，不能假装自动迁移成功。
+
+
+### Design 到 PM 的契约链（2026-10-16）
+GameCLI design draft 需要 --project-id；输出 windowsJson 后由服务端纯函数生成 ui-production-contract/1，再调用固定 Design 做独立自检，失败最多修订两轮。自检收据绑定完整文档哈希、契约哈希及真实执行会话；需求提交用契约预分配 UUID 入库，审批重新校验。PM 从生产契约直接推导三阶段骨架，原 ui-delivery-manifest 不再参与新建单。发布共用事务保存主任务、契约、冻结输入、依赖，保持权限独立。提交前的自然语言到结构化规格仍由 Design 推理，组件 properties 与动态 specification 尚非全量 Unity 语义校验；不得声称已实现通用模板无损转换或 Unity 最终装配。
+
+模板迁移时可用 `design draft --window-spec <完整窗口数组.json> --source-document <来源HTML>`：宿主一次读取窗口候选，生成与复核消费同一份内存数据；Design 无需重新抄写完整节点。`--draft-file <结构化初稿.json>` 可恢复已生成正文，但仍必须重新编译并执行真实固定 Design 自检，不能复用旧通过收据。授权变更的配对基线在编译时提前核验。审查传输对重复对象去重；原始基线字符串保留在正式 HTML，模型收到全部解析值和原始字节哈希，省去转义及空白开销。上述入口均不替代人工审批。
+
+### PM 大文档传输（2026-10-16）
+PM 派发使用经过哈希校验的批准 HTML 文件引用传递大型 `ui-template-context` 附件，正文、生产契约和三阶段骨架继续内联。固定 PM 以只读工具按节点、资源或绑定类别读取附件，禁止整文件输出到模型上下文；读取失败按执行故障返回，不退回 Design 改需求。原始数据库 HTML、审批哈希和发布事务不变；不截断数据，也不提高传输硬上限。

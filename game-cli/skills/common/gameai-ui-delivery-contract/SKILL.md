@@ -5,7 +5,7 @@ description: Design、PM、Prefab 与 Art 共用的 UI 交付契约；统一窗�
 
 # UI 公共交付契约
 
-契约标识：`gameai-ui-delivery`；规则版本：`2.0.0`；新文档清单格式：`schema_version=2`。规则版本与需求版本、JSON schema_version 是不同概念，不能混用。
+契约标识：`gameai-ui-delivery`；规则版本：`3.0.0`；新文档生产契约：`ui-production-contract/1`。规则版本与需求版本、JSON schema_version 是不同概念，不能混用。
 
 ## 唯一规则来源与版本治理
 
@@ -44,43 +44,56 @@ Design 从同一清单生成树、属性表和计数，避免手工维护重复�
 
 当前 UI 调试每个独立窗口固定三阶段：whitebox（Prefab）、art（Art）、assembly（Prefab）。资源包依赖白模，装配依赖白模与资源包。普通按钮、背景、列表项、状态归窗口内部清单，不另建任务。白模交付布局、属性与槽位；Art 交付实际需要生成的图片及映射（无新增图片须明确写明，不能虚构生图）；装配交付替换完成的预制及检查结果。每阶段明确前置、操作、成功、失败、恢复和检查方法。需要偏离此粒度时先批准例外并同步清单，PM 不自行决定。
 
-### 机器可读清单
+### 生产契约与单一数据来源
 
-正式 HTML 必须内嵌且仅有一份 `<script type="application/json" id="ui-delivery-manifest">`，内容为严格 JSON，不能放在可执行脚本或只展示为代码块。清单是需求数据，不授予审批、执行或文件访问权限。保持宿主外层输出 schema 不变，JSON 放在 html 字段内部。
+正式链路：Design 定义需求 → CLI 编译校验 → Design 自检修订 → 人工审批 → PM 审查拆分 → CLI/服务端事务性入库建单。
+Design 返回 html 与 windowsJson（窗口规格数组字符串），遵守宿主提供的生产契约 JSON Schema。CLI 分配契约 ID、需求版本 ID，封装 ui-design-spec/1 并编译为 ui-production-contract/1。Design 不手写哈希、不上传或批准、不自行生成第二份建单清单。
 
-清单固定字段：新文档 schema_version=2（增加下述英文命名字段，旧 v1 仅用于历史读取）；requirement_version为宿主给定版本；scope="ui-only"；windows数组。每项包含 id、name、independent、parent_window、anchor、controls、resources、deliveries。controls 包含 id、parent、type、image_mode（非图片为null）、sibling_index、anchor；resources 包含 id、owner_window、target_controls、generate、kind、size、slice_border（不适用为null）；deliveries 包含 id、phase、role、depends_on。控件引用使用窗口/控件完整编号；控件可见属性表承载完整布局，JSON不能与之矛盾。内部区域 independent=false、parent_window 指向独立窗口且 deliveries为空；对应控件归该窗口树，不重复定义。
+契约包含项目与需求版本身份、窗口路径、sourceAnchor、完整 nodes、resourceSlots、animations、effects、previewStates、placeholderPolicy、styleContract 和分阶段 acceptanceProfile。完整结构必须依据已确认需求和固定模板来源，未知属性不得编造。资源槽位声明实际交付尺寸、导入参数、绑定、generationPolicy 和复用出处；节点布局尺寸与贴图像素尺寸独立。组件 properties 与动态 specification 仍需执行器检查语义，JSON 校验通过不代表 Unity 可正确运行。
 
-下面仅演示一个窗口的交付标识，不是可代替完整文档的占位清单：
+宿主生成唯一 ui-production-contract 数据块，原样带入模板附件，然后调用 Design 检查编译后的完整文档。自检必须核对功能范围、源节点与目标节点、布局、所有槽位、动画特效及正文一致性。宿主写入 design-contract-review，绑定完整文档和契约哈希、真实 Design 执行/会话；任何后续改动均必须重新编译、自检。自检失败最多修订两轮，不能假报通过；新增业务决定仍回到用户。
 
-```json
-{"schema_version":2,"requirement_version":"v1.0","scope":"ui-only","windows":[{"id":"W01","name":"登录窗口","independent":true,"parent_window":null,"anchor":"#window-W01","controls":[{"id":"W01/L00","parent":null,"type":"Panel","image_mode":null,"sibling_index":0,"anchor":"#control-W01-L00","name":"UILogin"}],"resources":[],"deliveries":[{"id":"W01-WHITEBOX","phase":"whitebox","role":"Prefab","depends_on":[]},{"id":"W01-ART","phase":"art","role":"Art","depends_on":["W01-WHITEBOX"]},{"id":"W01-ASSEMBLY","phase":"assembly","role":"Prefab","depends_on":["W01-WHITEBOX","W01-ART"]}],"prefab_name":"UILogin.prefab"}]}
-```
+人工批准整份最终 HTML。提交时预留的 requirementVersionId 成为数据库版本主键；审批、PM 发布、派发均不能静默换契约。PM 固定骨架从同一契约直接生成，每窗口三项，角色 Prefab/Art/Prefab。PM 只补充阶段说明，不重写生产数据。建单事务保存契约、任务、冻结输入、依赖和哈希，失败全部回滚；执行授权仍单独检查。
 
-资源 size 为 [width,height] 正整数像素；slice_border 为 [left,bottom,right,top] 非负整数，九宫格必须明确。image_mode 为 static、sliced 或 null。控件 type 使用 Panel、Image、TMP_Text、Button、ScrollRect、Viewport、Content 等明确类型。资源引用和父节点必须存在；唯一生产归属及跨窗口复用依赖不得成环。仅声明已决定内容，禁止以 TBD、空关键字段或示例值冒充定稿。
+不再输出 ui-delivery-manifest，不允许无生产契约的旧文档进入新建单流程。旧文档须显式修订后再审批。共享资源跨窗口生产依赖尚不在当前契约 schema 中；需要这种关系时报告能力缺口，不能复制生产或隐去依赖。
 
-### 交付前一致性检查
+### 编译与自检接口
 
-使用同一份确定的定义生成可见清单和内嵌 JSON，修改任一处同步更新其余表现。检查 JSON 可解析、编号唯一、引用可解析、锚点实际存在、父子关系与绘制顺序一致、图片模式一致、窗口数量一致。当前独立窗口数 N 对应 3N 项交付，内部区域不增加任务；每一项明确对应窗口与阶段。Design 修复表达错误，实质边界问题返回初稿；缺项不得宣称可供准确拆分。
-
-服务端已实现 manifest v1/v2 解析、引用与骨架结构校验；v1 仅用于历史读取。自然语言、线框与清单的完整语义一致性仍需 Design/PM 自检；未实际执行校验不能声称机器验证通过。
-
-### 服务端结构校验约束
-
-- 窗口 ID 使用 W 开头的大写字母、数字或连字符，长度 2～20；控件 ID 使用 窗口ID/局部ID。独立窗口对应唯一 section，独立窗口 section 不相互嵌套。内部区域锚点属于父窗口 section，controls/resources/deliveries 为空，其内容统一定义在所属窗口中。
-- 每窗口只有一个 Panel 根；控件父引用不跨窗口、不成环，同父节点 sibling_index 不重复。Image 必填 static/sliced，其他控件 image_mode=null。
-- resources 仅列图片资源；kind 使用 static/sliced。每个 Image 控件必须恰好映射一个资源；文本与容器不列图片。九宫格左右边距之和小于宽度，上下之和小于高度；static 的 slice_border=null。资源在唯一 owner_window 中定义，target_controls 列出所有复用位置。
-- 跨窗口复用图片时，使用窗口的 assembly.depends_on 明确增加生产窗口的 Wxx-ART；本窗口白模和 Art 前置仍保留。不会增加任务数量。
-- 每窗口阶段 ID 固定 Wxx-WHITEBOX、Wxx-ART、Wxx-ASSEMBLY，角色为 Prefab、Art、Prefab。schema_version 按命名规则输出 2，历史 v1 仍可读取；拒绝重复 JSON 字段与未知字段。当前单计划最多 33 个独立窗口（99 个子任务）。无清单的旧批准文档必须修订并重新审批，不静默迁移。
+- GameCLI task contract generate --input spec.json：结构化规格编译为完整契约。
+- GameCLI task contract prepare --input prepare.json：输入 html、spec，以及可选 sourceHtml；生成内嵌契约的文档和哈希。
+- GameCLI task contract review --input review.json：输入编译文档和真实自检结果，绑定文档/契约身份；不替代人工审批。
+- GameCLI task contract check-document --input document.json：验证含自检记录的完整 html。
+- 正常 GameCLI design draft 自动执行编译与独立 Design 自检。生成、自检是离线操作；提交、人工审批与建单仍由服务端核验。
 
 ## UI 预制与节点英文命名（硬性规范，优先于旧编号展示）
 
-- 每个独立窗口必须明确唯一最终预制文件名：`UI<功能英文PascalCase>.prefab`。例如登录为 `UILogin.prefab`，原因提示为 `UIReasonToast.prefab`。禁止使用窗口编号、任务编号、拼音或 GenericPanel 代替功能名。根 GameObject 名等于文件名去除 `.prefab`，白模与最终装配使用同一名称。
-- 子节点用表达实际职责的标准英文 PascalCase，例如 `LoginBackground`、`TestIcon`、`Version`、`ServerDropdown`、`LoginButton`。禁止把 `S0`、`L01`、`B01` 等内部编号写入 GameObject.name，或用这些编号作为面向人的层级图、线框、属性表和路径名称。
+- 每个独立窗口必须明确唯一最终预制文件名：`UI<功能英文PascalCase>.prefab`。例如登录为 `UILogin.prefab`，原因提示为 `UIReasonToast.prefab`。禁止使用窗口编号、任务编号、拼音或 GenericPanel 代替功能名。根 GameObject 默认等于文件名去除 `.prefab`；当前 Unity 生成契约要求根名与文件名一致，子节点可用小驼峰。白模与最终装配使用同一名称。
+- 子节点按项目或用户确认使用表达实际职责的标准英文 PascalCase 或 lowerCamelCase，禁止下划线；同一窗口统一命名风格。例如默认 PascalCase，例如 `LoginBackground`、`TestIcon`、`Version`、`ServerDropdown`、`LoginButton`。禁止把 `S0`、`L01`、`B01` 等内部编号写入 GameObject.name，或用这些编号作为面向人的层级图、线框、属性表和路径名称。
 - 节点树展示英文实际名称、中文释义和控件类型。绘制顺序另列“绘制顺序”属性或红字顺序图；不在名称前加 S0/S1 等前缀。按钮可见文案与 GameObject 名分别说明。路径由实际英文祖先名称组成，同父节点名称不得重复。
 - 稳定机器 ID 只用于清单关联和锚点，不等于节点名；命名修订保留原 ID、父关系、层序和资源引用。读者主要内容不展示这些编码，不能为了美化展示破坏版本追踪。
-- 新文档使用 `ui-delivery-manifest` schema_version=2：在 v1 原字段基础上，每个 windows 项增加 `prefab_name`（独立窗口必填上述文件名，非独立区域为 null）；每个 controls 项增加 `name`（真实英文节点名）。根 name 与预制文件名一致。v1 只用于读取既有历史版本，不再作为新文档输出格式。
+- 新文档窗口使用 prefabPath 与 nodes[].name 明确真实资产和节点名称；稳定节点 id 不代替 name。
 - Design 自检所有线框、结构树、属性表、资源目标路径、可见预制名与清单 name/prefab_name 一致；PM 沿用名称，不另起；Prefab 参数明确设置 name 和输出文件名，不拿 id 代替 name。命名规则不授权重命名已经存在的 Unity 资产或破坏序列化引用。
 
 ## 模板复用与授权差异
+
+### 知识库驱动的 UI 需求交接
+
+完整模板依据必须随需求 HTML 入库，不得只存在于 Design 的输入或历史会话。宿主使用 `ui-template-context`（`application/json`，schema_version=1，payload 与其 SHA-256）内嵌固定版本的完整结构、绑定、资源描述、适配原理、嵌套依赖、目标快照、授权变更和确定的动画制作参数；正文窗口章节说明该数据块的位置与用途。数据块不得只含路径或指纹。此块是来源证据，不是第二份生产目标；生产目标唯一由 ui-production-contract 确定。GameCLIServer 校验哈希，修订保留附件，独立任务 HTML 继承附件。PM/Prefab/Art 必须读取其 payload；已有完整内嵌数据时不再要求宿主重复提供外部附件地址。模型不必重写大量附件 JSON，由宿主确定性携带，禁止模型修改已确认的目标快照。
+
+含 UI 的新需求或修订，默认在初稿阶段检索 UI 预制知识库。按功能召回候选，再比较窗口边界、布局、控件层级、交互状态、动画与特效；相似度只用于排序，不等于适用性或用户授权。没有合适模板可明确采用新建模式，不为满足流程虚构模板。
+
+传给模型时允许使用 `json-object-references-v1` 无损表示：`data` 内的 `$contextRef` 指向 `definitions` 的完整对象，可递归读取。这是重复内容去重，不是缺失附件或摘要；所有源字段保持可还原。数据库和批准 HTML 仍保存原始附件，不能为迁就输入大小删除属性或改变审批哈希。
+
+- 对话宿主负责检索、读取与初稿确认；Design 负责基于确认结果编写完整需求，不重复选型。当前无工具的 Design 执行器不能自行查询数据库，宿主必须在输入中提供完整依据，不能仅给数据库 ID、不可访问路径或向量摘要。
+- 向量索引仅用于候选发现。选定后读取权威数据库中固定版本的完整结构、布局与原生组件属性、嵌套预制引用、图片/材质/Shader 分析、动画控制器与绑定、特效参数和缺口记录。依赖按稳定 ID 和版本追踪，不能只读取根预制或省略隐藏节点；不要把图片二进制塞入提示词。
+- 模板决定前展示候选预览或真实可访问链接、推荐原因、适配差异。已有明确选择不重复确认；用户明确授权自主选型时按授权范围选择并记录。初稿中的模板选择及功能差异与其他未决项一并解决后才交给 Design。
+- 每窗口交接记录必须包含：模式（复用/新建）、模板 ID、版本 ID、源快照 SHA-256、来源项目、完整依据的实际附件/内容、依赖版本、用户确认依据、保留/删除/新增/修改清单、目标预制名与目录、命名约束、风格来源，以及动画/特效的绑定节点、触发条件、循环与预期行为。新建模式的模板字段不适用，注明原因；字段未知不能伪造。
+- 原生 UGUI 组件和绑定是结构依据；自定义脚本只保留实现原理及适配义务，不能默认为可迁移代码，也不能因此删除功能。缺失字体按项目确认的默认字体策略处理。风格遵循项目约定或本次用户要求，不将来源模板画风强制带入新项目。
+- Design 在各窗口完整 section 内展示“模板来源与版本”“授权变更”“目标完整结构”“控件属性”“动画与特效”“适配缺口”。目标结构包含修改后全部保留及新增节点，不只写差异；源结构与目标结构以稳定 ID 对照，重命名不丢失动画路径映射。每项源动态表现明确保留、改造或经授权移除，禁止无声遗漏。
+- 交接依据保存在 HTML 正文及 ui-template-context；实际生产目标写入 ui-production-contract 的 nodes、resourceSlots、animations 和 effects。不得在未支持的字段中隐藏生产资源引用。
+- PM 将同一窗口的完整上述内容交给 Prefab/Art 任务，沿用原版本及变更依据，不重新检索换模板，不把内部节点拆成零散任务。Prefab 据固定源快照和批准变更构造目标参数及验证契约；Art 沿用资源槽位和动态清单。源模板更新不自动替换在途需求的版本。
+- 模板缺失、版本/哈希不一致或完整依据不可读取时，不凭搜索摘要继续生产。宿主先解决读取问题；若需要改选模板、改变功能或适配结论，回到初稿确认，已批准文档需要重新修订审批。单纯工具故障不冒充需求错误。
+
+这是一份角色交接规范，不代表 Track 已具备模板版本锁定、自动检索或动画全覆盖校验。未实际读取、运行或验证的内容必须说明，不能以技能文字代替执行证据。
 
 使用已有预制换皮、改造或组合时，必须遵守 [授权变更契约](references/authorized-changes.md)。默认保留，明确授权允许增删改；不得把差异报告当成人工批准。

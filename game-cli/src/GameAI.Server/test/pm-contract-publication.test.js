@@ -1,0 +1,58 @@
+import {publishPmPlan} from '../src/database/pm-plans.js';
+import {buildProductionSkeleton} from '../src/database/design-contract.js';
+import {prepareDesignDocument,sealDesignReview} from '../src/database/design-contract.js';
+import {submitRequirement,reviewRequirement} from '../src/database/requirements.js';
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {randomUUID,createHash} from 'node:crypto';
+import {createPool} from '../src/database/connection.js';
+import {registerContract,submitTaskPlan,readTaskInput} from '../src/database/ui-task-plans.js';
+import {fixture} from './ui-production-fixture.js';
+test('PM publication compiles the approved contract in one transaction (mock completed Agent proof)',async()=>{
+ const pool=createPool();const c=await pool.connect();let inject=false;
+ const adapter={connect:async()=>({query:(sql,args)=>{
+ if(sql.includes('SELECT 1 FROM gameai.agent_runs r JOIN gameai.agent_conversations')) return Promise.resolve({rows:[{ok:1}],rowCount:1});
+ if(inject && sql.includes('INSERT INTO gameai.tasks') && args[4]==='Art')throw Error('injected');
+ return c.query(sql==='BEGIN'?'SAVEPOINT api':sql==='COMMIT'?'RELEASE SAVEPOINT api':sql==='ROLLBACK'?'ROLLBACK TO SAVEPOINT api':sql,args);
+ },release(){}})};
+ try{
+ await c.query('BEGIN');const {contract,plan}=fixture();const user=randomUUID();const requirement=randomUUID();
+ await c.query("INSERT INTO gameai.projects(id,project_key,name,is_test) VALUES($1,$2,'contract test',true)",[plan.projectId,'CONTRACT-'+randomUUID()]);
+ await c.query("INSERT INTO gameai.users(id,subject,display_name,enabled) VALUES($1,$2,'test',true)",[user,'contract-test-'+user]);
+ const role=(await c.query("SELECT role_code FROM gameai.role_permissions WHERE permission_code='requirement.approve' LIMIT 1")).rows[0].role_code;
+ await c.query('INSERT INTO gameai.user_roles(project_id,user_id,role_code) VALUES($1,$2,$3)',[plan.projectId,user,role]);
+ const prepared=prepareDesignDocument({html:'<!doctype html><html><body><section id="W01"><h1>Test login</h1><p>Complete window requirements for fixture.</p></section></body></html>',spec:{...contract,schemaVersion:'ui-design-spec/1'}});
+ const html=sealDesignReview({html:prepared.html,review:{passed:true,issues:[],summary:'Reviewed fixture',documentHash:prepared.documentHash,contractHash:prepared.contractHash,executionId:'test-review',threadId:'test-thread'}}).html;
+ const bytes=Buffer.from(html);
+ const key=(await c.query('SELECT project_key FROM gameai.projects WHERE id=$1',[plan.projectId])).rows[0].project_key;
+ const submission={request_id:randomUUID(),requirement_key:'TEST',title:'test',version:'v1',html,sha256:createHash('sha256').update(bytes).digest('hex'),execution_id:'test-review',thread_id:'test-thread',summary:'test'};
+ const submitted=await submitRequirement(adapter,key,submission);
+ assert.equal(submitted.version_id,contract.requirementVersionId);
+ assert.equal((await submitRequirement(adapter,key,submission)).version_id,submitted.version_id);
+ const actualRequirement=(await c.query('SELECT requirement_id FROM gameai.requirement_versions WHERE id=$1',[submitted.version_id])).rows[0].requirement_id;
+ await assert.rejects(registerContract(adapter,contract,user),/approved/);
+ await reviewRequirement(adapter,key,user,{version_id:submitted.version_id,revision:submitted.revision,document_hash:submitted.document_hash,decision:'approved'});
+ await assert.rejects(registerContract(adapter,contract,randomUUID()),/permission/);
+ const changed=structuredClone(contract);changed.windows[0].nodes[0].active=false;
+ await assert.rejects(registerContract(adapter,changed,user),/exact contract/);
+ assert.equal((await registerContract(adapter,contract,user)).created,true);assert.equal((await registerContract(adapter,contract,user)).created,false);
+ const job=(await c.query("INSERT INTO gameai.pm_jobs(project_id,requirement_version_id,execution_id,requested_by,revision,document_hash,state) VALUES($1,$2,$3,$4,$5,$6,'running') RETURNING *",[plan.projectId,submitted.version_id,randomUUID().replaceAll('-',''),user,submitted.revision,submitted.document_hash])).rows[0];
+ const skeleton=buildProductionSkeleton(html,'v1');
+ const acceptance={preconditions:'ready',steps:'execute',success:'verified',failure:'report',recovery:'repair',tests:'check'};
+ const result={execution_id:job.execution_id,thread_id:'mock-thread',plan:{summary:'Test approved scope',tasks:skeleton.tasks.map(t=>({id:t.id,title:t.id,role:t.role,description:'Complete window stage',source_refs:t.source_refs,depends_on:t.depends_on,acceptance}))}};
+ inject=true;
+ await assert.rejects(publishPmPlan(adapter,key,job,result),/injected/);
+ inject=false;
+ assert.equal((await c.query('SELECT count(*)::int n FROM gameai.tasks WHERE project_id=$1',[plan.projectId])).rows[0].n,0);
+ await c.query("UPDATE gameai.pm_jobs SET state='failed',error='publication failed',expires_at=now()-interval '1 minute' WHERE id=$1",[job.id]);
+ await assert.rejects(publishPmPlan(adapter,key,job,result),/过期/);
+ await assert.rejects(publishPmPlan(adapter,key,job,{...result,execution_id:'wrong'},{recoverPublication:true}),/固定 PM/);
+ const completed=await publishPmPlan(adapter,key,job,result,{recoverPublication:true});
+ assert.equal(completed.error,'');
+ assert.equal(completed.task_count,3);
+ const rows=(await c.query('SELECT t.task_key,c.input FROM gameai.tasks t JOIN gameai.ui_task_contracts c ON c.task_id=t.id WHERE t.project_id=$1',[plan.projectId])).rows;
+ assert.equal(rows.length,3);
+ assert.equal(rows.find(r=>r.input.type==='prefab-assembly').input.dependencies.length,2);
+ assert.equal((await publishPmPlan(adapter,key,job,result)).task_count,3);
+ }finally{await c.query('ROLLBACK');c.release();await pool.end();}
+});

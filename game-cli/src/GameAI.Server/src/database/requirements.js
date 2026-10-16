@@ -1,9 +1,15 @@
+import {validateDesignDocument,buildProductionSkeleton} from './design-contract.js';
 import {readAutomationPolicy} from './agent-automation.js';
 import { createHash } from 'node:crypto';
 import { z } from 'zod';
-import { buildUiDeliverySkeleton } from './ui-delivery-plan.js';
+import { readUiTemplateContext, validateUiTemplateGuardContext } from './ui-template-context.js';
 
 export class ReviewError extends Error {}
+function checkDesignDocument(html,expected)
+{
+    try { return validateDesignDocument(html,expected); }
+    catch (error) { throw new ReviewError(error.message); }
+}
 const submission = z.object({
     request_id: z.uuid(), requirement_key: z.string().regex(/^[A-Z0-9][A-Z0-9-]{1,63}$/),
     title: z.string().trim().min(1).max(200), version: z.string().regex(/^[a-zA-Z0-9._-]{1,40}$/),
@@ -28,6 +34,16 @@ export async function submitRequirement(pool, projectKey, raw, revisionId = null
 {
     const input = parse(submission, raw);
     const bytes = Buffer.from(input.html, 'utf8');
+    const {contract,review}=checkDesignDocument(input.html,{executionId:input.execution_id,threadId:input.thread_id});
+    try
+    {
+        readUiTemplateContext(input.html);
+        validateUiTemplateGuardContext(input.html);
+    }
+    catch (error)
+    {
+        throw new ReviewError(error.message);
+    }
     if (bytes.length > 5 * 1024 * 1024 || hash(bytes) !== input.sha256 || !/<html[ >]/i.test(input.html) || !/<\/html>/i.test(input.html))
     {
         throw new ReviewError('HTML 大小、格式或哈希校验失败。');
@@ -41,6 +57,7 @@ export async function submitRequirement(pool, projectKey, raw, revisionId = null
         {
             throw new ReviewError('项目不存在。');
         }
+        if (contract.projectId!==project.id) throw new ReviewError('Contract project mismatch');
         // One project lock serializes version allocation and request replay.
         await client.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))', [project.id]);
         const scope = 'requirement-submit:' + project.id;
@@ -70,7 +87,7 @@ export async function submitRequirement(pool, projectKey, raw, revisionId = null
             {
                 throw new ReviewError('已有较新版本，不能发布过期修订。');
             }
-            buildUiDeliverySkeleton(input.html,input.version);
+            buildProductionSkeleton(input.html,input.version);
         }
         if (fixed)
         {
@@ -89,11 +106,11 @@ export async function submitRequirement(pool, projectKey, raw, revisionId = null
             throw new ReviewError('已有需求标题不一致，请使用原编号与标题。');
         }
         const ordinal = (await client.query('SELECT COALESCE(max(ordinal),0)+1 n FROM gameai.requirement_versions WHERE requirement_id=$1', [requirement.id])).rows[0].n;
-        const content = { summary: input.summary, rules: [], changes: [correction ? '根据 PM 问题报告修订，等待重新人工审批' : 'Design Agent 生成原始 HTML，等待人工审批'], execution_id: input.execution_id, thread_id: input.thread_id,
+        const content = { production_contract: {id:contract.id,version:contract.version,sha256:review.contractHash}, design_review:review, summary: input.summary, rules: [], changes: [correction ? '根据 PM 问题报告修订，等待重新人工审批' : 'Design Agent 生成原始 HTML，等待人工审批'], execution_id: input.execution_id, thread_id: input.thread_id,
             ...(correction ? {revision_source:correction.source_version_id,revision_report:correction.report} : {}) };
         const revision = hash(JSON.stringify({ content, html_hash: input.sha256, version: input.version }));
-        const version = (await client.query(`INSERT INTO gameai.requirement_versions(project_id,requirement_id,version,ordinal,content,content_hash)
-            VALUES($1,$2,$3,$4,$5,$6) RETURNING id`, [project.id,requirement.id,input.version,ordinal,content,revision])).rows[0];
+        const version = (await client.query(`INSERT INTO gameai.requirement_versions(project_id,requirement_id,version,ordinal,content,content_hash,id)
+            VALUES($1,$2,$3,$4,$5,$6,$7) RETURNING id`, [project.id,requirement.id,input.version,ordinal,content,revision,contract.requirementVersionId])).rows[0];
         const storageKey = 'uploaded/' + version.id + '.html';
         const artifact = (await client.query(`INSERT INTO gameai.artifacts(project_id,storage_key,sha256,byte_size,media_type,verified_at)
             VALUES($1,$2,$3,$4,'text/html',now()) RETURNING id`, [project.id,storageKey,input.sha256,bytes.length])).rows[0];
@@ -161,6 +178,7 @@ export async function reviewRequirement(pool, projectKey, userId, raw)
         {
             throw new ReviewError('原始上传文档未核验或内容不匹配。');
         }
+        if (input.decision==='approved') checkDesignDocument(artifact.bytes.toString('utf8'),{projectId:target.project_id,versionId:target.id});
         const prior = (await client.query('SELECT * FROM gameai.approvals WHERE version_id=$1', [target.id])).rows[0];
         if (prior)
         {

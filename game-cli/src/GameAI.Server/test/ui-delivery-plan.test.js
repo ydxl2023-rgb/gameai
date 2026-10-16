@@ -134,3 +134,26 @@ test('v2 preserves internal identity and enforces actual prefab/node names',() =
         assert.throws(() => build(invalid),/UI 交付清单/);
     }
 });
+
+test('v2 accepts approved lowerCamelCase without weakening root identity', () =>
+{
+    const m = manifestFixture(1);
+    m.schema_version = 2;
+    m.windows[0].prefab_name = 'UILogin.prefab';
+    m.windows[0].controls[0].name = 'uiLogin';
+    assert.equal(build(m).tasks.length, 3);
+    for (const name of ['ui_Login', 'uiShop', '1Login'])
+    {
+        m.windows[0].controls[0].name = name;
+        assert.throws(() => build(m), /UI 交付清单/);
+    }
+});
+
+test('solid Images preserve sprite-less controls without fabricated resources', () =>
+{
+    const m = manifestFixture(1);
+    m.windows[0].controls.push({id:'W01/HitArea',parent:'W01/Root',type:'Image',image_mode:'solid',sibling_index:0,anchor:'#hit-area'});
+    assert.equal(build(m).tasks.length, 3);
+    m.windows[0].controls.at(-1).image_mode = 'static';
+    assert.throws(() => build(m), /资源映射/);
+});

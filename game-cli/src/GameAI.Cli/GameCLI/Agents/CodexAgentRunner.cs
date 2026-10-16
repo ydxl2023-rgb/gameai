@@ -60,10 +60,6 @@ namespace GameCLI.Agents
                 }
             }, cancellation);
             string threadId = started.GetProperty("thread").GetProperty("id").GetString() ?? throw new JsonException("Codex did not return a thread ID.");
-            if (cloud != null)
-            {
-                await cloud.AttachAsync(threadId);
-            }
             progress(role + " thread: " + threadId + "\n");
             liveRun.SetSession(threadId, "");
             string? turnId = null;
@@ -84,6 +80,12 @@ namespace GameCLI.Agents
                     outputSchema = schema
                 }, cancellation);
                 turnId = turn.GetProperty("turn").GetProperty("id").GetString() ?? throw new JsonException("Codex did not return a turn ID.");
+                // A newly opened thread has no durable rollout until its first turn is accepted.
+                // Do not persist an unusable conversation when input validation rejects that turn.
+                if (cloud != null)
+                {
+                    await cloud.AttachAsync(threadId);
+                }
                 liveRun.SetSession(threadId, turnId);
                 string? finalText = null;
                 await foreach (JsonElement message in rpc.Notifications(cancellation))

@@ -29,6 +29,7 @@ internal static class Program
             ("bad-json", 2),
             ("blocked", 3),
             ("failed-turn", 3),
+            ("input-too-large", 3),
             ("request", 3),
             ("eof", 1),
             ("stall", 1)
@@ -81,6 +82,10 @@ internal static class Program
             }
 
             Console.WriteLine("PASS " + mode);
+            if (mode == "input-too-large" && (!output.ToString().Contains("CODEX_INPUT_TOO_LARGE") || output.ToString().Contains("PRIVATE_PROVIDER_TEXT")))
+            {
+                throw new Exception("Input size diagnostics must retain counts without provider text.");
+            }
         }
 
         Environment.SetEnvironmentVariable("GAMECLI_FAKE_MODE", "plan");
@@ -222,6 +227,25 @@ internal static class Program
             }
             else if (method == "turn/start")
             {
+                if (mode == "input-too-large")
+                {
+                    Send(new
+                    {
+                        id = id.Clone(),
+                        error = new
+                        {
+                            code = -32602,
+                            message = "PRIVATE_PROVIDER_TEXT",
+                            data = new
+                            {
+                                input_error_code = "input_too_large",
+                                max_chars = 1048576,
+                                actual_chars = 1300000
+                            }
+                        }
+                    });
+                    continue;
+                }
                 Send(new
                 {
                     id = id.Clone(),

@@ -1,7 +1,7 @@
 import { ReviewError } from './requirements.js';
 
 // Project-scoped reset preserves immutable audit history and configuration.
-export async function clearProjectTasks(pool, projectKey, userId)
+export async function clearProjectTasks(pool, projectKey, userId, {preserveRequirements = false} = {})
 {
     const c = await pool.connect();
     try
@@ -34,7 +34,12 @@ export async function clearProjectTasks(pool, projectKey, userId)
         await c.query('DELETE FROM gameai.pm_jobs WHERE project_id=$1', [project.id]);
         await c.query('DELETE FROM gameai.plan_versions WHERE project_id=$1', [project.id]);
         await c.query('DELETE FROM gameai.plans WHERE project_id=$1', [project.id]);
-        const requirements = (await c.query('SELECT gameai.clear_project_requirements($1,$2) AS removed', [project.id,userId])).rows[0].removed;
+        let requirements = 0;
+        if (!preserveRequirements)
+        {
+            await c.query('DELETE FROM gameai.ui_production_contracts WHERE project_id=$1', [project.id]);
+            requirements = (await c.query('SELECT gameai.clear_project_requirements($1,$2) AS removed', [project.id,userId])).rows[0].removed;
+        }
         await c.query(`INSERT INTO gameai.audit_events(project_id,actor,event,payload)
             VALUES($1,$2,'tasks.cleared',$3)`, [project.id, 'human:'+userId, JSON.stringify({task_count:deleted.rowCount,requirement_count:requirements})]);
         await c.query('COMMIT');

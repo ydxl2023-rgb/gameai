@@ -1,3 +1,5 @@
+import {reviewedHtml} from './ui-production-fixture.js';
+import {buildProductionSkeleton} from '../src/database/design-contract.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {randomUUID,createHash} from 'node:crypto';
@@ -33,7 +35,7 @@ test('UI publication binds approved manifest, is atomic, preserves consent and p
         if (sql === 'BEGIN') return c.query('SAVEPOINT service_operation');
         if (sql === 'COMMIT') return c.query('RELEASE SAVEPOINT service_operation');
         if (sql === 'ROLLBACK') return c.query('ROLLBACK TO SAVEPOINT service_operation');
-        if (injectFailure && sql.startsWith('UPDATE gameai.tasks SET logical_id') && params[1].endsWith('-ART')) throw new Error('Injected failure');
+        if (injectFailure && sql.includes('INSERT INTO gameai.tasks') && params[4]==='Art') throw new Error('Injected failure');
         return c.query(sql,params);
     },release:() => {}})};
     try
@@ -46,7 +48,7 @@ test('UI publication binds approved manifest, is atomic, preserves consent and p
         const worker = (await c.query('INSERT INTO gameai.workers(project_id,worker_key,name,capacity,enabled) VALUES($1,$2,$2,1,true) RETURNING id',[p,hostname().toLowerCase()])).rows[0].id;
         const agent = (await c.query("INSERT INTO gameai.agents(project_id,agent_key,role_code,worker_id,enabled,display_name,capacity) VALUES($1,'pm-01','PM',$2,true,'测试 PM',1) RETURNING id",[p,worker])).rows[0].id;
         await c.query("INSERT INTO gameai.fixed_agents VALUES($1,'PM',$2)",[p,agent]);
-        async function submit(version,html = htmlFixture(manifestFixture(1,version)))
+        async function submit(version,html = reviewedHtml(p,'test-design','test-design-thread'))
         {
             const input = {request_id:randomUUID(),requirement_key:'TEST-UI',title:'隔离测试',version,html,sha256:createHash('sha256').update(html).digest('hex'),execution_id:'test-design',thread_id:'test-design-thread',summary:'测试'};
             const saved = await submitRequirement(servicePool,key,input);
@@ -58,7 +60,7 @@ test('UI publication binds approved manifest, is atomic, preserves consent and p
         await assert.rejects(startPmJob(servicePool,key,outsider,request),/权限/);
         const started = await startPmJob(servicePool,key,user,request);
         assert.equal((await startPmJob(servicePool,key,user,request)).created,false);
-        const plan = planFixture(buildUiDeliverySkeleton(htmlFixture(manifestFixture()),'v1'));
+        const plan = planFixture(buildProductionSkeleton(reviewedHtml(p),'v1'));
         const result = {execution_id:started.job.execution_id,thread_id:'test-pm',plan};
         await assert.rejects(publishPmPlan(servicePool,key,started.job,result),/固定 PM/);
         const conversation = (await c.query("INSERT INTO gameai.agent_conversations(project_id,requirement_key,role_code,agent_id,worker_id,thread_id) VALUES($1,'TEST-UI','PM',$2,$3,'test-pm') RETURNING id",[p,agent,worker])).rows[0].id;
@@ -105,10 +107,8 @@ test('UI publication binds approved manifest, is atomic, preserves consent and p
             await failPmJob(servicePool,retry.job,'测试失败');
         }
         await assert.rejects(startPmJob(servicePool,key,user,stale),/3 次/);
-        const missing = await submit('v3','<!doctype html><html lang="zh-CN"><head><title>没有交付清单的旧需求</title></head><body><h1>无清单</h1><p>保留批准原文，缺少清单时禁止启动 PM。</p></body></html>');
-        await reviewRequirement(servicePool,key,user,{...missing,decision:'approved',reason:''});
-        await assert.rejects(startPmJob(servicePool,key,user,missing),/ui-delivery-manifest/);
-        assert.equal((await c.query('SELECT count(*)::int n FROM gameai.pm_jobs WHERE requirement_version_id=$1',[missing.version_id])).rows[0].n,0);
+        await assert.rejects(submit('v3','<!doctype html><html><body><section id="W01">Legacy document without contract</section></body></html>'),/ui-production-contract/);
+
     }
     finally
     {

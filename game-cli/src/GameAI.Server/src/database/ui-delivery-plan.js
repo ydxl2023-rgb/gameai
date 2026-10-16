@@ -8,7 +8,7 @@ const anchor = z.string().regex(/^#[A-Za-z][A-Za-z0-9_-]*$/);
 const label = z.string().trim().min(1).max(200);
 const control = z.object({
     id:reference, parent:reference.nullable(), type:label,
-    image_mode:z.enum(['static','sliced']).nullable(), sibling_index:z.number().int().nonnegative(), anchor
+    image_mode:z.enum(['static','sliced','solid']).nullable(), sibling_index:z.number().int().nonnegative(), anchor
 }).strict();
 const resource = z.object({
     id, owner_window:id, target_controls:z.array(reference).min(1), generate:z.boolean(),
@@ -25,7 +25,7 @@ const schemaV1 = z.object({
         controls:z.array(control), resources:z.array(resource), deliveries:z.array(delivery)
     }).strict()).min(1).max(100)
 }).strict();
-const nodeName = z.string().regex(/^[A-Z][A-Za-z0-9]*$/).max(80);
+const nodeName = z.string().regex(/^[A-Za-z][A-Za-z0-9]*$/).max(80);
 const schemaV2 = schemaV1.extend({
     schema_version:z.literal(2),
     windows:z.array(schemaV1.shape.windows.element.extend({
@@ -208,7 +208,7 @@ export function buildUiDeliverySkeleton(html, version)
         }
         const roots = window.controls.filter(item => item.parent === null);
         requireValid(roots.length === 1 && roots[0].type === 'Panel', '每窗口必须只有一个 Panel 根节点。');
-        requireValid(manifest.schema_version === 1 || roots[0].name === window.prefab_name.slice(0,-7), '根节点名必须与预制文件名一致。');
+        requireValid(manifest.schema_version === 1 || [window.prefab_name.slice(0,-7), window.prefab_name.slice(0,-7).replace(/^UI/, 'ui')].includes(roots[0].name), '根节点名必须为预制名称或其 ui 前缀小驼峰形式。');
         for (const item of window.controls)
         {
             const seen = new Set();
@@ -254,7 +254,7 @@ export function buildUiDeliverySkeleton(html, version)
     }
     for (const item of controls.values())
     {
-        requireValid(item.type !== 'Image' || mappedControls.has(item.id), '图片控件缺少资源映射：'+item.id);
+        requireValid(item.type !== 'Image' || item.image_mode === 'solid' || mappedControls.has(item.id), '图片控件缺少资源映射：'+item.id);
     }
     for (const window of independent)
     {

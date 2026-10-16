@@ -7,11 +7,15 @@ import {loadTaskContext,contextBlockReason} from './qa-context.js';
 import {validateTaskResult} from './task-results.js';
 import {validateQaReport,applyQaReport,finishRepair} from './qa-repairs.js';
 import { verifyTaskFiles } from './task-files.js';
+import {validateVisualDelivery,artVisualScope} from './ui-visual-delivery.js';
 import { prepareApprovedDocument } from './approved-document.js';
 import {snapshotPrefabInputs} from './delivery-snapshot.js';
-import {recoveryDecision} from './task-recovery.js';
+import {readTaskInput} from './ui-task-plans.js';
+import {recoveryDecision,recoveryAttempts} from './task-recovery.js';
+import {prepareUiDocumentPrompt} from './ui-document-prompt.js';
+import {loadSkillInstructions} from './skill-catalog.js';
 
-const request = z.object({tasks:z.array(z.object({task_id:z.uuid(),revision:z.number().int().nonnegative()}).strict()).min(1).max(100),auto_continue:z.boolean().optional(),retry:z.boolean().optional(),retry_override:z.object({attempts:z.number().int().min(3),reason:z.string().trim().min(1).max(1000)}).strict().optional()}).strict();
+const request = z.object({tasks:z.array(z.object({task_id:z.uuid(),revision:z.number().int().nonnegative()}).strict()).min(1).max(100),auto_continue:z.boolean().optional(),recovery_cycle:z.boolean().optional(),retry:z.boolean().optional(),retry_override:z.object({attempts:z.number().int().min(3),reason:z.string().trim().min(1).max(1000)}).strict().optional()}).strict();
 
 export function retryLimitReason(attempts, override, automaticDispatch)
 {
@@ -23,6 +27,7 @@ export async function dispatchTasks(pool,projectKey,userId,raw,commit=false,auto
     const parsed=request.safeParse(raw);
     if (!parsed.success || new Set(parsed.data.tasks.map(t=>t.task_id)).size!==parsed.data.tasks.length) throw new ReviewError('派发任务参数无效。');
     if (parsed.data.retry_override && (automaticDispatch || !parsed.data.retry || parsed.data.tasks.length!==1 || parsed.data.auto_continue)) throw new ReviewError('超限重试仅允许人工对单个失败任务授权一次。');
+    if (parsed.data.recovery_cycle && (automaticDispatch || !parsed.data.retry || parsed.data.tasks.length!==1)) throw new ReviewError('修复轮次只能由人工针对单个任务重新开启。');
     const c=await pool.connect();
     try
     {
@@ -47,9 +52,10 @@ export async function dispatchTasks(pool,projectKey,userId,raw,commit=false,auto
             const a=(await c.query(`SELECT a.*,w.worker_key,w.enabled worker_enabled,w.capacity worker_capacity FROM gameai.fixed_agents f
                 JOIN gameai.agents a ON a.id=f.agent_id JOIN gameai.workers w ON w.id=a.worker_id WHERE f.project_id=$1 AND f.role_code=$2`,[project.id,t.role_code])).rows[0];
             let reason='';
-            const previous=parsed.data.retry ? (await c.query('SELECT agent_id,state,result FROM gameai.executions WHERE task_id=$1 ORDER BY started_at DESC LIMIT 1',[t.id])).rows[0] : null;
+            const previous=parsed.data.retry ? (await c.query('SELECT e.agent_id,e.state,e.result,j.context FROM gameai.executions e LEFT JOIN gameai.task_dispatch_jobs j ON j.execution_id=e.id WHERE e.task_id=$1 ORDER BY e.started_at DESC LIMIT 1',[t.id])).rows[0] : null;
             if (previous && previous.agent_id!==a?.id) reason='原执行 Agent 不可用，禁止改派其他 Agent';
             if (parsed.data.retry_override && t.status!=='failed') throw new ReviewError('超限重试只适用于失败任务。');
+            if (parsed.data.recovery_cycle && t.status!=='failed') throw new ReviewError('新的修复轮次只适用于已确认失败的任务。');
             if (!t.parent_id || !['Prefab','Art','Development','QA'].includes(t.role_code)) reason='此入口仅执行预制、美术、程序和 QA 子任务';
             else if (!t.dispatch_allowed) reason='尚未勾选允许派发';
             else if (t.dispatch_revision!==input.revision) reason='勾选状态已改变，请刷新';
@@ -57,8 +63,8 @@ export async function dispatchTasks(pool,projectKey,userId,raw,commit=false,auto
             if (!reason && parsed.data.retry && t.status==='failed')
             {
                 const attempts=(await c.query('SELECT count(*)::int n FROM gameai.executions WHERE task_id=$1',[t.id])).rows[0].n;
-                reason=retryLimitReason(attempts,parsed.data.retry_override,automaticDispatch);
-                if (!reason && automaticDispatch && !recoveryDecision({state:previous?.state,error:previous?.result?.error,attempts,authorized:true}).retry) reason='此失败需要人工确认，不允许自动重试';
+                reason=retryLimitReason(automaticDispatch ? recoveryAttempts(attempts,previous?.context) : attempts,parsed.data.retry_override,automaticDispatch);
+                if (!reason && automaticDispatch && !recoveryDecision({state:previous?.state,error:previous?.result?.error,attempts:recoveryAttempts(attempts,previous?.context),authorized:true}).retry) reason='此失败需要人工确认，不允许自动重试';
             }
             const approved=await c.query(`SELECT 1 FROM gameai.plan_versions p JOIN gameai.requirement_versions v ON v.id=p.requirement_version_id
                 JOIN gameai.approvals a ON a.version_id=v.id AND a.decision='approved' WHERE p.id=$1 AND p.state='published'
@@ -90,11 +96,35 @@ export async function dispatchTasks(pool,projectKey,userId,raw,commit=false,auto
             const row={task_id:t.id,id:t.task_key,title:t.title,role:t.role_code,agent:a?.agent_key ?? '—',ready:!reason,reason:reason || '可立即派发'};
             rows.push(row);
             if (reason) continue;
+            // Reject stale instructions before reserving an execution. A pre-claim failure
+            // must not leave an unknown execution that blocks catalog repair forever.
+            try
+            {
+                const selected=(await c.query('SELECT s.* FROM gameai.agent_skills g JOIN gameai.skills s ON s.skill_key=g.skill_key WHERE g.agent_id=$1',[a.id])).rows;
+                const catalog=(await c.query('SELECT * FROM gameai.skills')).rows;
+                await loadSkillInstructions(selected,catalog,undefined,t.role_code);
+            }
+            catch (error)
+            {
+                row.ready=false;
+                row.reason=error.message;
+                continue;
+            }
             workspaceReserved=true;
             if (!commit) continue;
             await snapshotPrefabInputs(c,t);
             context=await loadTaskContext(c,t);
             dependencies=context.dependencies;
+            if (parsed.data.recovery_cycle)
+            {
+                const priorAttempts=(await c.query('SELECT count(*)::int n FROM gameai.executions WHERE task_id=$1',[t.id])).rows[0].n;
+                context.recovery_cycle={id:randomUUID(),prior_attempts:priorAttempts,requested_by:userId};
+                await c.query(`INSERT INTO gameai.audit_events(project_id,actor,event,payload) VALUES($1,$2,'人工开启有限自动修复轮次',$3)`,[project.id,'human:'+userId,{task:t.task_key,...context.recovery_cycle,max_attempts:3}]);
+            }
+            else if (automaticDispatch && previous?.context?.recovery_cycle)
+            {
+                context.recovery_cycle=previous.context.recovery_cycle;
+            }
             const executionId=randomUUID();
             // Exact prior attempt count makes this human exception single-use under the project lock.
             // Failed history is retained and automatic dispatch never receives this exception.
@@ -109,7 +139,10 @@ export async function dispatchTasks(pool,projectKey,userId,raw,commit=false,auto
             if (taskDoc && createHash('sha256').update(taskDoc.bytes).digest('hex') !== taskDoc.sha256) throw new ReviewError('预制任务 HTML 校验失败。');
             const humanNotes=(await c.query('SELECT body,created_at FROM gameai.comments WHERE task_id=$1 AND user_id IS NOT NULL ORDER BY created_at DESC LIMIT 10',[t.id])).rows;
             const failureContext=previous ? {error:previous.result?.error,previous_result:previous.result?.result?.Text ?? null,instruction:'先分析上次失败与已存在产物，修复本任务范围内的问题再验证；不得绕过审批、权限或降低验收标准。返回实际修复内容与检查证据。'} : null;
-            const prompt=JSON.stringify({failure_context:failureContext,human_task_notes:humanNotes,task_document:taskDoc ? {path:taskDoc.storage_key,sha256:taskDoc.sha256,html:taskDoc.bytes.toString('utf8')} : null,approved_document:approvedDocument,platform_context:{authoritative:true,validated_at:new Date().toISOString(),requirement_version_id:t.version_id,plan_version_id:t.plan_version_id,approval:'approved',dispatch_allowed:true,executor:'GameCLIServer',human_retry_context:parsed.data.retry_override ? {actor:'human:'+userId,reason:parsed.data.retry_override.reason,prior_attempts:parsed.data.retry_override.attempts} : null},task:t.task_key,title:t.title,description:t.description,criteria:t.delivery_criteria,source_refs:t.source_refs,dependencies,repair:context.repair,retests:context.retests,approved_html:doc.bytes.toString('utf8')});
+            const productionContract=await readTaskInput(c,t.id);
+            if (['Prefab','Art'].includes(t.role_code) && !productionContract) throw new ReviewError('UI task requires a frozen production contract; recreate through contract task submission.');
+            if (productionContract) productionContract.path=`game-cli/temp/task-jobs/${executionId}/production-input.json`;
+            const prompt=JSON.stringify({production_contract:productionContract,stage_responsibility:artVisualScope,failure_context:failureContext,human_task_notes:humanNotes,task_document:taskDoc ? {path:taskDoc.storage_key,sha256:taskDoc.sha256,content_source:'完整窗口原文和附件可从 approved_document 路径按 source_refs 读取；独立 HTML 原件也可通过本路径读取。'} : null,approved_document:approvedDocument,platform_context:{authoritative:true,validated_at:new Date().toISOString(),requirement_version_id:t.version_id,plan_version_id:t.plan_version_id,approval:'approved',dispatch_allowed:true,executor:'GameCLIServer',human_retry_context:parsed.data.retry_override ? {actor:'human:'+userId,reason:parsed.data.retry_override.reason,prior_attempts:parsed.data.retry_override.attempts} : null},task:t.task_key,title:t.title,description:t.description,criteria:t.delivery_criteria,source_refs:t.source_refs,dependencies,repair:context.repair,retests:context.retests,approved_html:prepareUiDocumentPrompt(doc.bytes.toString('utf8'),approvedDocument)});
             const inputHash=createHash('sha256').update(prompt).digest('hex');
             await c.query(`INSERT INTO gameai.executions(id,project_id,task_id,agent_id,state,started_at) VALUES($1,$2,$3,$4,'assigned',clock_timestamp())`,[executionId,project.id,t.id,a.id]);
             await c.query(`INSERT INTO gameai.task_dispatch_jobs(execution_id,project_id,requested_by,requirement_key,input_hash,context) VALUES($1,$2,$3,$4,$5,$6)`,[executionId,project.id,userId,t.requirement_key,inputHash,JSON.stringify(context)]);
@@ -165,6 +198,12 @@ export async function finishTaskDispatch(pool,job,result,error)
             {
                 content=validateTaskResult(JSON.parse(result.Text),task.role_code);
                 if (task.role_code==='QA') validateQaReport(context,content);
+                const frozen=await readTaskInput(c,task.id);
+                // Assembly may consume verified upstream assets without duplicating them in its own report.
+                const visualArtifacts=frozen?.content.type==='prefab-assembly'
+                    ? [...(result.artifacts ?? []),...context.dependencies.flatMap(d=>d.artifacts ?? [])]
+                    : result.artifacts;
+                validateVisualDelivery(frozen?.content,visualArtifacts);
             }
             catch(cause) { error=cause.message; }
         }
@@ -182,7 +221,7 @@ export async function finishTaskDispatch(pool,job,result,error)
         {
             const attempts=(await c.query('SELECT count(*)::int n FROM gameai.executions WHERE task_id=$1',[task.id])).rows[0].n;
             const agent=(await c.query('SELECT auto_execute FROM gameai.agents WHERE id=$1',[execution.agent_id])).rows[0];
-            const recovery=recoveryDecision({state,error,attempts,authorized:flow?.state==='active' && agent?.auto_execute});
+            const recovery=recoveryDecision({state,error,attempts:recoveryAttempts(attempts,lease?.context),authorized:flow?.state==='active' && agent?.auto_execute});
             await c.query("UPDATE gameai.plan_dispatch_flows SET state=$2,reason=$3,updated_at=now() WHERE plan_version_id=$1",[task.plan_version_id,recovery.retry?'active':'paused',recovery.reason]);
             await c.query(`INSERT INTO gameai.audit_events(project_id,actor,event,payload) VALUES($1,'orchestrator',$2,$3)`,[job.projectId,recovery.retry?'任务失败，安排原 Agent 修复重试':'任务自动修复停止，等待人工处理',{task_id:job.taskId,execution_id:job.executionId,reason:recovery.reason,error,attempts}]);
         }

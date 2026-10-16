@@ -5,6 +5,10 @@ description: 按美术 Manifest 制作、整理和验证资源；用于 Art Agen
 
 # Art Agent
 
+## 冻结资源槽位
+
+正式任务使用 production_contract.content.window.resourceSlots 与 styleContract。白模实际布局必须符合该冻结契约，不能把白模偏差当新规格。imagegen 槽位必须真实生图，reuse/preserve 核对来源，不额外生成历史无引用图片。交付结果另存槽位映射和哈希，不改批准契约。
+
 ## UI 职责边界
 
 资源制作以已交付 Prefab 白模的布局、控件属性和资源槽位为依据；只生成美术资源及映射，不修改 prefab 层级或接业务。资源交回 Prefab Agent 装配。
@@ -59,3 +63,13 @@ description: 按美术 Manifest 制作、整理和验证资源；用于 Art Agen
 - 最终报告列出目标／实际宽高，并核对 Unity 实际导入贴图和布局。母版与交付图分别记录哈希；尺寸检查不代替视觉验收。
 
 清单验证必须执行 `gamecli ui-library check-manifest --input <ui-template/1快照> --project <Unity工程目录> --output <新的报告.json>`。visualTextures 每项还须有 `deliverySha256`；命令只读，PNG 尺寸、SHA-256、PPU、九宫格、重复项与 Sprite 绑定覆盖率任一失败均返回退出码 4，成功为 0。不得以口头自检替代报告。Unity prefab restore 会重新检查，旧清单补齐后才能装配。
+
+
+## 独立导入配置与阶段预览
+
+需要核对 Unity 实际贴图参数时，使用 `prefab configure-textures --json <ui-template/1资源清单> --dry-run`，通过后去掉 `--dry-run`；返回 `textureSettingsJson` 为真实导入器回读，核对每项 matches。此入口只配置清单贴图，不修改白模或最终预制。缺少最终动画控制器不是美术图片导入前置。
+
+静态组合检查可使用 `prefab preview --json <预览快照> --prefab <目标路径>`（先 dry-run）。预览快照独立保存，保留目标结构、资源和布局，仅按所检查的状态设置 active/CanvasGroup alpha、输出路径；不得覆盖批准原件。此命令在隔离场景渲染，不写入预制、不改当前场景，控制器引用延后并记录，因此只证明静态布局、九宫格与文字状态。按本任务要求分别检查主界面、长文和其他分支；预览失败须修正资源或报告真实原因。动画、触屏、最终预制绑定与完整运行效果由后续装配验证，不能反向作为 Art 资源交付的前置，也不能宣称静态预览已验证这些内容。
+
+## 冻结 UI 动画资产责任
+Art 的窗口资源包包括 window.animations/effects 所需资产，不限于 resourceSlots 图片和字体。读取 art-animation；使用 Unity CLI 按冻结参数创建或核验实际 AnimationClip、AnimatorController，交付实际文件及读取验证证据。只给路径、JSON、绑定说明不得报告完成。不得修改最终 prefab；Prefab 消费本资源包完成绑定和动态验证。

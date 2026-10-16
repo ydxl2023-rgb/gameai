@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { projectRoot } from '../paths.js';
+import {preserveUiTemplateContext} from './ui-template-context.js';
 
 const escape = value => String(value).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
@@ -44,7 +45,7 @@ export function buildPrefabTaskHtml(html, task, sourceHash)
     const defs = nodes.filter(n => n.tagName === 'defs' && n.sourceCodeLocation &&
         (n.sourceCodeLocation.startOffset < start || n.sourceCodeLocation.startOffset >= end)).map(slice).join('\n');
     const original = html.slice(start,end);
-    return `<!doctype html><html lang="zh"><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'none'; style-src 'unsafe-inline'; img-src data:; font-src data:; base-uri 'none'; form-action 'none'"><title>${escape(task.task_key)} · ${escape(task.title)}</title>${styles}</head><body><header><h1>${escape(task.task_key)} · ${escape(task.title)}</h1><p>批准需求原文摘录 · 来源 ${escape(task.source_refs[0])}</p><p>源 HTML SHA-256：${sourceHash}</p></header><svg width="0" height="0" style="position:absolute;overflow:hidden" aria-hidden="true">${defs}</svg><!-- ORIGINAL WINDOW START -->${original}<!-- ORIGINAL WINDOW END --></body></html>`;
+    return preserveUiTemplateContext(html, `<!doctype html><html lang="zh"><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'none'; style-src 'unsafe-inline'; img-src data:; font-src data:; base-uri 'none'; form-action 'none'"><title>${escape(task.task_key)} · ${escape(task.title)}</title>${styles}</head><body><header><h1>${escape(task.task_key)} · ${escape(task.title)}</h1><p>批准需求原文摘录 · 来源 ${escape(task.source_refs[0])}</p><p>源 HTML SHA-256：${sourceHash}</p></header><svg width="0" height="0" style="position:absolute;overflow:hidden" aria-hidden="true">${defs}</svg><!-- ORIGINAL WINDOW START -->${original}<!-- ORIGINAL WINDOW END --></body></html>`);
 }
 
 /** Store the task HTML in the same publication transaction as its owning task. */

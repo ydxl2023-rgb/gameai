@@ -1,0 +1,143 @@
+{
+  "schemaVersion": "ui-production-contract/1",
+  "id": "a76d7a73-8fb4-4b67-9161-80060f7eea7e",
+  "version": 1,
+  "projectId": "543210a7-94d0-4f13-9e9e-35e16ee5ea0e",
+  "requirementVersionId": "18fd4fdc-ecf2-438f-b0ef-437a440c9ea1",
+  "windows": [
+    {
+      "windowId": "W01",
+      "prefabPath": "Assets/UI/Widgets/UILogin/UILogin.prefab",
+      "rootNodeId": "root",
+      "referenceResolution": {
+        "width": 1920,
+        "height": 1080
+      },
+      "nodes": [
+        {
+          "id": "root",
+          "name": "UILogin",
+          "parentId": null,
+          "siblingIndex": 0,
+          "active": true,
+          "localPosition": [
+            0,
+            0,
+            0
+          ],
+          "localRotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "localScale": [
+            1,
+            1,
+            1
+          ],
+          "rect": {
+            "anchorMin": [
+              0,
+              0
+            ],
+            "anchorMax": [
+              1,
+              1
+            ],
+            "pivot": [
+              0.5,
+              0.5
+            ],
+            "anchoredPosition": [
+              0,
+              0
+            ],
+            "sizeDelta": [
+              0,
+              0
+            ]
+          },
+          "components": [
+            {
+              "id": "image",
+              "type": "UnityEngine.UI.Image",
+              "properties": {
+                "m_Sprite": null
+              }
+            }
+          ]
+        }
+      ],
+      "resourceSlots": [
+        {
+          "slotId": "background",
+          "kind": "sprite",
+          "bindings": [
+            {
+              "nodeId": "root",
+              "componentId": "image",
+              "property": "m_Sprite"
+            }
+          ],
+          "deliverySize": {
+            "width": 1920,
+            "height": 1080
+          },
+          "imageType": "simple",
+          "pixelsPerUnit": 100,
+          "alphaMode": "opaque",
+          "generationPolicy": "imagegen"
+        }
+      ],
+      "animations": [],
+      "effects": [],
+      "previewStates": [
+        {
+          "id": "default",
+          "activeNodes": {
+            "root": true
+          }
+        }
+      ],
+      "placeholderPolicy": {
+        "image": "placeholder",
+        "font": "default"
+      },
+      "styleContract": {
+        "id": "project-style",
+        "version": 1,
+        "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      },
+      "acceptanceProfile": {
+        "whitebox": {
+          "id": "static-ui",
+          "version": 1,
+          "checks": [
+            "hierarchy",
+            "bindings",
+            "visual-preview"
+          ]
+        },
+        "art": {
+          "id": "static-ui",
+          "version": 1,
+          "checks": [
+            "hierarchy",
+            "bindings",
+            "visual-preview"
+          ]
+        },
+        "assembly": {
+          "id": "static-ui",
+          "version": 1,
+          "checks": [
+            "hierarchy",
+            "bindings",
+            "visual-preview"
+          ]
+        }
+      }
+    }
+  ]
+}

@@ -1,9 +1,13 @@
+import {artVisualScope} from './ui-visual-delivery.js';
+import {buildProductionSkeleton,validateDesignDocument} from './design-contract.js';
+import {readApprovedContract,stages} from './ui-production-contract.js';
+import {registerContract,submitTaskPlan} from './ui-task-plans.js';
 import {storePrefabTaskHtml} from './prefab-task-document.js';
 import { createHash, randomUUID } from 'node:crypto';
 import { hostname } from 'node:os';
 import { z } from 'zod';
 import { ReviewError } from './requirements.js';
-import { buildUiDeliverySkeleton, validateUiDeliveryPlan } from './ui-delivery-plan.js';
+import { validateUiDeliveryPlan } from './ui-delivery-plan.js';
 
 const requestSchema = z.object({ version_id:z.uuid(), revision:z.string().regex(/^[0-9a-f]{64}$/), document_hash:z.string().regex(/^[0-9a-f]{64}$/) }).strict();
 const text = z.string().trim().min(1).max(12000);
@@ -121,7 +125,8 @@ export async function startPmJob(pool, projectKey, userId, raw)
     return transaction(pool, async client =>
     {
         const version = await approvedDocument(client,projectKey,input);
-        buildUiDeliverySkeleton(version.html,version.version);
+        validateDesignDocument(version.html,{projectId:version.project_id,versionId:version.id});
+        buildProductionSkeleton(version.html,version.version);
         const permission = await client.query(`SELECT 1 FROM gameai.users u JOIN gameai.user_roles ur ON ur.user_id=u.id
             JOIN gameai.role_permissions rp ON rp.role_code=ur.role_code WHERE u.id=$1 AND u.enabled AND ur.project_id=$2
             AND rp.permission_code='requirement.approve'`,[userId,version.project_id]);
@@ -164,14 +169,15 @@ export async function startPmJob(pool, projectKey, userId, raw)
     });
 }
 
-export async function publishPmPlan(pool, projectKey, job, result)
+export async function publishPmPlan(pool, projectKey, job, result, {recoverPublication=false} = {})
 {
     const proposal = validatePmPlan(result.plan);
     return transaction(pool,async client =>
     {
         const version = await approvedDocument(client,projectKey,{version_id:job.requirement_version_id,revision:job.revision,document_hash:job.document_hash});
+        validateDesignDocument(version.html,{projectId:version.project_id,versionId:version.id});
         // Reconstruct from authoritative bytes inside the publication transaction, never trust a caller's scope.
-        const skeleton = buildUiDeliverySkeleton(version.html,version.version);
+        const skeleton = buildProductionSkeleton(version.html,version.version);
         const plan = validateUiDeliveryPlan(proposal,skeleton);
         const current = (await client.query('SELECT * FROM gameai.pm_jobs WHERE id=$1 FOR UPDATE',[job.id])).rows[0];
         if (current.execution_id !== job.execution_id)
@@ -180,9 +186,16 @@ export async function publishPmPlan(pool, projectKey, job, result)
         }
         if (current.state === 'completed')
         {
+            if (recoverPublication)
+            {
+                await restorePublicationFlow(client,version,current.plan_version_id,true);
+            }
             return current;
         }
-        if (current.state !== 'running' || new Date(current.expires_at).getTime() <= Date.now())
+        // A completed fixed-Agent result can outlive its execution lease after a publication failure.
+        // Recovery still checks the latest approval, exact execution identity and completed Agent proof below.
+        const recovering = recoverPublication && current.state === 'failed';
+        if (!recovering && (current.state !== 'running' || new Date(current.expires_at).getTime() <= Date.now()))
         {
             throw new ReviewError('PM 执行已过期，需要人工核实。');
         }
@@ -194,8 +207,8 @@ export async function publishPmPlan(pool, projectKey, job, result)
         {
             throw new ReviewError('结果不是该需求固定 PM 的已完成执行。');
         }
-        const stages=(await client.query('SELECT stage,state FROM gameai.pm_stages WHERE parent_execution_id=$1',[job.execution_id])).rows;
-        if (stages.length && (stages.length!==4 || stages.some(s=>s.state!=='completed')))
+        const pmStages=(await client.query('SELECT stage,state FROM gameai.pm_stages WHERE parent_execution_id=$1',[job.execution_id])).rows;
+        if (pmStages.length && (pmStages.length!==4 || pmStages.some(s=>s.state!=='completed')))
         {
             throw new ReviewError('专业 PM 阶段尚未全部完成，禁止发布部分计划。');
         }
@@ -204,40 +217,45 @@ export async function publishPmPlan(pool, projectKey, job, result)
         // The database allocates role-prefixed public numbers; model IDs only resolve this proposal's edges.
         const root = (await client.query(`INSERT INTO gameai.tasks(project_id,plan_version_id,title,role_code,description,status)
             VALUES($1,$2,$3,'PM',$4,'pending') RETURNING id`,[version.project_id,pv.id,version.title,plan.summary])).rows[0];
-        const ids = new Map();
-        for (const task of plan.tasks)
+        // Freeze the approved contract and create all phase tasks in this same transaction.
+        const contract=readApprovedContract(version.html);
+        const registered=await registerContract(pool,contract,job.requested_by,client);
+        const contractPlan={schemaVersion:'ui-task-plan/1',requestId:job.id,projectId:version.project_id,
+            requirementVersionId:version.id,parentTaskId:root.id,contract:registered,
+            windows:contract.windows.map(w=>({windowId:w.windowId,stages}))};
+        delete contractPlan.contract.created;
+        const published=await submitTaskPlan(pool,contractPlan,job.requested_by,true,client);
+        if (published.tasks.length!==plan.tasks.length) throw new ReviewError('PM scope differs from approved production contract');
+        for (const created of published.tasks)
         {
-            const criteria = Object.entries(task.acceptance).map(([kind,value]) => ({kind,text:value}));
-            const row = (await client.query(`INSERT INTO gameai.tasks(project_id,plan_version_id,parent_id,title,role_code,description,source_refs,delivery_criteria,status)
-                VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING id`,[version.project_id,pv.id,root.id,task.title,task.role,task.description,JSON.stringify(task.source_refs),JSON.stringify(criteria),task.depends_on.length ? 'blocked' : 'pending'])).rows[0];
-            if (["Prefab","Art"].includes(task.role))
-            {
-                const stored = (await client.query("SELECT * FROM gameai.tasks WHERE id=$1",[row.id])).rows[0];
-                await storePrefabTaskHtml(client,stored,version.html,job.document_hash);
-            }
-            ids.set(task.id,row.id);
-            const identity = skeleton.tasks.find(item => item.id === task.id);
-            await client.query('UPDATE gameai.tasks SET logical_id=$2,window_id=$3,delivery_phase=$4 WHERE id=$1',
-                [row.id,identity.id,identity.window_id,identity.phase]);
-            for (const dependency of task.depends_on)
-            {
-                await client.query('INSERT INTO gameai.task_dependencies(project_id,task_id,depends_on_id) VALUES($1,$2,$3)',[version.project_id,row.id,ids.get(dependency)]);
-            }
+            const stored=(await client.query('SELECT * FROM gameai.tasks WHERE id=$1',[created.id])).rows[0];
+            const task=plan.tasks.find(t=>t.id===stored.logical_id);
+            if (!task) throw new ReviewError('PM task identity differs from production contract');
+            if (stored.role_code==='Art') task.description+='\n视觉资产交付职责：'+artVisualScope;
+            await client.query('UPDATE gameai.tasks SET title=$2,description=$3,source_refs=$4 WHERE id=$1',
+                [stored.id,task.title,task.description,JSON.stringify(task.source_refs)]);
+            await storePrefabTaskHtml(client,{...stored,title:task.title,description:task.description,source_refs:task.source_refs},version.html,job.document_hash);
         }
         const qaTasks = [];
-        const automatic=(await client.query("SELECT * FROM gameai.approval_workflows WHERE version_id=$1 AND state IN ('pm','manual_pm')",[version.id])).rows[0];
-        if (automatic)
-        {
-            // Only the immutable human approval authorizes selecting this exact plan's children.
-            await client.query(`UPDATE gameai.tasks SET dispatch_allowed=true,dispatch_revision=dispatch_revision+1,dispatch_selected_by=$2,dispatch_selected_at=now() WHERE plan_version_id=$1 AND parent_id IS NOT NULL AND ($3::jsonb IS NULL OR role_code IN (SELECT value->>'role_code' FROM jsonb_array_elements($3::jsonb)))`,[pv.id,automatic.requested_by,automatic.agent_policy===null?null:JSON.stringify(automatic.agent_policy)]);
-            await client.query("INSERT INTO gameai.plan_dispatch_flows(plan_version_id,project_id,requested_by,state,agent_policy) VALUES($1,$2,$3,'active',$4)",[pv.id,version.project_id,automatic.requested_by,automatic.agent_policy===null?null:JSON.stringify(automatic.agent_policy)]);
-            await client.query("UPDATE gameai.approval_workflows SET state='dispatched',updated_at=now() WHERE version_id=$1",[version.id]);
-        }
+        await restorePublicationFlow(client,version,pv.id,recovering);
         const taskCount=plan.tasks.length+qaTasks.length;
-        const completed = (await client.query("UPDATE gameai.pm_jobs SET state='completed',plan_version_id=$2,task_count=$3,finished_at=now() WHERE id=$1 RETURNING *",[job.id,pv.id,taskCount])).rows[0];
+        const completed = (await client.query("UPDATE gameai.pm_jobs SET state='completed',error='',plan_version_id=$2,task_count=$3,finished_at=now() WHERE id=$1 RETURNING *",[job.id,pv.id,taskCount])).rows[0];
         await client.query("INSERT INTO gameai.audit_events(project_id,actor,event,payload) VALUES($1,'agent:PM','PM 已发布 UI 白模、美术资源与装配任务',$2)",[version.project_id,{execution_id:job.execution_id,plan_version_id:pv.id,task_count:taskCount}]);
         return completed;
     });
+}
+
+async function restorePublicationFlow(client,version,planVersionId,recovering)
+{
+        // Recover only the persisted approval workflow and its original role policy.
+        const automatic=(await client.query("SELECT * FROM gameai.approval_workflows WHERE version_id=$1 AND (state IN ('pm','manual_pm') OR ($2 AND state='failed')) FOR UPDATE",[version.id,recovering])).rows[0];
+        if (automatic)
+        {
+            // Only the immutable human approval authorizes selecting this exact plan's children.
+            await client.query(`UPDATE gameai.tasks SET dispatch_allowed=true,dispatch_revision=dispatch_revision+1,dispatch_selected_by=$2,dispatch_selected_at=now() WHERE plan_version_id=$1 AND parent_id IS NOT NULL AND NOT dispatch_allowed AND ($3::jsonb IS NULL OR role_code IN (SELECT value->>'role_code' FROM jsonb_array_elements($3::jsonb)))`,[planVersionId,automatic.requested_by,automatic.agent_policy===null?null:JSON.stringify(automatic.agent_policy)]);
+            await client.query("INSERT INTO gameai.plan_dispatch_flows(plan_version_id,project_id,requested_by,state,agent_policy) VALUES($1,$2,$3,'active',$4) ON CONFLICT(plan_version_id) DO NOTHING",[planVersionId,version.project_id,automatic.requested_by,automatic.agent_policy===null?null:JSON.stringify(automatic.agent_policy)]);
+            await client.query("UPDATE gameai.approval_workflows SET state='dispatched',error='',updated_at=now() WHERE version_id=$1",[version.id]);
+        }
 }
 
 export async function failPmJob(pool, job, error)
