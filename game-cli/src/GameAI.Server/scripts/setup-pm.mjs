@@ -13,6 +13,7 @@ try
         throw new Error('Workflow database account missing');
     }
     const role = pg.escapeIdentifier(config.PGUSER);
+    await pool.query('GRANT SELECT,INSERT ON gameai.requirement_rule_snapshots TO '+role);
     // Frozen contracts and task inputs are append-only; the workflow needs no UPDATE or DELETE.
     await pool.query('GRANT SELECT,INSERT ON gameai.ui_production_contracts,gameai.ui_task_contracts,gameai.ui_task_plan_requests TO '+role);
     await pool.query('GRANT UPDATE(source_refs) ON gameai.tasks TO '+role);
@@ -23,6 +24,8 @@ try
     await pool.query('GRANT UPDATE(logical_id,window_id,delivery_phase) ON gameai.tasks TO '+role);
     await pool.query('GRANT UPDATE(dispatch_allowed,dispatch_revision,dispatch_selected_by,dispatch_selected_at) ON gameai.tasks TO '+role);
     await pool.query('GRANT SELECT,INSERT ON gameai.task_dispatch_jobs TO '+role);
+    await pool.query('GRANT SELECT,INSERT,UPDATE ON gameai.task_publications TO '+role);
+    await pool.query('GRANT SELECT,INSERT,UPDATE ON gameai.workflow_outbox TO '+role);
     await pool.query('GRANT INSERT,UPDATE ON gameai.executions TO '+role);
     await pool.query('GRANT UPDATE(status,progress) ON gameai.tasks TO '+role);
     await pool.query('GRANT SELECT,INSERT,UPDATE ON gameai.plan_dispatch_flows TO '+role);

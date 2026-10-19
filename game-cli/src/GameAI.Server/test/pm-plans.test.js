@@ -1,4 +1,6 @@
+import {readRequirementRules} from '../src/database/requirement-rules.js';
 import {reviewedHtml} from './ui-production-fixture.js';
+import {recoveryLoopScenario} from './recovery-loop-scenario.js';
 import {buildProductionSkeleton} from '../src/database/design-contract.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -52,6 +54,11 @@ test('UI publication binds approved manifest, is atomic, preserves consent and p
         {
             const input = {request_id:randomUUID(),requirement_key:'TEST-UI',title:'隔离测试',version,html,sha256:createHash('sha256').update(html).digest('hex'),execution_id:'test-design',thread_id:'test-design-thread',summary:'测试'};
             const saved = await submitRequirement(servicePool,key,input);
+            const rules=await readRequirementRules(c,saved.version_id,'PM');
+            assert.ok(rules.instructions.length>100);
+            await c.query('SAVEPOINT snapshot_immutable');
+            await assert.rejects(c.query("UPDATE gameai.requirement_rule_snapshots SET sha256='changed' WHERE version_id=$1",[saved.version_id]));
+            await c.query('ROLLBACK TO SAVEPOINT snapshot_immutable');
             return {version_id:saved.version_id,revision:saved.revision,document_hash:saved.document_hash};
         }
         const request = await submit('v1');
@@ -94,6 +101,7 @@ test('UI publication binds approved manifest, is atomic, preserves consent and p
         assert.equal(htmlDocs.length,3);
         assert.ok(htmlDocs.every(row => row.bytes.toString().includes('完整窗口说明')));
         assert.equal((await publishPmPlan(servicePool,key,started.job,result)).state,'completed');
+        await recoveryLoopScenario({c,servicePool,p,worker,user,key,rows});
         assert.equal((await c.query('SELECT count(*)::int n FROM gameai.tasks WHERE project_id=$1',[p])).rows[0].n,4);
         await c.query('SAVEPOINT identity_constraint');
         await assert.rejects(c.query('UPDATE gameai.tasks SET delivery_phase=null WHERE id=$1',[rows.find(row => row.logical_id).id]),/task_delivery_identity/);

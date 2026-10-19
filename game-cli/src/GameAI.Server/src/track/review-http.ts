@@ -15,8 +15,12 @@ import { setTaskDispatchSelection } from '../database/task-dispatch-selection.js
 import { checkPmRuntime, dispatchPmJob } from './pm-dispatch.js';
 import { dispatchTasks } from '../database/task-dispatch.js';
 import {resumeApprovalWorkflows} from './approval-flow.js';
-import { runTaskChain, resumeTaskFlows } from './task-flow.js';
+import { runTaskChain, resumeTaskFlows,continueTaskFlow } from './task-flow.js';
+import {drainWorkflowOutbox} from './workflow-outbox.js';
 import {createWorkflowPump} from './workflow-pump.js';
+import {recoverTaskPublications} from './task-publication.js';
+import {finishReceivedTask} from './task-dispatch.js';
+import {recoverPmPublications} from './pm-publication.js';
 
 let writer: ReturnType<typeof createPool> | undefined;
 let config: Record<string,string | undefined> | undefined;
@@ -44,6 +48,9 @@ export function initializeWorkflowRecovery(): Promise<void>
             writer = createPool({ user:config.PGUSER,password:config.PGPASSWORD });
             const revisionWriter=writer;
             const pump=createWorkflowPump({
+                publications:()=>recoverTaskPublications(revisionWriter,finishReceivedTask),
+                pmPublications:()=>recoverPmPublications(revisionWriter),
+                notifications:()=>drainWorkflowOutbox(revisionWriter,continueTaskFlow),
                 revisions:()=>resumeRequirementRevisions(revisionWriter),
                 approvals:()=>resumeApprovalWorkflows(revisionWriter),
                 tasks:()=>resumeTaskFlows(revisionWriter)

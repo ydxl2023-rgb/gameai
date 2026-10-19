@@ -11,7 +11,7 @@ export function validateTaskResult(raw,role)
     if (value.verdict==='blocked' || value.questions.length) throw new ReviewError('执行阻塞：'+(value.questions.join('；') || value.summary));
     if (!value.files.length || !value.checks.length || value.checks.some(c=>!value.files.includes(c.evidence_path)) || value.defects.some(d=>!value.files.includes(d.evidence_path)) || value.retests.some(r=>!value.files.includes(r.evidence_path))) throw new ReviewError('缺少真实交付文件或检查证据。');
     if (value.verdict==='pass' && (value.checks.some(c=>!c.passed) || value.defects.length || value.retests.some(r=>!r.passed))) throw new ReviewError('通过结论与测试结果冲突。');
-    if (role!=='QA' && (value.verdict!=='pass' || value.defects.length || value.retests.length)) throw new ReviewError('专业交付检查未通过。');
+    if (role!=='QA' && (value.verdict!=='pass' || value.defects.length || value.retests.length)) throw new ReviewError('专业交付检查未通过：'+value.summary+'；失败检查：'+value.checks.filter(c=>!c.passed).map(c=>c.name).join('；'));
     if (role==='QA' && value.verdict==='fail' && (!value.defects.length || !value.checks.some(c=>!c.passed))) throw new ReviewError('QA 缺陷必须包含失败测试、复现步骤与证据；环境阻塞不能建缺陷。');
     if (new Set(value.defects.map(d=>d.source_task_key+':'+d.case_key)).size!==value.defects.length || new Set(value.retests.map(r=>r.defect_id)).size!==value.retests.length) throw new ReviewError('缺陷或复测记录重复。');
     return value;

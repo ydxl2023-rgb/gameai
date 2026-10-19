@@ -20,7 +20,7 @@ description: 维护 GameCLI、GameAI.Server 与 Track 工程；通用 C# 编码�
 ## C# 职责与实现约定
 
 - `Program.cs` 负责启动和依赖组装；`Commands` 解析参数、调用用例并映射退出码，不承载业务流程。
-- `Core` 仅放 CLI 宿主与本地执行控制；业务状态机、依赖调度、审批及重试决策全部放在 GameCLIServer；`Contracts` 放 DTO、结果与显式校验；`Agents` 放 Design、PM、Art、Development、QA 五类专业角色调用适配；`Services` 放 平台、Git、资产与 Unity 执行器。按实际功能创建，不用空实现假装功能完成。
+- `Core` 仅放 CLI 宿主与本地执行控制；业务状态机、依赖调度、审批及重试决策全部放在 GameCLIServer；`Contracts` 放 DTO、结果与显式校验；`Agents` 放 Design、PM、Prefab、Art、Development、QA 六类专业角色调用适配；`Services` 放 平台、Git、资产与 Unity 执行器。按实际功能创建，不用空实现假装功能完成。
 - 通过接口或构造参数注入外部依赖，使状态迁移和验证可独立测试。确定性调度逻辑不交给 LLM 自行决定。
 - 所有 CLI 命令实现 `ICommand`，所有 CLI 插件实现 `ICLIPlugin`；沿用插件宿主统一处理 enable/disable，不在命令内绕过插件开关。
 - 方法职责单一，优先用有名称的小方法表达业务步骤；参数或前置条件不满足时提前返回，减少嵌套。
@@ -39,15 +39,15 @@ description: 维护 GameCLI、GameAI.Server 与 Track 工程；通用 C# 编码�
 
 - 平台服务使用 PostgreSQL 作为任务状态、审批、重试和执行记录的唯一可信来源。不得引入 SQLite、本地 JSON 或另一数据库保存权威流程状态；产物与日志可以落盘。
 - 每次执行读取 平台 的最新状态、依赖及审批，只执行定义明确且满足 guard 的迁移。平台 不可用时暂停，不能凭缓存推进。
-- Design、PM、Art、Development、QA 使用结构化任务和结果交互，由编排器统一调度；技能是指令，不是已运行的 Agent 服务。
+- Design、PM、Prefab、Art、Development、QA 使用结构化任务和结果交互，由编排器统一调度；技能是指令，不是已运行的 Agent 服务。
 - 副作用前核对执行 ID/幂等键；超时或恢复时核对远端已有结果，不能将先查后写视为原子锁。
 - 重试上限和结果回写 平台。默认最多 3 次，区分网络重试与业务修复；拒绝、权限失败、规则缺失或次数超限时返回明确原因。
 - 人工批准绑定对应需求或产物版本。不得由 Agent 自批、以旧审批批准新产物，或在合并未完成时记录完成。
-- 需求必须在当前 Codex 对话反复讨论并明确确认具体版本。确认前只登记需求主任务保存草案；专业子任务由确认后的 PM 建单通道创建，禁止提前建单。问题只在对话处理，不写入单据正文。
+- 需求必须在当前 Codex 对话反复讨论并明确确认具体版本。初稿确认前不建单；正式 HTML 经 Track 人工审批后，PM 审查并由服务端事务性建单。问题只在对话处理，不写入单据正文。
 
 ## CLI 契约与安全配置
 
-- 命令按功能分组：`GameCLI <group> [options]`。当前使用 `GameCLI unity --ping --project <path> --format json`；后续平台通信命令必须以实际实现为准。Program 只分发命令组，各组自行解析操作与参数；尚未实现的组明确报错，不提供假成功入口。
+- 命令按功能分组：`GameCLI <group> [options]`。命令参数以当前 `--help` 和实现为准；Unity 操作调用目标工程安装的独立 Unity CLI，不使用已移除的平台内置 Unity 命令。Program 只分发命令组，各组自行解析操作与参数；尚未实现的组明确报错，不提供假成功入口。
 
 - 延续纲要退出码：0 成功、1 可重试错误、2 需修复错误、3 不可重试/需人工、4 输入契约错误、5 配置错误。
 - 使用 C# DTO 和 System.Text.Json；显式校验必填字段、枚举、版本和任务依赖，不能仅以反序列化成功判定有效。
@@ -56,10 +56,10 @@ description: 维护 GameCLI、GameAI.Server 与 Track 工程；通用 C# 编码�
 
 ## Unity 与 Skill 分发
 
-- 平台 CLI 位于 `game-cli/src/GameAI.Cli`，服务位于 `game-cli/src/GameAI.Server`，插件位于 `plugins/`，角色技能位于 `game-cli/skills/`。平台不得引用 Unity 包源码；Unity 操作由独立外部 CLI 执行，Unity 工程只保存自身 Editor/Runtime 代码。
+- 平台 CLI 位于 `game-cli/src/GameAI.Cli`，服务位于 `game-cli/src/GameAI.Server`，插件位于 `game-cli/plugins/`，角色技能位于 `game-cli/skills/`。平台不得引用 Unity 包源码；Unity 操作由独立外部 CLI 执行，Unity 工程只保存自身 Editor/Runtime 代码。
 - 资产变更保留已有 .meta GUID。不要为完成 CLI 工作重建用户场景或移动现有资产。
-- 标准主技能放在包根 `game-cli/<skill-name>/SKILL.md`，专业子技能放在对应主技能目录的 `<specialist-name>/SKILL.md`，使用包含 name/description 的 YAML frontmatter，目录名与 name 一致。
-- Design、PM、Art、Development、QA 五个专业角色技能与 common/task-delivery/unity 公共技能保持职责边界。本开发技能负责工程约定，不增加业务 Agent。
+- 标准主技能放在 `game-cli/skills/<role>/<AgentName>/SKILL.md`，专业子技能放在对应主技能目录的 `<specialist-name>/SKILL.md`，使用包含 name/description 的 YAML frontmatter，保留用户约定的英文角色目录；frontmatter name 使用合法技能标识。
+- Design、PM、Prefab、Art、Development、QA 六个角色技能与 common 公共技能保持职责边界。本开发技能负责工程约定，不增加业务 Agent。
 - 技能互引使用相对路径；子技能通过 `../SKILL.md` 引用所属主技能；分发时携带依赖，不能依赖开发机绝对路径。只按需增加 references、scripts、assets。
 - 新增或修改技能优先保持单一职责；可复用专项规则独立为技能，由角色主技能引用。宿主禁用文件读取时，必须显式加载所需依赖技能内容，不能只传入无法打开的链接。
 - 协调服务使用版本化 JSON 与 WebSocket 协议；事件通知不等于派工授权。Node.js 依赖提交 package.json 和锁文件，不提交 node_modules、真实 .env 或令牌。服务端遵守单一职责、四空格、Allman 大括号、英文源码注释及可取消的连接生命周期约定；C# 属性排版规则不机械套用到 JavaScript。
@@ -77,9 +77,9 @@ description: 维护 GameCLI、GameAI.Server 与 Track 工程；通用 C# 编码�
 
 ## 专业需求同步登记
 
-策划分析完成后先在当前 Codex 对话展示草案并反复修订。用户明确确认完整版本后，PM 才统一登记美术、程序开发和测试验收需求，按 PM 的交付标准拆分规范（处理拆分任务时读取 `../../pm/RodFergusson/SKILL.md`） 创建可独立交付、独立验收的子任务，同一专业可以有多项。单据登记不等于开始制作、编码或测试。依赖精确到实际使用的前置产物，测试依赖对应交付任务；按拓扑顺序登记，执行前核验所有前置交付。已发布计划及编号在恢复时原样复用，禁止重复创建；计划迁移统一经云端接口执行，接口未实现时明确阻塞。
+对话初稿获批后由 Design 编写、CLI 编译并经 Design 自检；正式 HTML 经 Track 人工审批后，PM 才按当前契约审查生产任务，按 PM 的交付标准拆分规范（处理拆分任务时读取 `../../pm/RodFergusson/SKILL.md`） 创建可独立交付、独立验收的子任务，同一专业可以有多项。单据登记不等于开始制作、编码或测试。依赖精确到实际使用的前置产物，测试依赖对应交付任务；按拓扑顺序登记，执行前核验所有前置交付。已发布计划及编号在恢复时原样复用，禁止重复创建；计划迁移统一经云端接口执行，接口未实现时明确阻塞。
 
-客户端不得实现第二套业务调度或恢复决策。GameCLIServer 负责状态、审批、依赖、任务分配、租约与重试；GameCLI 仅通信、执行云端授权任务、启动 Agent 和回传结果。当前云端正式派工接口仍待实现，不得由本地工作流代替。
+客户端不得实现第二套业务调度或恢复决策。GameCLIServer 负责状态、审批、依赖、任务分配、租约与重试；GameCLI 仅通信、执行云端授权任务、启动 Agent 和回传结果。当前本机固定角色派发、授权后的同计划推进与有限失败恢复已实现；远程 worker 派发仍待实现，不得由客户端另建调度器。
 
 ## 用户阅读文档格式
 

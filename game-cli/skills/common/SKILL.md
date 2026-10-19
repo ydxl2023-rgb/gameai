@@ -19,14 +19,7 @@ description: 提供流水线共用的结构化结果、文件哈希与 Trace 约
 
 平台服务使用 PostgreSQL 作为任务状态、审批、重试与执行记录的唯一可信来源。Git、文件和对象存储保存产物与证据，不保存第二套权威流程状态。
 
-每次输出可解析的 JSON 对象。宿主明确提供角色专用 schema 时采用该 schema；否则使用以下通用外层结构：
-- schema_version：默认 1。
-- task_id：真实 平台 编号，尚未建单时为 null。
-- trace_id、execution_id：沿用调用方传入值；缺失时说明，不伪造已有执行。
-- status：success、blocked 或 failed，仅表示本次执行结果，不替代 平台 业务状态。
-- data：角色专属输出。
-- artifacts：真实路径或 URL，以及可获得的实际 sha256。
-- errors：错误类别、消息、证据及是否可重试。
+正式角色调用只使用当前命令提供的结果 schema，不存在通用备用外层。Design draft 返回 title、summary、html、windowsJson、questions；PM 使用 outcome、summary、issues、tasks；专业 execute 使用 verdict、summary、deliverables、files、questions、checks、defects、retests。分析、自检等命令采用各自 schema，不互相套用。未获得调用 schema 时报告接口缺失，不自行构造 status/data/artifacts 包装。
 
 对实际文件字节计算 SHA-256；记录输入版本、UTC 时间、耗时和工具结果。日志不含密钥或令牌。区分未执行、桩执行和真实验证；缺失字段使用 null，不猜测链接、编号或结果。报告可落盘，状态仍回写 平台。
 
@@ -36,7 +29,7 @@ description: 提供流水线共用的结构化结果、文件哈希与 Trace 约
 
 ## 固定 Agent 执行约定
 
-- Design、PM、Art、Development、QA 均使用云服务登记的固定角色 Agent，不临时创建替代身份。技能、节点和容量由云端记录决定。
+- Design、PM、Prefab、Art、Development、QA 均使用云服务登记的固定角色 Agent，不临时创建替代身份。技能、节点和容量由云端记录决定。
 - 所有角色执行必须传入需求编号 `--key`。会话以“项目 + 需求编号 + 角色”隔离；同一需求修订恢复已登记的原会话，不把不同需求混入一个长对话。
 - GameCLI 从仓库根目录 `.gamecli/client.json` 读取连接配置，向云服务申请执行、登记会话、续约和回报结果；凭据不得进入对话、文档或 Git。
 - 同一固定 Agent 同时最多运行一项工作。忙碌、停用、节点不匹配或执行状态未知时停止并报告，不自行更换 Agent 或生成新会话绕过限制。

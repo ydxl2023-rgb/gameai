@@ -14,6 +14,8 @@ import {readTaskInput} from './ui-task-plans.js';
 import {recoveryDecision,recoveryAttempts} from './task-recovery.js';
 import {prepareUiDocumentPrompt} from './ui-document-prompt.js';
 import {loadSkillInstructions} from './skill-catalog.js';
+import {hasPublicationProof} from './publication-proof.js';
+import {readRequirementRules} from './requirement-rules.js';
 
 const request = z.object({tasks:z.array(z.object({task_id:z.uuid(),revision:z.number().int().nonnegative()}).strict()).min(1).max(100),auto_continue:z.boolean().optional(),recovery_cycle:z.boolean().optional(),retry:z.boolean().optional(),retry_override:z.object({attempts:z.number().int().min(3),reason:z.string().trim().min(1).max(1000)}).strict().optional()}).strict();
 
@@ -102,7 +104,7 @@ export async function dispatchTasks(pool,projectKey,userId,raw,commit=false,auto
             {
                 const selected=(await c.query('SELECT s.* FROM gameai.agent_skills g JOIN gameai.skills s ON s.skill_key=g.skill_key WHERE g.agent_id=$1',[a.id])).rows;
                 const catalog=(await c.query('SELECT * FROM gameai.skills')).rows;
-                await loadSkillInstructions(selected,catalog,undefined,t.role_code);
+                if (!await readRequirementRules(c,t.version_id,t.role_code)) await loadSkillInstructions(selected,catalog,undefined,t.role_code);
             }
             catch (error)
             {
@@ -138,7 +140,9 @@ export async function dispatchTasks(pool,projectKey,userId,raw,commit=false,auto
                 WHERE l.task_id=$1 AND a.storage_key LIKE 'deliveries/%/task-%.html' ORDER BY a.verified_at DESC LIMIT 1`,[t.id])).rows[0] : null;
             if (taskDoc && createHash('sha256').update(taskDoc.bytes).digest('hex') !== taskDoc.sha256) throw new ReviewError('预制任务 HTML 校验失败。');
             const humanNotes=(await c.query('SELECT body,created_at FROM gameai.comments WHERE task_id=$1 AND user_id IS NOT NULL ORDER BY created_at DESC LIMIT 10',[t.id])).rows;
-            const failureContext=previous ? {error:previous.result?.error,previous_result:previous.result?.result?.Text ?? null,instruction:'先分析上次失败与已存在产物，修复本任务范围内的问题再验证；不得绕过审批、权限或降低验收标准。返回实际修复内容与检查证据。'} : null;
+            const feedback=previous ? (await c.query(`SELECT id::text,event,body,role,created_at FROM gameai.collaboration_messages
+                WHERE project_id=$1 AND task_id=$2 ORDER BY id DESC LIMIT 8`,[project.id,t.id])).rows.reverse() : [];
+            const failureContext=previous ? {error:previous.result?.error,previous_result:previous.result?.result?.Text ?? null,collaboration_feedback:feedback,instruction:'先分析上次失败、协作反馈与已存在产物，修复本任务范围内的问题再验证；协作反馈是历史证据，不得覆盖冻结契约、审批、权限或降低验收标准。返回实际修复内容与检查证据。'} : null;
             const productionContract=await readTaskInput(c,t.id);
             if (['Prefab','Art'].includes(t.role_code) && !productionContract) throw new ReviewError('UI task requires a frozen production contract; recreate through contract task submission.');
             if (productionContract) productionContract.path=`game-cli/temp/task-jobs/${executionId}/production-input.json`;
@@ -154,7 +158,9 @@ export async function dispatchTasks(pool,projectKey,userId,raw,commit=false,auto
                 await c.query(`INSERT INTO gameai.plan_dispatch_flows(plan_version_id,project_id,requested_by,state) VALUES($1,$2,$3,'active')
                     ON CONFLICT(plan_version_id) DO UPDATE SET state='active',requested_by=EXCLUDED.requested_by,agent_policy=NULL,reason='',updated_at=now()`,[t.plan_version_id,project.id,userId]);
             }
-            jobs.push({executionId,projectId:project.id,taskId:t.id,planVersionId:t.plan_version_id,key:t.requirement_key,role:t.role_code,prompt});
+            const job={executionId,projectId:project.id,taskId:t.id,planVersionId:t.plan_version_id,key:t.requirement_key,role:t.role_code,prompt};
+            await c.query('INSERT INTO gameai.task_publications(execution_id,job) VALUES($1,$2)',[executionId,job]);
+            jobs.push(job);
         }
         await c.query('COMMIT');
         return {rows,jobs};
@@ -163,7 +169,7 @@ export async function dispatchTasks(pool,projectKey,userId,raw,commit=false,auto
     finally { c.release(); }
 }
 
-export async function finishTaskDispatch(pool,job,result,error)
+export async function finishTaskDispatch(pool,job,result,error,{recoverPublication=false}={})
 {
     const c=await pool.connect();
     try
@@ -175,7 +181,8 @@ export async function finishTaskDispatch(pool,job,result,error)
         if (!execution || !['assigned','running'].includes(execution.state)) { await c.query('COMMIT'); return; }
         const proof=(await c.query('SELECT * FROM gameai.agent_runs WHERE execution_id=$1',[job.executionId.replaceAll('-','')])).rows[0];
         // A process error cannot prove that its child stopped; unknown capacity remains occupied.
-        const lease=(await c.query('SELECT expires_at,context FROM gameai.task_dispatch_jobs WHERE execution_id=$1',[job.executionId])).rows[0];
+        const lease=(await c.query('SELECT expires_at,context,input_hash FROM gameai.task_dispatch_jobs WHERE execution_id=$1',[job.executionId])).rows[0];
+        if (result && result.InputSha256!==lease?.input_hash) error='执行输入哈希不匹配';
         const task=(await c.query(`SELECT t.*,v.requirement_id,v.ordinal FROM gameai.tasks t JOIN gameai.plan_versions p ON p.id=t.plan_version_id JOIN gameai.requirement_versions v ON v.id=p.requirement_version_id WHERE t.id=$1`,[job.taskId])).rows[0];
         const current=await c.query(`SELECT 1 FROM gameai.plan_versions p JOIN gameai.approvals a ON a.version_id=p.requirement_version_id AND a.decision='approved' WHERE p.id=$1 AND p.state='published'
             AND NOT EXISTS(SELECT 1 FROM gameai.requirement_versions WHERE requirement_id=$2 AND ordinal>$3)`,[task.plan_version_id,task.requirement_id,task.ordinal]);
@@ -208,7 +215,8 @@ export async function finishTaskDispatch(pool,job,result,error)
             catch(cause) { error=cause.message; }
         }
         if (!current.rowCount || !await verifyTaskFiles(result?.artifacts)) error=error ?? '需求版本或交付文件已失效';
-        const success=!error && proof?.state==='completed' && lease && new Date(lease.expires_at)>new Date();
+        // Late publication is allowed only when the same Agent actually completed within its lease.
+        const success=!error && hasPublicationProof(proof,lease,recoverPublication);
         const unknown=!success && (!proof || ['running','unknown'].includes(proof.state));
         const state=success ? 'succeeded' : unknown ? 'unknown' : 'failed';
         await c.query('UPDATE gameai.executions SET state=$2,result=$3,ended_at=now() WHERE id=$1',[job.executionId,state,{result,artifacts:result?.artifacts ?? [],error:error ?? (success ? '' : '缺少完成凭据，需核实执行')}]);
@@ -222,6 +230,7 @@ export async function finishTaskDispatch(pool,job,result,error)
             const attempts=(await c.query('SELECT count(*)::int n FROM gameai.executions WHERE task_id=$1',[task.id])).rows[0].n;
             const agent=(await c.query('SELECT auto_execute FROM gameai.agents WHERE id=$1',[execution.agent_id])).rows[0];
             const recovery=recoveryDecision({state,error,attempts:recoveryAttempts(attempts,lease?.context),authorized:flow?.state==='active' && agent?.auto_execute});
+            await c.query(`UPDATE gameai.executions SET result=jsonb_set(result,'{recovery}',$2::jsonb) WHERE id=$1`,[job.executionId,JSON.stringify(recovery)]);
             await c.query("UPDATE gameai.plan_dispatch_flows SET state=$2,reason=$3,updated_at=now() WHERE plan_version_id=$1",[task.plan_version_id,recovery.retry?'active':'paused',recovery.reason]);
             await c.query(`INSERT INTO gameai.audit_events(project_id,actor,event,payload) VALUES($1,'orchestrator',$2,$3)`,[job.projectId,recovery.retry?'任务失败，安排原 Agent 修复重试':'任务自动修复停止，等待人工处理',{task_id:job.taskId,execution_id:job.executionId,reason:recovery.reason,error,attempts}]);
         }
@@ -237,6 +246,7 @@ export async function finishTaskDispatch(pool,job,result,error)
             FROM (SELECT parent_id,round(100.0*count(*) FILTER(WHERE status IN ('completed','review'))/count(*))::int progress,bool_and(status IN ('completed','review')) finished
                 FROM gameai.tasks WHERE parent_id=$1 GROUP BY parent_id) summary WHERE parent.id=summary.parent_id`,[task.parent_id]);
         await c.query(`INSERT INTO gameai.audit_events(project_id,actor,event,payload) VALUES($1,'orchestrator',$2,$3)`,[job.projectId,success ? completed ? '工程交付校验通过，通知后续任务' : '任务执行结束，等待人工验收' : '任务执行失败或待核实',{task_id:job.taskId,execution_id:job.executionId,state,summary:content?.summary,error:error ?? null}]);
+        await c.query(`INSERT INTO gameai.workflow_outbox(event_key,plan_version_id) VALUES($1,$2) ON CONFLICT DO NOTHING`,['execution:'+job.executionId,task.plan_version_id]);
         await c.query('COMMIT');
         return {success,completed};
     }

@@ -12,17 +12,17 @@ description: 按平台需求实现或修复目标工程功能并交付代码与�
 UI 结构白模与正式资源装配由独立 Prefab Agent 负责；Development 在稳定控件契约上接入业务逻辑，不代替 Prefab 或 Art 执行生产。最终联调依赖最终装配。
 
 
-本工具工程的 CLI 客户端与 Unity 集成使用 C#，独立控制台工程目标为 .NET 8；Unity 集成代码使用目标 Unity 支持的 C#/.NET API。用户指定的 GameCLIServer 集中协调服务使用 Node.js。标准技能保留为 SKILL.md，不另建 Python 实现。
+语言、引擎和构建入口以目标项目为准，不把 GameCLI 平台自身的技术选型施加到接入工程。
 
 - 输入：平台 需求、验收标准、依赖、资产 URL/Hash、代码基线及目标引擎／运行环境版本。
-- 检查工作区已有修改、依赖和审批，核对资产 Hash，在授权范围内实现代码、Prefab、Scene 等。
-- 编码前必须读取并严格执行 [GameCLI 编码规范](../../common/gameai-csharp-standard/SKILL.md)，该规范强制适用于所有使用 GameCLI 的目标工程；目标项目规则可以补充但不得放宽，冲突按规范要求处理。Unity 项目保留 .meta GUID，分离 UnityEditor 与运行时代码；其他平台遵循实际项目语言和资源约定。
+- 检查工作区已有修改、依赖和审批，核对资产 Hash，在授权范围内实现业务代码及其绑定，不承担白模创建或美术装配。
+- 涉及自有 C# 编码时读取并执行 [GameCLI 编码规范](../../common/gameai-csharp-standard/SKILL.md)，该规范强制适用于所有使用 GameCLI 的目标工程；目标项目规则可以补充但不得放宽，冲突按规范要求处理。Unity 项目保留 .meta GUID，分离 UnityEditor 与运行时代码；其他平台遵循实际项目语言和资源约定。
 - 交付前检查本次新增和修改代码的命名、排版、注释及通用实现约束；不符合规范时先修正，不以编译通过替代规范检查。
 - Unity 项目使用 `dev-unity/SKILL.md` 中的 Unity 开发与验证规则，其他项目使用实际可用的平台工具编译与测试；修复依据实际日志和验收证据。
 - 按 [任务依赖与交付规范](../../common/gameai-task-delivery/SKILL.md) 向宿主返回实际分支、Commit、PR 和报告。提交、推送、PR 按本次授权执行，不默认合并或发布。
 - 重试由编排器按 平台 记录控制，不在 Agent 内无限重试。
 
-输出 data 包含 branch、commit、pr_url、build_id、test_report、changes、remaining_issues。未执行步骤使用 null 并说明原因；编译通过不能替代功能验收。遵循 [公共契约](../../common/SKILL.md)。
+正式 execute 使用宿主的 verdict、summary、deliverables、files、questions、checks、defects、retests；分支、构建及修改详情写入交付报告，不增加 data 外层。分析模式遵循其自身 schema；编译通过不能替代功能验收。遵循 [公共契约](../../common/SKILL.md)。
 
 ## 依赖与交付门禁
 

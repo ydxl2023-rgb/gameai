@@ -35,7 +35,7 @@ try
         await connection.query('ALTER ROLE '+pg.escapeIdentifier(writer.PGUSER)+' PASSWORD '+pg.escapeLiteral(writer.PGPASSWORD));
         await connection.query('GRANT USAGE ON SCHEMA gameai TO '+pg.escapeIdentifier(writer.PGUSER));
         await connection.query('GRANT SELECT ON ALL TABLES IN SCHEMA gameai TO '+pg.escapeIdentifier(writer.PGUSER));
-        await connection.query('GRANT INSERT ON gameai.requirements,gameai.requirement_versions,gameai.artifacts,gameai.artifact_links,gameai.document_contents,gameai.idempotency_records,gameai.approvals,gameai.audit_events TO '+pg.escapeIdentifier(writer.PGUSER));
+        await connection.query('GRANT INSERT ON gameai.requirements,gameai.requirement_versions,gameai.requirement_rule_snapshots,gameai.artifacts,gameai.artifact_links,gameai.document_contents,gameai.idempotency_records,gameai.approvals,gameai.audit_events TO '+pg.escapeIdentifier(writer.PGUSER));
         await connection.query('GRANT UPDATE(title) ON gameai.requirements TO '+pg.escapeIdentifier(writer.PGUSER));
         await connection.query('GRANT USAGE ON ALL SEQUENCES IN SCHEMA gameai TO '+pg.escapeIdentifier(writer.PGUSER));
         await connection.query('GRANT SELECT ON gameai.document_contents TO gameai_track');

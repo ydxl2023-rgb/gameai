@@ -219,7 +219,7 @@ export function WorkbenchApp()
     }
     async function retryTask(task:Task)
     {
-        if (dispatchLock.current || task.status !== '失败' || !task.task_uuid) return;
+        if (dispatchLock.current || !['失败','等待设备','等待审批','等待上游','等待工具','等待授权'].includes(task.status) || !task.task_uuid) return;
         dispatchLock.current=true;
         setDispatchBusy(true);
         try

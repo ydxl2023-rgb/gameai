@@ -107,7 +107,7 @@ test('invalid input is rejected before invoking PM',async () =>
     await dispatchPmJob(pool,'TEST',{job:{id:'test',execution_id:randomUUID().replaceAll('-','')},document:{html:'<html></html>',version:'v1'}},async () => {called=true;});
     assert.equal(called,false);
     assert.equal(failures.length,1);
-    assert.match(failures[0][2],/ui-delivery-manifest/);
+    assert.match(failures[0][2],/ui-production-contract/);
 });
 
 

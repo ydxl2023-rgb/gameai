@@ -1,5 +1,6 @@
 import {validateDesignDocument,buildProductionSkeleton} from './design-contract.js';
 import {readAutomationPolicy} from './agent-automation.js';
+import {captureRequirementRules} from './requirement-rules.js';
 import { createHash } from 'node:crypto';
 import { z } from 'zod';
 import { readUiTemplateContext, validateUiTemplateGuardContext } from './ui-template-context.js';
@@ -108,10 +109,13 @@ export async function submitRequirement(pool, projectKey, raw, revisionId = null
         const ordinal = (await client.query('SELECT COALESCE(max(ordinal),0)+1 n FROM gameai.requirement_versions WHERE requirement_id=$1', [requirement.id])).rows[0].n;
         const content = { production_contract: {id:contract.id,version:contract.version,sha256:review.contractHash}, design_review:review, summary: input.summary, rules: [], changes: [correction ? '根据 PM 问题报告修订，等待重新人工审批' : 'Design Agent 生成原始 HTML，等待人工审批'], execution_id: input.execution_id, thread_id: input.thread_id,
             ...(correction ? {revision_source:correction.source_version_id,revision_report:correction.report} : {}) };
+        const rules=await captureRequirementRules(client,project.id,input.execution_id);
+        content.rule_snapshot_hash=rules.sha256;
         const revision = hash(JSON.stringify({ content, html_hash: input.sha256, version: input.version }));
         const version = (await client.query(`INSERT INTO gameai.requirement_versions(project_id,requirement_id,version,ordinal,content,content_hash,id)
             VALUES($1,$2,$3,$4,$5,$6,$7) RETURNING id`, [project.id,requirement.id,input.version,ordinal,content,revision,contract.requirementVersionId])).rows[0];
         const storageKey = 'uploaded/' + version.id + '.html';
+        await client.query('INSERT INTO gameai.requirement_rule_snapshots(version_id,sha256,content) VALUES($1,$2,$3)',[version.id,rules.sha256,rules.content]);
         const artifact = (await client.query(`INSERT INTO gameai.artifacts(project_id,storage_key,sha256,byte_size,media_type,verified_at)
             VALUES($1,$2,$3,$4,'text/html',now()) RETURNING id`, [project.id,storageKey,input.sha256,bytes.length])).rows[0];
         await client.query('INSERT INTO gameai.document_contents(artifact_id,bytes) VALUES($1,$2)', [artifact.id,bytes]);

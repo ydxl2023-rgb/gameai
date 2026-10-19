@@ -31,6 +31,7 @@ export async function acceptTask(pool,projectKey,userId,raw)
         // Persist continuation intent before notifying the scheduler; permissions are checked again at dispatch.
         await c.query(`INSERT INTO gameai.plan_dispatch_flows(plan_version_id,project_id,requested_by,state) VALUES($1,$2,$3,'active') ON CONFLICT(plan_version_id) DO UPDATE SET state='active',reason='',updated_at=now()`,[t.plan_version_id,project.id,userId]);
         await c.query(`INSERT INTO gameai.audit_events(project_id,actor,event,payload) VALUES($1,$2,'人工验收通过，通知后续任务',$3)`,[project.id,'human:'+userId,{task_id:t.id,execution_id:delivery.execution_id,summary:'交付验收完成；编排器按依赖、勾选及 Agent 自动授权检查后续任务。'}]);
+        await c.query(`INSERT INTO gameai.workflow_outbox(event_key,plan_version_id) VALUES($1,$2) ON CONFLICT DO NOTHING`,['acceptance:'+t.id+':'+delivery.execution_id,t.plan_version_id]);
         await c.query('COMMIT');
         return {accepted:true,repeated:false};
     }

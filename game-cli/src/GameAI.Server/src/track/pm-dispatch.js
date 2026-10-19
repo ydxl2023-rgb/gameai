@@ -89,7 +89,10 @@ export async function dispatchPmJob(pool, projectKey, started, execute = runPmCl
     try
     {
         await mkdir(directory,{recursive:true});
-        const skeleton = buildProductionSkeleton(document.html,document.version);
+        let skeleton;
+        try { skeleton = buildProductionSkeleton(document.html,document.version); }
+        catch (error) { throw new ReviewError('PM 输入契约校验失败：'+error.message); }
+        await pool.query('UPDATE gameai.pm_jobs SET recover_publication=true WHERE id=$1 AND execution_id=$2',[job.id,job.execution_id]);
         await writeFile(join(directory,'skeleton.json'),JSON.stringify(skeleton,null,2),'utf8');
         const input = join(directory,'input.txt');
         const approvedDocument = await prepareApprovedDocument(job.requirement_version_id,job.document_hash,document.html);
@@ -118,6 +121,7 @@ export async function dispatchPmJob(pool, projectKey, started, execute = runPmCl
         result.scope='ui-only';
         result.plan = validateUiDeliveryPlan(validatePmPlan(result.plan),skeleton);
         await writeFile(join(directory,'result.json'),JSON.stringify(result),'utf8');
+        await pool.query('UPDATE gameai.pm_jobs SET publication_result=$2 WHERE id=$1',[job.id,result]);
         await publishPmPlan(pool,projectKey,job,result);
         console.info('PM 拆分已入库', { execution_id:job.execution_id });
     }

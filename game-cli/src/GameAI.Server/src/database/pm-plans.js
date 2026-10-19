@@ -240,6 +240,7 @@ export async function publishPmPlan(pool, projectKey, job, result, {recoverPubli
         await restorePublicationFlow(client,version,pv.id,recovering);
         const taskCount=plan.tasks.length+qaTasks.length;
         const completed = (await client.query("UPDATE gameai.pm_jobs SET state='completed',error='',plan_version_id=$2,task_count=$3,finished_at=now() WHERE id=$1 RETURNING *",[job.id,pv.id,taskCount])).rows[0];
+        await client.query(`INSERT INTO gameai.workflow_outbox(event_key,plan_version_id) VALUES($1,$2) ON CONFLICT DO NOTHING`,['pm:'+job.execution_id,pv.id]);
         await client.query("INSERT INTO gameai.audit_events(project_id,actor,event,payload) VALUES($1,'agent:PM','PM 已发布 UI 白模、美术资源与装配任务',$2)",[version.project_id,{execution_id:job.execution_id,plan_version_id:pv.id,task_count:taskCount}]);
         return completed;
     });

@@ -1,3 +1,4 @@
+import {reviewedHtml} from './ui-production-fixture.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { randomUUID, createHash } from 'node:crypto';
@@ -24,7 +25,18 @@ test('fixed identity, capacity, lease and conversation recovery', async () =>
             return c.query(sql, params);
         }, release: () => {}
     }) };
-    const call = input => agentRunRequest(service, key, input);
+    const call = async input =>
+    {
+        // The isolated project has no DEMO project rules; provide its own empty snapshot.
+        if (input.action === 'claim')
+        {
+            await c.query(`INSERT INTO gameai.audit_events(project_id,actor,event,payload)
+                SELECT id,'test','固定 Agent 开始执行',$2 FROM gameai.projects WHERE project_key=$1
+                AND NOT EXISTS(SELECT 1 FROM gameai.audit_events WHERE payload->>'execution_id'=$3 AND event='固定 Agent 开始执行')`,
+                [key,{execution_id:input.execution_id,project_skills:[]},input.execution_id]);
+        }
+        return agentRunRequest(service,key,input);
+    };
     const key = 'AGENT-TEST-' + randomUUID();
     try
     {
@@ -48,13 +60,14 @@ test('fixed identity, capacity, lease and conversation recovery', async () =>
         await call({...update,action:'attach',thread_id:'thread-original'});
         await assert.rejects(call({...update,action:'attach',thread_id:'thread-other'}), /替换/);
         await call({...update,action:'heartbeat'});
-        const html = '<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><title>固定角色测试</title></head><body>测试策划</body></html>';
+        const html = reviewedHtml(p,input.execution_id,'thread-original');
         const document = {request_id:randomUUID(),requirement_key:input.requirement_key,title:'测试',version:'v1',html,
             sha256:createHash('sha256').update(html).digest('hex'),execution_id:input.execution_id,thread_id:'thread-original',summary:'测试'};
         await assert.rejects(submitRequirement(service,key,document), /已完成执行/);
         await call({...update,action:'finish',state:'completed'});
         await call({...update,action:'finish',state:'completed'});
-        await assert.rejects(submitRequirement(service,key,{...document,thread_id:'wrong-thread'}), /已完成执行/);
+        const wrongHtml=reviewedHtml(p,input.execution_id,'wrong-thread');
+        await assert.rejects(submitRequirement(service,key,{...document,html:wrongHtml,sha256:createHash('sha256').update(wrongHtml).digest('hex'),thread_id:'wrong-thread'}), /已完成执行/);
         assert.equal((await submitRequirement(service,key,document)).status,'待审批');
         assert.equal((await c.query('SELECT count(*)::int n FROM gameai.approvals WHERE project_id=$1',[p])).rows[0].n,0);
         const resumedInput = {...input,execution_id:randomUUID().replaceAll('-','')};

@@ -3,6 +3,15 @@ import assert from 'node:assert/strict';
 import {recoveryDecision,recoveryAttempts} from '../src/database/task-recovery.js';
 
 const base={state:'failed',error:'专业交付检查未通过。',attempts:1,authorized:true};
+test('explicit external waits never become technical repair retries',()=>
+{
+    for (const [prefix,code] of [['WAIT_DEVICE','awaiting_device'],['WAIT_APPROVAL','awaiting_decision'],['WAIT_DEPENDENCY','awaiting_dependency'],['TOOL_UNAVAILABLE','awaiting_environment']])
+    {
+        const result=recoveryDecision({...base,error:prefix+': 连接超时，专业交付检查未通过'});
+        assert.equal(result.retry,false);
+        assert.equal(result.code,code);
+    }
+});
 test('human repair cycle retains history but grants only three executions',()=>
 {
     const context={recovery_cycle:{prior_attempts:7}};
