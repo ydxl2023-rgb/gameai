@@ -25,6 +25,7 @@ try
     await pool.query('GRANT UPDATE(dispatch_allowed,dispatch_revision,dispatch_selected_by,dispatch_selected_at) ON gameai.tasks TO '+role);
     await pool.query('GRANT SELECT,INSERT ON gameai.task_dispatch_jobs TO '+role);
     await pool.query('GRANT SELECT,INSERT,UPDATE ON gameai.task_publications TO '+role);
+    await pool.query('GRANT SELECT,INSERT,UPDATE ON gameai.task_repairs TO '+role);
     await pool.query('GRANT SELECT,INSERT,UPDATE ON gameai.workflow_outbox TO '+role);
     await pool.query('GRANT INSERT,UPDATE ON gameai.executions TO '+role);
     await pool.query('GRANT UPDATE(status,progress) ON gameai.tasks TO '+role);

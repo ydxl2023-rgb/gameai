@@ -4,9 +4,10 @@ import {readFile,writeFile,mkdir,unlink} from 'node:fs/promises';
 import {join} from 'node:path';
 import {projectRoot} from '../src/paths.js';
 import {dispatchTasks} from '../src/database/task-dispatch.js';
-import {runTaskDispatch} from '../src/track/task-dispatch.js';
+import {runTaskDispatch,finishReceivedTask} from '../src/track/task-dispatch.js';
 import {continueTaskFlow} from '../src/track/task-flow.js';
 import {readCollaboration} from '../src/database/collaboration.js';
+import {resumeTaskRepairs} from '../src/track/task-repair-flow.js';
 
 // Real PostgreSQL, guards, task runner and collaboration trigger; only the model is simulated.
 export async function recoveryLoopScenario({c,servicePool,p,worker,user,key,rows})
@@ -42,8 +43,8 @@ export async function recoveryLoopScenario({c,servicePool,p,worker,user,key,rows
             {
                 assert.match(input.failure_context.error,/专业交付检查/);
                 assert.match(input.failure_context.previous_result,/故障注入/);
-                assert.match(input.failure_context.instruction,/先分析上次失败/);
-                assert.ok(input.failure_context.collaboration_feedback.some(m=>m.event==='任务失败，安排原 Agent 修复重试'));
+                assert.match(input.failure_context.instruction,/先复现上次失败/);
+                assert.ok(input.failure_context.collaboration_feedback.some(m=>m.event==='任务失败，已进入自动诊断修复'));
                 assert.ok(input.failure_context.collaboration_feedback.some(m=>m.body.includes('故障注入')));
             }
             await c.query(`INSERT INTO gameai.agent_runs(execution_id,conversation_id,request_hash,state,finished_at)
@@ -60,15 +61,16 @@ export async function recoveryLoopScenario({c,servicePool,p,worker,user,key,rows
         await runTaskDispatch(servicePool,started.jobs[0],execute);
         assert.equal((await c.query('SELECT status FROM gameai.tasks WHERE id=$1',[task.id])).rows[0].status,'failed');
         let history=await readCollaboration(servicePool,key);
-        assert.ok(history.messages.some(m=>m.event==='任务失败，安排原 Agent 修复重试'));
+        assert.ok(history.messages.some(m=>m.event==='任务失败，已进入自动诊断修复'));
         assert.ok(history.messages.some(m=>m.body.includes('文件内容错误') && m.body.includes('文件内容检查')));
+        await resumeTaskRepairs(servicePool,{projectId:p});
         await continueTaskFlow(servicePool,task.plan_version_id,execute);
         assert.equal(calls,2);
         assert.equal(await readFile(path,'utf8'),'FIXED');
         assert.equal((await c.query('SELECT status FROM gameai.tasks WHERE id=$1',[task.id])).rows[0].status,'completed');
         assert.deepEqual((await c.query('SELECT state FROM gameai.executions WHERE task_id=$1 ORDER BY started_at',[task.id])).rows.map(r=>r.state),['failed','succeeded']);
         history=await readCollaboration(servicePool,key);
-        for (const event of ['任务失败，安排原 Agent 修复重试','编排器自动派发专业任务','工程交付校验通过，通知后续任务'])
+        for (const event of ['任务失败，已进入自动诊断修复','编排器自动派发专业任务','工程交付校验通过，通知后续任务'])
         {
             assert.ok(history.messages.some(m=>m.event===event),'Missing collaboration event: '+event);
         }
@@ -76,12 +78,59 @@ export async function recoveryLoopScenario({c,servicePool,p,worker,user,key,rows
         calls=0;
         failAlways=true;
         await continueTaskFlow(servicePool,task.plan_version_id,execute);
-        assert.equal(calls,3);
+        await resumeTaskRepairs(servicePool,{projectId:p});
+        await continueTaskFlow(servicePool,task.plan_version_id,execute);
+        assert.equal(calls,2);
         assert.equal((await c.query('SELECT state FROM gameai.plan_dispatch_flows WHERE plan_version_id=$1',[task.plan_version_id])).rows[0].state,'paused');
         const last=(await c.query('SELECT result FROM gameai.executions WHERE task_id=$1 ORDER BY started_at DESC LIMIT 1',[task.id])).rows[0];
-        assert.equal(last.result.recovery.code,'retry_exhausted');
+        assert.equal(last.result.recovery.code,'no_progress');
         history=await readCollaboration(servicePool,key);
-        assert.ok(history.messages.some(m=>m.event==='任务自动修复停止，等待人工处理'));
+        assert.ok(history.messages.some(m=>m.event==='任务自动修复需要处理'));
+
+        await c.query('ROLLBACK TO SAVEPOINT recovery_cases');
+        const preflight=await dispatchTasks(servicePool,key,user,request,true,true);
+        const invalid={...preflight.jobs[0],prompt:JSON.stringify({...JSON.parse(preflight.jobs[0].prompt),approved_document:null})};
+        await runTaskDispatch(servicePool,invalid,async()=>assert.fail('pre-claim failure cannot start an Agent'));
+        assert.equal((await c.query('SELECT state FROM gameai.executions WHERE id=$1',[invalid.executionId])).rows[0].state,'failed','host failure before claim must release capacity without forged process proof');
+        assert.equal((await c.query('SELECT 1 FROM gameai.agent_runs WHERE execution_id=$1',[invalid.executionId.replaceAll('-','')])).rowCount,0);
+
+        await c.query('ROLLBACK TO SAVEPOINT recovery_cases');
+        const interrupted=await dispatchTasks(servicePool,key,user,request,true,true);
+        const unknownJob=interrupted.jobs[0];
+        await runTaskDispatch(servicePool,unknownJob,async()=>({code:1,timedOut:true,diagnostics:'injected timeout',output:''}));
+        assert.equal((await c.query('SELECT state FROM gameai.executions WHERE id=$1',[unknownJob.executionId])).rows[0].state,'unknown');
+        const saved=(await c.query('SELECT response FROM gameai.task_publications WHERE execution_id=$1',[unknownJob.executionId])).rows[0].response;
+        await c.query(`INSERT INTO gameai.agent_runs(execution_id,conversation_id,request_hash,state,finished_at)
+            VALUES($1,$2,$3,'failed',now())`,[unknownJob.executionId.replaceAll('-',''),conversation,createHash('sha256').update(unknownJob.prompt).digest('hex')]);
+        await finishReceivedTask(servicePool,unknownJob,saved);
+        assert.equal((await c.query('SELECT state FROM gameai.executions WHERE id=$1',[unknownJob.executionId])).rows[0].state,'failed');
+        assert.equal((await c.query('SELECT state FROM gameai.task_repairs WHERE execution_id=$1',[unknownJob.executionId])).rows[0].state,'pending','late actual stop proof returns the original execution to durable recovery');
+
+        await c.query('ROLLBACK TO SAVEPOINT recovery_cases');
+        failAlways=false;
+        calls=0;
+        const unconfirmedSuccess=await dispatchTasks(servicePool,key,user,request,true,true);
+        const successfulJob=unconfirmedSuccess.jobs[0];
+        await runTaskDispatch(servicePool,successfulJob,async args=>
+        {
+            const result=await execute(args);
+            const envelope=JSON.parse(result.output);
+            const content=JSON.parse(envelope.Text);
+            content.verdict='pass';
+            content.summary='故障注入：成功结果先到，停止凭据后到';
+            content.checks.forEach(check=>{check.passed=true;});
+            envelope.Text=JSON.stringify(content);
+            result.output=JSON.stringify(envelope);
+            await writeFile(path,'FIXED');
+            await c.query("UPDATE gameai.agent_runs SET state='unknown' WHERE execution_id=$1",[successfulJob.executionId.replaceAll('-','')]);
+            return result;
+        });
+        assert.equal((await c.query('SELECT state FROM gameai.executions WHERE id=$1',[successfulJob.executionId])).rows[0].state,'unknown');
+        await c.query("UPDATE gameai.agent_runs SET state='completed',finished_at=clock_timestamp() WHERE execution_id=$1",[successfulJob.executionId.replaceAll('-','')]);
+        const successfulResponse=(await c.query('SELECT response FROM gameai.task_publications WHERE execution_id=$1',[successfulJob.executionId])).rows[0].response;
+        await finishReceivedTask(servicePool,successfulJob,successfulResponse);
+        assert.equal((await c.query('SELECT status FROM gameai.tasks WHERE id=$1',[task.id])).rows[0].status,'completed','late valid success resumes the original authorized flow without repeating production');
+        assert.equal((await c.query('SELECT state FROM gameai.task_repairs WHERE execution_id=$1',[successfulJob.executionId])).rows[0].state,'resolved');
     }
     finally
     {

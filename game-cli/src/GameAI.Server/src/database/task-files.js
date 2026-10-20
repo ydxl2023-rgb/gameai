@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 const root = projectRoot;
 export async function inspectTaskFiles(paths)
 {
-    if (!Array.isArray(paths) || paths.length<1 || paths.length>100) throw new Error('必须提交 1 至 100 个实际交付文件。');
+    if (!Array.isArray(paths) || paths.length<1 || paths.length>4096) throw new Error('实际交付文件数量必须为 1 至 4096；Agent 声明仍受结果 schema 上限约束。');
     const artifacts=[];
     for (const path of paths)
     {

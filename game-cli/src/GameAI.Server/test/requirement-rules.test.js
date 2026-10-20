@@ -4,6 +4,16 @@ import {digest} from '../src/database/ui-production-contract.js';
 import {readRequirementRules} from '../src/database/requirement-rules.js';
 import {taskDisplayState} from '../src/database/task-display-state.js';
 
+test('durable repair status is visible without overriding real process or completion state',()=>
+{
+    for (const [state,label] of [['pending','自动诊断'],['diagnosing','自动诊断'],['ready','准备恢复'],['attention','待处理']])
+    {
+        assert.equal(taskDisplayState({status:'failed',recovery_detail:{state}}),label);
+        assert.equal(taskDisplayState({status:'completed',recovery_detail:{state}}),'已完成');
+        assert.equal(taskDisplayState({status:'running',execution_state:'unknown',recovery_detail:{state}}),'待核实');
+    }
+});
+
 test('frozen rules are read without consulting mutable skills; missing or corrupt snapshots fail closed',async()=>
 {
     const content={roles:{PM:'approved instructions'},projectSkills:[]};

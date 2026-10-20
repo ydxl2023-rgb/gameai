@@ -6,21 +6,35 @@ import { join } from 'node:path';
 import { createHash } from 'node:crypto';
 import { runPmCli } from './pm-dispatch.js';
 import { finishTaskDispatch } from '../database/task-dispatch.js';
-import {validateTaskResult} from '../database/task-results.js';
+import {validateTaskResult,parseTaskResult} from '../database/task-results.js';
 import { inspectTaskFiles } from '../database/task-files.js';
+import {deliveryFailure} from '../database/delivery-errors.js';
 import { verifyApprovedDocument } from '../database/approved-document.js';
+import {preflightUiDocument,uiPreflightOptions} from './task-preflight.js';
 
 const repository = projectRoot;
 export async function runTaskDispatch(pool,job,execute=runPmCli)
 {
     let result=null;
     let error=null;
+    let failure=null;
+    let executionStarted=false;
     try
     {
         const directory=join(tempRoot,'task-jobs',job.executionId);
         await mkdir(directory,{recursive:true});
         const input=join(directory,'input.txt');
         await verifyApprovedDocument(JSON.parse(job.prompt).approved_document);
+        if (['Prefab','Art'].includes(job.role))
+        {
+            const approved=JSON.parse(job.prompt).approved_document;
+            const {readFile}=await import('node:fs/promises');
+            const html=await readFile(join(repository,approved.path),'utf8');
+            const prompt=JSON.parse(job.prompt);
+            const options=await uiPreflightOptions(prompt.production_contract?.content,prompt.dependencies);
+            const receipt=await preflightUiDocument(html,join(directory,'preflight'),undefined,undefined,options);
+            await writeFile(join(directory,'execution-preflight.json'),JSON.stringify(receipt),'utf8');
+        }
         const production = JSON.parse(job.prompt).production_contract;
         if (production)
         {
@@ -29,6 +43,7 @@ export async function runTaskDispatch(pool,job,execute=runPmCli)
             await writeFile(join(directory,'production-input.json'),canonical(production.content),'utf8');
         }
         await writeFile(input,job.prompt,'utf8');
+        executionStarted=true;
         const run=await execute(['--project',repository,'--key',job.key,'--execution-id',job.executionId,'--prompt-file',input,'--timeout','1800'],[job.role.toLowerCase(),'execute']);
         await writeFile(join(directory,'diagnostics.txt'),run.diagnostics,'utf8');
         if (run.code!==0 || run.timedOut || run.overflow)
@@ -41,9 +56,9 @@ export async function runTaskDispatch(pool,job,execute=runPmCli)
         result=JSON.parse(run.output);
         await writeFile(join(directory,'result.json'),run.output,'utf8');
     }
-    catch(cause) { error=cause instanceof Error ? cause.message : '执行结果处理失败'; }
+    catch(cause) { error=cause instanceof Error ? cause.message : '执行结果处理失败'; failure=cause.code || !executionStarted ? {code:cause.code ?? 'HOST_PREFLIGHT_FAILED',items:[],pre_execution:!executionStarted} : null; }
     // Persist the response before any delivery validation or transaction publication.
-    const response={result,error};
+    const response={result,error,failure};
     await saveTaskResponse(pool,job,response);
     await publishTaskResponse(pool,job,response,finishReceivedTask);
 }
@@ -52,15 +67,22 @@ export async function finishReceivedTask(pool,job,response)
 {
     const result=structuredClone(response.result);
     let error=response.error;
+    let failure=response.failure ?? null;
     if (!error)
     {
         try
         {
             if (result.InputSha256!==createHash('sha256').update(job.prompt).digest('hex')) throw new Error('执行输入哈希不匹配');
-            const content=validateTaskResult(JSON.parse(result.Text),job.role);
-            result.artifacts=await inspectTaskFiles(content.files);
+            const content=parseTaskResult(JSON.parse(result.Text));
+            let verdictError=null;
+            try { validateTaskResult(content,job.role); } catch (cause) { verdictError=cause; }
+            // Failed runs still own useful checkpoints. Hash files without treating
+            // the failed verdict as a successful delivery or registering those assets.
+            try { if (content.files.length) result.artifacts=await inspectTaskFiles(content.files); }
+            catch (cause) { if (!verdictError) throw cause; result.checkpoint_error=cause.message; }
+            if (verdictError) throw verdictError;
         }
-        catch (cause) { error=cause.message; }
+        catch (cause) { error=cause.message; failure=deliveryFailure(cause); }
     }
-    await finishTaskDispatch(pool,job,result,error,{recoverPublication:true});
+    await finishTaskDispatch(pool,job,result,error,{recoverPublication:true,failure});
 }

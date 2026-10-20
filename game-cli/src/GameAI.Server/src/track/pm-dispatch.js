@@ -28,7 +28,7 @@ export async function checkPmRuntime()
     }
 }
 
-export function runPmCli(args, command = ['pm','plan'])
+export function runPmCli(args, command = ['pm','plan'], options = {})
 {
     return new Promise((resolve,reject) =>
     {
@@ -52,7 +52,7 @@ export function runPmCli(args, command = ['pm','plan'])
         {
             timedOut = true;
             child.kill();
-        }, (command[1] === 'execute' ? 32 : 17)*60*1000);
+        }, options.timeoutMs ?? (command[1] === 'execute' ? 32 : 17)*60*1000);
         child.stdout.on('data',chunk =>
         {
             if (output.length+chunk.length > 8*1024*1024)

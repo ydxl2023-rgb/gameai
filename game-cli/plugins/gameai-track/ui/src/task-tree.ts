@@ -30,7 +30,7 @@ export function taskProgress(rootId:string, tasks:Task[], role?:string):TaskProg
         return false;
     });
     const completed = members.filter(task => task.status === '已完成').length;
-    return {total:members.length,completed,failed:members.filter(task => task.status === '失败').length,percent:members.length ? Math.floor(completed * 100 / members.length) : 0};
+    return {total:members.length,completed,failed:members.filter(task => ['失败','待处理'].includes(task.status)).length,percent:members.length ? Math.floor(completed * 100 / members.length) : 0};
 }
 
 /** Role folders are view-only; task IDs and persisted dependency edges stay unchanged. */

@@ -91,7 +91,7 @@ Task、Parent 与依赖引用统一为角色字母加短横线、七位数字：
 
 结果必须含 verdict、checks、files：只有 pass、真实检查全部通过、证据路径包含在文件清单中、输入哈希一致、实际文件哈希有效、执行凭据有效、审批与上游未变化时才能放行。活动计划中的 Art/Development 标记工程交付 completed，编排器继续启动满足条件的已勾选任务；QA 保留 review，主任务在全部专业交付结束后进入最终验收。自动文件及证据校验不等同人工美术质量审核或实际游戏验收。
 
-失败或状态未知暂停该计划，不自动重试。人工对失败任务重新派发时最多三次，unknown 不允许重试。未启用自动推进的任务仍进入 review。每次结果保存执行记录、任务评论和审计。脚本与迁移：010_plan_dispatch_flows.sql；setup-pm.mjs 追加权限，db:sync-skills 同步角色技能哈希。此节替代上一节“只能下次人工派发”的默认限制，仅在明确开启自动推进时生效。
+已确认停止、原 Agent 已获自动执行授权且失败属于任务内技术修复时，由原 Agent 在当前恢复周期内最多执行三次；包括模拟关闭按钮未命中、命中区域越界的诊断修复。修复不得改变冻结契约或降低验收标准，确需结构修订时仍须返回明确审批阻塞。未知失败、状态未知、明确审批或上游阻塞暂停计划；unknown 不允许重试。已暂停的历史计划不会因规则更新自行恢复。未启用自动推进的任务仍进入 review。每次结果保存执行记录、任务评论和审计。脚本与迁移：010_plan_dispatch_flows.sql；setup-pm.mjs 追加权限，db:sync-skills 同步角色技能哈希。此节替代上一节“只能下次人工派发”的默认限制，仅在明确开启自动推进时生效。
 
 ## QA 执行与原 Agent 返修（已实现）
 
@@ -240,3 +240,47 @@ PM 派发使用经过哈希校验的批准 HTML 文件引用传递大型 `ui-tem
 新需求提交在同一事务中写入 `requirement_rule_snapshots`，保存角色指令及项目规则，摘要进入需求内容哈希和人工审批。PM/任务领取读取所属需求版本快照并校验摘要；历史未绑定版本继续旧路径，不伪造历史快照。Design 新版本编写仍使用当前规则，提交时冻结。角色启停、权限与执行容量仍实时检查，快照不授予权限。
 
 Track 将已确认失败执行中的外部等待原因映射为等待设备、等待审批、等待上游、等待工具、等待授权；保留原执行证据，不把等待变成自动技术重试。人工“重新检查”仍调用原重试入口，重新验证依赖、批准与权限。历史失败不得覆盖后来待验收/完成状态。
+
+## 同一装配任务的人工授权增补（已实现）
+
+`authorizeTaskAmendment` 为已失败的 Prefab 最终装配保存独立 `task_edits` 修订，不修改原 `ui_task_contracts` 输入、旧 HTML 或旧审批。当前仅支持精确父容器位置、Image 射线目标及 Canvas 新增 GraphicRaycaster，必须有原输入哈希、逐字段旧值、实际人工授权来源、证据目录及有效模拟屏幕安全区；不能用于任意删改节点或降低验收检查。
+
+授权事务核对项目人工审批权限、最新批准需求、已发布计划、活动/未知执行及已执行下游，使用与派发一致的锁，撤销旧派发许可。`readTaskInput` 按修订顺序组合有效目标并重新计算哈希；派发及结束复核使用同一结果。旧历史保持可追溯。失败任务在无活动租约时可重新选择派发，但三次上限、原 Agent 和输入核验仍然有效。
+
+服务端维护入口 `scripts/amend-task.mjs <task-key> <human-subject> <reviewed-amendment.json>` 只记录授权，不执行任务；`scripts/resume-amended-task.mjs <task-key> <human-subject>` 仅续接指定原任务，使用正式 dispatchTasks/runTaskDispatch 和 acceptTask，不创建替代任务，不生成虚假 Agent 凭据。调用验收入口必须已有本轮人工完成授权，且仅对正式成功交付、文件哈希有效及无未关闭缺陷的任务放行。该入口没有前端增补编辑器。
+
+测试项目重跑使用 `scripts/rerun-test-project.mjs <project-key> <requirement-key> <human-subject>`，仅接受 is_test 项目，保留最新已批准需求、配置及永久审计。先读取并保存已授权最小装配增补，再清除任务/计划/执行状态，从固定 PM 重新拆分；为同窗口新装配任务重新核对增补旧值后登记，然后按正式依赖链执行。新任务使用新编号。原增补现在也允许在尚未执行的 pending/blocked 装配任务上登记，活动或未知执行仍禁止。
+
+`clearProjectTasks` 的 clearCollaboration 选项通过 tasks.cleared 审计事件保存协作消息序号边界，readCollaboration 仅返回边界后的新一轮消息，包括分页；底层协作与审计仍保持 append-only。默认清空行为保持原有历史可见性。重跑不删除 Unity 资产或旧交付文件，避免破坏依赖来源及 .meta GUID；业务流程状态仍唯一保存在 PostgreSQL。
+
+重新审批修订使用正式 Design draft 的 --window-spec 确定性继承原生产窗口，再应用已批准最小修复，避免遗漏 resourceSlots 的真实 artifactId/sha256。--review-prompt-file 可单独提供完整的业务审查依据；编译文档已携带全部目标、来源附件及哈希，不再将同一附件复制到原始需求段。此参数不跳过独立 Design 自检或正式人工审批。
+
+prepareUiDocumentPrompt 对 guard 封装的嵌套 JSON 字符串使用完整解析值与原始字节哈希进行无损传输，再按对象键序无关的语义去重；数组顺序、节点属性、授权差异与引用仍保留，正式 HTML 中原始 JSON 字符串不变。prepare-reapproval.mjs 只生成并提交新版本到待人工审批，绝不写入最终批准或自动派工。
+
+
+## 持久化任务诊断与恢复（2026-10-20，已实现）
+
+服务端 task_repairs 表按失败 execution_id 保存诊断状态、冻结范围指纹、实际制作产物进展、探测次数、下一次探测时间和租约。失败后先保存结果，再登记恢复事项；不依赖进程内调用栈。启动与每十秒恢复泵包含独立 repairs 通道。数据库原子租约一次领取一个事项；租约过期后可接续。ready 是针对原失败执行的一次派发许可，不是批准新范围。正式派发仍核对最新审批、原角色、当前自动执行许可、依赖、工作目录占用和三次执行上限。
+
+已实现的恢复路径：任务内技术修复；未知失败的一次原角色诊断；Unity 桥接指数退避探测；上游交付条件探测；冻结 UI 附件通过 GameCLI guard 与真实 Unity restore whitebox dry-run 的宿主复核。宿主复核保存不可变源/目标/批准哈希和真实执行侧凭据，不修改旧批准文档。恢复复用原任务编号和有效产物，失败上下文要求先复现、说明修改，再重跑受影响检查及最终验收。
+
+相同冻结范围和失败检查再次出现且实际 Assets 产物哈希没有改变时，进入 no_progress；新提示词和新增报告不构成进展。未知错误不能无限重试。没有匹配的修复器、达到执行上限、缺少授权或确实需要需求决定时，保存 attention 原因并登记审计，不能宣称任意平台代码缺陷均可自动修复。后续扩展必须为具体错误增加可验证处理器，不能把生产 Agent 升权为数据库或平台维护者。
+
+结果发布恢复另外识别 unknown 执行的实际 agent_runs 停止凭据；原进程仍在运行或结果不明时禁止重开。确认停止后，用原结果重新结束核验，可转入修复队列。宿主在调用 Agent 前的预检失败单独记录 pre_execution，不制造虚假进程凭据，也不会永久占用未知执行容量。
+
+专业结果新增兼容字段 failure（成功为 null）：code、step、evidence_path、repair。新 CLI schema 要求明确填写；服务端兼容旧结果，并校验失败证据位于 files 中。错误码包括 ENVIRONMENT_UNAVAILABLE、CONTRACT_CONFLICT、TASK_VALIDATION_FAILED、UPSTREAM_INVALID、DECISION_REQUIRED、TOOL_FAILURE、UNKNOWN_FAILURE。旧文本分类仅作兼容。
+
+数值校验按精确 JSON 数值语义比较，指数写法不产生坐标差异，不通过 double 舍入授权大整数。历史批准中的无效变更项仅在源和目标的该路径都存在、两边值与批准精确一致时兼容忽略；批准原文及其哈希不重写。Unity 适配器对不能精确表示的数值明确拒绝，防止精度丢失放行。
+
+维护入口 scripts/recover-task.mjs <existing-task-key> [--enqueue-only] 仅将原自动执行授权仍有效、实际停止且失败的既有任务接入恢复；不新建任务、不重置执行次数、不代替审批。运行前应用迁移 032、更新 workflow 权限、构建 Release CLI 与 Track，并让 Unity 编译新适配器。验收包括跨实际 guard 实现的数值回归、PostgreSQL 租约恢复/并发/权限撤销/环境等待/无进展测试，以及正式 PM 派工链中的故障注入。
+
+
+### 已验证工具修复的恢复预算与资源投影
+
+默认三次生产执行预算保持不变。已确认的宿主工具缺陷可以在真实双侧预检通过后，按新工具二进制与Unity适配器源码的SHA-256开启一次新的三次预算；同一任务、同一工具指纹只能开启一次，累计最多九次。verified_repair_budget 仅由服务写入任务租约上下文，不能从Agent结果或请求参数传入，不删除原执行记录或重置总计数。达到预算或累计上限后明确记录待处理原因。
+
+部署新工具后，恢复泵识别持久化attention中适用的工具缺陷，核对当前任务、人工自动执行授权和原暂停原因；只有工具指纹变化才重新诊断。重新诊断不等于重跑生产，实际readonly预检成功并保存凭据之后才放行原任务。普通依赖等待不能只依据“上游已完成”重试：结构化UPSTREAM_INVALID要求依赖交付版本实际改变，或由匹配的宿主处理器验证具体问题已解除。
+
+GameCLI ui-library guard --manifest <已验收Art的ui-template/1快照> 是明确的执行适配选项，只能与 --approval 一起使用。保留原baselineJson、snapshotJson、approvalJson和各自哈希；另附resourceManifestJson及其哈希。两侧guard均要求全部实际节点、组件、属性、根信息完全相同，所选贴图逐项与原批准记录一致，不能增加/修改贴图或漏掉任何实际绑定。已展开实例的导出provenance不改变扁平节点；实际装配仍消费原节点表。服务端另按冻结resourceSlots核对复用来源哈希、数量、交付尺寸和已验收Art文件哈希，确保历史未绑定清单不是新增生产要求。
+
+最终装配预检使用非whitebox restore --dry-run，确认没有延后绑定且资源完整；白模或Art阶段使用白模预检。实际执行输入目录中的execution-preflight.json提供本轮验证后的assemblyPath，生产Agent读取此封装并继续原阶段全部验收。预检本身不写资产，也不代替最终触屏、动画、四态截图和安全区检查。

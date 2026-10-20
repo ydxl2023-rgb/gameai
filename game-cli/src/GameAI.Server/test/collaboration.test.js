@@ -45,6 +45,14 @@ test('collaboration snapshots are transactional, paginated, scoped and survive b
         assert.equal(after.messages.at(-1).requirement_title,'登录测试');
         assert.equal(after.messages.at(-1).version,'v1');
         assert.equal((await c.query('SELECT count(*) FROM gameai.requirements WHERE project_id=$1',[project])).rows[0].count,'0');
+        const stored=(await c.query('SELECT count(*)::int n FROM gameai.collaboration_messages WHERE project_id=$1',[project])).rows[0].n;
+        const reset=await clearProjectTasks(service,key,user,{preserveRequirements:true,clearCollaboration:true});
+        assert.equal(reset.collaboration,stored);
+        assert.equal((await readCollaboration(service,key)).messages.length,0);
+        assert.equal((await readCollaboration(service,key,{before:recent.before})).messages.length,0);
+        assert.equal((await c.query('SELECT count(*)::int n FROM gameai.collaboration_messages WHERE project_id=$1',[project])).rows[0].n,stored);
+        await c.query("INSERT INTO gameai.audit_events(project_id,actor,event,payload) VALUES($1,'orchestrator','任务开始','{}')",[project]);
+        assert.equal((await readCollaboration(service,key)).messages.length,1);
     }
     finally{await c.query('ROLLBACK');c.release();await pool.end();}
 });

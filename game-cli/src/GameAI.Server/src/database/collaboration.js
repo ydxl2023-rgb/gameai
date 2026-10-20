@@ -16,6 +16,8 @@ export async function readCollaboration(pool, projectKey, raw={})
             WHERE l.project_id=m.project_id AND l.artifact_id=m.artifact_id) document_available
         FROM gameai.collaboration_messages m JOIN gameai.projects p ON p.id=m.project_id
         WHERE p.project_key=$1 AND ($2::bigint IS NULL OR m.id<$2::bigint) AND ($3::text IS NULL OR m.role=$3)
+        AND m.id>COALESCE((SELECT max((a.payload->>'collaboration_reset_before')::bigint) FROM gameai.audit_events a
+            WHERE a.project_id=m.project_id AND a.event='tasks.cleared' AND a.payload ? 'collaboration_reset_before'),0)
         AND ($4::text IS NULL OR strpos(lower(concat_ws(' ',m.requirement_key,m.requirement_title,m.task_key,m.actor_name)),lower($4))>0)
         ORDER BY m.id DESC LIMIT 51`,[projectKey,q.before??null,q.role??null,q.search||null]);
     const items=rows.slice(0,50);

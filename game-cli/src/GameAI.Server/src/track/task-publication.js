@@ -50,14 +50,17 @@ async function recordPublicationAttention(pool,job,code,error)
 
 export async function recoverTaskPublications(pool,finish,read=readFile)
 {
-    const rows = (await pool.query(`SELECT p.*,e.state execution_state FROM gameai.task_publications p
+    const rows = (await pool.query(`SELECT p.*,e.state execution_state,r.state process_state FROM gameai.task_publications p
         JOIN gameai.executions e ON e.id=p.execution_id
-        WHERE p.state IN ('executing','ready') AND p.next_attempt_at<=now() ORDER BY p.updated_at LIMIT 100`)).rows;
+        LEFT JOIN gameai.agent_runs r ON r.execution_id=replace(e.id::text,'-','')
+        WHERE (p.state IN ('executing','ready') OR (e.state='unknown' AND r.state IN ('completed','failed')))
+        AND p.next_attempt_at<=now() ORDER BY p.updated_at LIMIT 100`)).rows;
     for (const row of rows)
     {
         if (active.has(row.execution_id)) continue;
         // A transaction may have committed just before the server lost its connection.
-        if (!['assigned','running'].includes(row.execution_state))
+        if (row.execution_state==='unknown' && !['completed','failed'].includes(row.process_state)) continue;
+        if (!['assigned','running','unknown'].includes(row.execution_state))
         {
             await pool.query(`UPDATE gameai.task_publications SET state='published',updated_at=now() WHERE execution_id=$1`,[row.execution_id]);
             continue;

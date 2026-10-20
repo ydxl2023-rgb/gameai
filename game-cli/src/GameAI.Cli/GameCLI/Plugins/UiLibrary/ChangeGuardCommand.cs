@@ -9,7 +9,7 @@ namespace GameCLI.Plugins.UiLibrary
     {
         public string Name => "guard";
 
-        public string Description => "--baseline <snapshot> --candidate <snapshot> --output <new file> [--approval <reviewed changes>]; without approval writes an audit only";
+        public string Description => "--baseline <snapshot> --candidate <snapshot> --output <new file> [--approval <reviewed changes>] [--manifest <resource snapshot>]; without approval writes an audit only";
 
         public async Task<int> ExecuteAsync(string[] args, CancellationToken cancellationToken)
         {
@@ -18,7 +18,7 @@ namespace GameCLI.Plugins.UiLibrary
                 Dictionary<string, string> options = new(StringComparer.Ordinal);
                 for (int index = 0; index < args.Length; index += 2)
                 {
-                    if (index + 1 >= args.Length || !new[] { "--baseline", "--candidate", "--output", "--approval" }.Contains(args[index])
+                    if (index + 1 >= args.Length || !new[] { "--baseline", "--candidate", "--output", "--approval", "--manifest" }.Contains(args[index])
                         || !options.TryAdd(args[index], args[index + 1]))
                     {
                         throw new InvalidDataException(Description);
@@ -45,9 +45,20 @@ namespace GameCLI.Plugins.UiLibrary
                 {
                     JsonObject approval = JsonNode.Parse(await File.ReadAllTextAsync(approvalPath, cancellationToken))!.AsObject();
                     result = UiChangeGuard.Compile(baseline, candidate, approval);
+                    if (options.TryGetValue("--manifest", out string? manifestPath))
+                    {
+                        string manifest = await File.ReadAllTextAsync(manifestPath, cancellationToken);
+                        UiResourceProjection.Apply(JsonNode.Parse(candidate)!.AsObject(), JsonNode.Parse(manifest)!.AsObject());
+                        result["resourceManifestJson"] = manifest;
+                        result["resourceManifestSha256"] = AssemblyPlanCompiler.Hash(manifest);
+                    }
                 }
                 else
                 {
+                    if (options.ContainsKey("--manifest"))
+                    {
+                        throw new InvalidDataException("Resource projection requires a verified approval.");
+                    }
                     result = new JsonObject
                     {
                         ["schemaVersion"] = "ui-change-audit/1",

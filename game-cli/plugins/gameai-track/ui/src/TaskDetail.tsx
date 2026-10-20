@@ -89,6 +89,7 @@ export function TaskDetail({task, tasks, bridge, select, dispatch, dispatchDisab
             <span>Agent：<strong>{task.agent ?? '未分配'}</strong></span>
             <span className="task-detail-deps">依赖：<TaskLinks ids={task.dependencies} tasks={tasks} select={select}/>{pencil("dependencies",task.dependencies.map(id=>tasks.find(t=>t.id===id)?.task_uuid).filter((id):id is string=>!!id))}</span>
         </div>
+        {task.recovery_detail && !["resolved","cancelled"].includes(task.recovery_detail.state) && <Alert type={task.recovery_detail.state==="attention" ? "warning" : "info"} title={task.recovery_detail.state==="attention" ? "自动修复需要处理" : "自动恢复记录"} description={<>{task.recovery_detail.reason}{task.recovery_detail.state==="waiting" && <div>下一次检查：{new Date(task.recovery_detail.next_attempt_at).toLocaleString()}</div>}</>}/>}
         {editor("dependencies")}
         <Progress percent={task.progress} size="small"/>
         {task.repair && <Alert type="warning" title="返修任务" description={<><TaskLinks ids={[task.repair.source_task,task.repair.qa_task]} tasks={tasks} select={select}/><div>绑定 Agent：{task.bound_agent ?? '未记录'} · 第 {task.repair.rounds} 轮</div>{task.repair.details.actual}</>}/>}

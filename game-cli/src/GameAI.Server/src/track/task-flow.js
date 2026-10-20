@@ -18,15 +18,29 @@ export async function continueTaskFlow(pool,planVersionId,execute)
         try {next=await dispatchTasks(pool,flow.project_key,flow.requested_by,{tasks:tasks.slice(0,100),retry:true},true,true);}
         catch(error)
         {
+            await recordDispatchRepairAttention(pool,planVersionId,error.message);
             await pool.query("UPDATE gameai.plan_dispatch_flows SET state='paused',reason=$2,updated_at=now() WHERE plan_version_id=$1",[planVersionId,error.message]);
             return;
         }
         if (!next.jobs.length)
         {
+            const blocked=next.rows.filter(row=>!row.ready && !/工作目录忙碌|等待当前任务|依赖|上游/.test(row.reason ?? ''));
+            for (const row of blocked) await recordDispatchRepairAttention(pool,planVersionId,row.reason,row.task_id);
             await pool.query("UPDATE gameai.plan_dispatch_flows SET reason=$2,updated_at=now() WHERE plan_version_id=$1 AND state='active'",[planVersionId,next.rows.map(r=>r.id+'：'+r.reason).join('；').slice(0,4000)]);
             return;
         }
         await runTaskDispatch(pool,next.jobs[0],execute);
+    }
+}
+
+async function recordDispatchRepairAttention(pool,planVersionId,reason,taskId=null)
+{
+    const rows=(await pool.query(`UPDATE gameai.task_repairs SET state='attention',code='dispatch_blocked',
+        decision=decision||jsonb_build_object('reason',$2::text),updated_at=now()
+        WHERE plan_version_id=$1 AND state='ready' AND ($3::uuid IS NULL OR task_id=$3) RETURNING project_id,task_id,execution_id`,[planVersionId,reason,taskId])).rows;
+    for (const row of rows)
+    {
+        await pool.query(`INSERT INTO gameai.audit_events(project_id,actor,event,payload) VALUES($1,'orchestrator','恢复派发需要处理',$2)`,[row.project_id,{task_id:row.task_id,execution_id:row.execution_id,reason}]);
     }
 }
 export async function runTaskChain(pool,job,execute)
@@ -36,6 +50,20 @@ export async function runTaskChain(pool,job,execute)
 }
 export async function resumeTaskFlows(pool,execute)
 {
+    await refreshTaskAggregates(pool);
     const flows=(await pool.query("SELECT plan_version_id FROM gameai.plan_dispatch_flows WHERE state='active' ORDER BY updated_at")).rows;
     for (const flow of flows) await continueTaskFlow(pool,flow.plan_version_id,execute);
+}
+
+export async function refreshTaskAggregates(pool,planVersionId=null)
+{
+    // The PM parent is a summary, not an independently executable/approvable task.
+    // Derive completion from real children, including after service restart.
+    await pool.query(`UPDATE gameai.tasks parent SET progress=s.progress,status=s.status FROM
+        (SELECT t.parent_id,round(100.0*count(*) FILTER(WHERE t.status='completed')/count(*))::int progress,
+            CASE WHEN bool_and(t.status='completed') THEN 'completed' WHEN bool_and(t.status IN ('completed','review')) THEN 'review' ELSE 'running' END status
+            FROM gameai.tasks t JOIN gameai.plan_dispatch_flows f ON f.plan_version_id=t.plan_version_id
+            WHERE t.parent_id IS NOT NULL AND f.state IN ('active','completed') AND ($1::uuid IS NULL OR f.plan_version_id=$1) GROUP BY t.parent_id) s
+        WHERE parent.id=s.parent_id AND parent.role_code='PM' AND parent.status IN ('pending','running','review','completed')
+        AND (parent.status<>s.status OR parent.progress<>s.progress)`,[planVersionId]);
 }

@@ -1,7 +1,7 @@
 import { ReviewError } from './requirements.js';
 
 // Project-scoped reset preserves immutable audit history and configuration.
-export async function clearProjectTasks(pool, projectKey, userId, {preserveRequirements = false} = {})
+export async function clearProjectTasks(pool, projectKey, userId, {preserveRequirements = false, clearCollaboration = false} = {})
 {
     const c = await pool.connect();
     try
@@ -22,6 +22,15 @@ export async function clearProjectTasks(pool, projectKey, userId, {preserveRequi
                 WHERE s.project_id=$1 AND r.state IN ('running','unknown')) OR
             EXISTS(SELECT 1 FROM gameai.approval_workflows WHERE project_id=$1 AND state IN ('queued','pm'))`, [project.id]);
         if (active.rowCount) throw new ReviewError('仍有执行中、排队中或状态未明的任务，请先结束并核实执行后再清空。');
+        let collaboration = 0;
+        let collaborationBefore = null;
+        if (clearCollaboration)
+        {
+            // Public history is immutable. A reset starts a fresh visible generation.
+            const history=(await c.query('SELECT count(*)::int n,max(id)::text before FROM gameai.collaboration_messages WHERE project_id=$1',[project.id])).rows[0];
+            collaboration=history.n;
+            collaborationBefore=history.before ?? '0';
+        }
         // Deleting workflow intents prevents restart recovery from recreating the cleared tasks.
         // Explicit ordering avoids CASCADE reaching configuration.
         for (const table of ['requirement_revisions','approval_workflows','plan_dispatch_flows','task_edits','qa_defects','task_leases','task_dispatch_jobs','comments','task_dependencies'])
@@ -41,9 +50,9 @@ export async function clearProjectTasks(pool, projectKey, userId, {preserveRequi
             requirements = (await c.query('SELECT gameai.clear_project_requirements($1,$2) AS removed', [project.id,userId])).rows[0].removed;
         }
         await c.query(`INSERT INTO gameai.audit_events(project_id,actor,event,payload)
-            VALUES($1,$2,'tasks.cleared',$3)`, [project.id, 'human:'+userId, JSON.stringify({task_count:deleted.rowCount,requirement_count:requirements})]);
+            VALUES($1,$2,'tasks.cleared',$3)`, [project.id, 'human:'+userId, JSON.stringify({task_count:deleted.rowCount,requirement_count:requirements,collaboration_count:collaboration,...(clearCollaboration ? {collaboration_reset_before:collaborationBefore} : {})})]);
         await c.query('COMMIT');
-        return { cleared:deleted.rowCount, requirements };
+        return { cleared:deleted.rowCount, requirements, ...(clearCollaboration ? {collaboration} : {}) };
     }
     catch (error)
     {

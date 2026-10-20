@@ -41,7 +41,7 @@ namespace GameCLI.Plugins.Design
                 Dictionary<string, string> values = new(StringComparer.Ordinal);
                 for (int i = 0; i < args.Length; i += 2)
                 {
-                    if (i + 1 >= args.Length || args[i] is not ("--draft-file" or "--window-spec" or "--source-document" or "--project-id" or "--project" or "--prompt-file" or "--key" or "--version" or "--server" or "--codex" or "--skills" or "--model" or "--timeout" or "--submission") || !values.TryAdd(args[i], args[i + 1]))
+                    if (i + 1 >= args.Length || args[i] is not ("--draft-file" or "--window-spec" or "--source-document" or "--review-prompt-file" or "--project-id" or "--project" or "--prompt-file" or "--key" or "--version" or "--server" or "--codex" or "--skills" or "--model" or "--timeout" or "--submission") || !values.TryAdd(args[i], args[i + 1]))
                     {
                         throw new ArgumentException(usage);
                     }
@@ -87,7 +87,11 @@ namespace GameCLI.Plugins.Design
                     instructions.AppendLine("Produce the complete Chinese standalone HTML in the html field. This host saves the actual file. Do not write files, approve, upload, dispatch, or invoke tools. Use provided verified research and user choices; do not invent browsing. Return questions for material unresolved choices; no submission occurs until questions is empty. Document status must be 待人工审批. No external assets or executable scripts. Render all wireframes inline. The requested version is " + values["--version"] + ".");
                     instructions.AppendLine("Return windowsJson as a JSON array of complete production-contract windows matching the supplied schema. Include sourceAnchor pointing to each full visible section. Use pinned template facts and explicit authorized changes; do not invent missing data. Do not embed ui-production-contract, ui-delivery-manifest or design-contract-review in HTML; the host compiler owns these. Component, animation and effect specifications must remain complete. Return unresolved gaps in questions.");
                     instructions.AppendLine(await File.ReadAllTextAsync(Path.Combine(project, "game-cli/src/GameAI.Server/schemas/ui-tasks/production-contract.schema.json"), timeout.Token));
-                    string reviewRequirements = prompt;
+                    // The reviewed document already carries complete compiled attachments.
+                    // A separate source brief avoids repeating those attachments in the review input.
+                    string reviewRequirements = values.TryGetValue("--review-prompt-file", out string? reviewPromptPath)
+                        ? await File.ReadAllTextAsync(reviewPromptPath, Encoding.UTF8, timeout.Token)
+                        : prompt;
                     string? frozenWindows = values.TryGetValue("--window-spec", out string? windowsPath) ? await File.ReadAllTextAsync(windowsPath, timeout.Token) : null;
                     if (frozenWindows is not null)
                     {

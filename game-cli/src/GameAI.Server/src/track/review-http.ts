@@ -21,6 +21,7 @@ import {createWorkflowPump} from './workflow-pump.js';
 import {recoverTaskPublications} from './task-publication.js';
 import {finishReceivedTask} from './task-dispatch.js';
 import {recoverPmPublications} from './pm-publication.js';
+import {resumeTaskRepairs} from './task-repair-flow.js';
 
 let writer: ReturnType<typeof createPool> | undefined;
 let config: Record<string,string | undefined> | undefined;
@@ -50,6 +51,7 @@ export function initializeWorkflowRecovery(): Promise<void>
             const pump=createWorkflowPump({
                 publications:()=>recoverTaskPublications(revisionWriter,finishReceivedTask),
                 pmPublications:()=>recoverPmPublications(revisionWriter),
+                repairs:()=>resumeTaskRepairs(revisionWriter),
                 notifications:()=>drainWorkflowOutbox(revisionWriter,continueTaskFlow),
                 revisions:()=>resumeRequirementRevisions(revisionWriter),
                 approvals:()=>resumeApprovalWorkflows(revisionWriter),

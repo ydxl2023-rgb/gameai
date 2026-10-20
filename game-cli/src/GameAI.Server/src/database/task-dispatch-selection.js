@@ -35,7 +35,9 @@ export async function setTaskDispatchSelection(pool, projectKey, userId, raw)
             throw new ReviewError('只能勾选当前项目的专业子任务。');
         }
         const active = await client.query("SELECT 1 FROM gameai.executions WHERE task_id=$1 AND state IN ('assigned','running','unknown')",[task.id]);
-        if (!['pending','blocked'].includes(task.status) || active.rowCount)
+        // Failed tasks may require renewed consent after a reviewed amendment.
+        // Active and unknown leases remain protected independently of task status.
+        if (!['pending','blocked','failed'].includes(task.status) || active.rowCount)
         {
             throw new ReviewError('该任务已派发、执行或结束，不能通过勾选框修改；取消执行需单独处理。');
         }

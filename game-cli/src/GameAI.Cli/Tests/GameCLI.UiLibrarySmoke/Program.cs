@@ -14,6 +14,7 @@ internal static class Program
         {
             ManifestChecks.Run(project);
             VerificationChecks.Run(project);
+            GuardChecks.Run();
             const string childGuid = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
             const string parentGuid = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
             string child = Path.Combine(assets, "Child.prefab");

@@ -60,3 +60,20 @@ test('baseline review transport retains every parsed value and raw-byte identity
     assert.equal(payload.guardBaselineJson.rawSha256,createHash('sha256').update(raw,'utf8').digest('hex'));
     assert.equal(readUiTemplateContext(html).payload.guardBaselineJson,raw);
 });
+
+test('nested guard JSON strings retain values and raw hashes while sharing repeated documents',()=>
+{
+    const snapshot={nodes:Array.from({length:80},(_,id)=>({id,text:'完整结构'.repeat(60)}))};
+    const raw=JSON.stringify(snapshot,null,2);
+    const original={guardApprovalJson:raw,targetAssembly:{baselineJson:raw,snapshotJson:raw,approvalJson:raw}};
+    const html=embedUiTemplateContext('<html><body>Review</body></html>',original);
+    const prompt=prepareUiDocumentPrompt(html);
+    const payload=unpack(JSON.parse(prompt.slice(prompt.indexOf('{"encoding"'))));
+    for (const document of [payload.guardApprovalJson,...Object.values(payload.targetAssembly)])
+    {
+        assert.deepEqual(document.value,snapshot);
+        assert.equal(document.rawSha256,createHash('sha256').update(raw).digest('hex'));
+    }
+    assert.deepEqual(readUiTemplateContext(html).payload,original);
+    assert.ok(prompt.length<html.length/2);
+});

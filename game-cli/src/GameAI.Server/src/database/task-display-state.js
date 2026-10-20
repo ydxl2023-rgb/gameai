@@ -5,6 +5,14 @@ export function taskDisplayState(task)
 {
     // A historical failure must not override a later review or completion.
     if (task.execution_state === 'unknown') return '待核实';
+    if (task.status==='failed' && task.recovery_detail)
+    {
+        const repair=task.recovery_detail;
+        if (['pending','diagnosing'].includes(repair.state)) return '自动诊断';
+        if (repair.state==='ready') return '准备恢复';
+        if (repair.state==='attention') return '待处理';
+        if (repair.state==='waiting') return waiting[repair.code] ?? '等待工具';
+    }
     if (task.status === 'failed' && waiting[task.recovery?.code]) return waiting[task.recovery.code];
     return states[task.status];
 }

@@ -1,4 +1,5 @@
 import {validateDesignDocument} from './design-contract.js';
+import {applyAmendment} from './task-amendments.js';
 import {createHash} from 'node:crypto';
 import {validateContract,readApprovedContract,compilePlan,planSchema,digest} from './ui-production-contract.js';
 
@@ -98,5 +99,8 @@ export async function readTaskInput(c,taskId)
     const row=(await c.query('SELECT input,input_hash FROM gameai.ui_task_contracts WHERE task_id=$1',[taskId])).rows[0];
     if (!row) return null;
     if (digest(row.input)!==row.input_hash) throw new Error('Frozen task input hash mismatch');
-    return {sha256:row.input_hash,content:row.input};
+    let content=row.input;
+    const amendments=(await c.query("SELECT after_value FROM gameai.task_edits WHERE task_id=$1 AND field='production-amendment' ORDER BY revision",[taskId])).rows;
+    for (const amendment of amendments) content=applyAmendment(content,amendment.after_value);
+    return {sha256:digest(content),content};
 }

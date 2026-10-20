@@ -86,6 +86,18 @@ test('restart after transaction commit acknowledges response without reapplying 
     assert.ok(f.queries.some(q=>q.sql.includes("state='published'")));
 });
 
+test('unknown execution is reconciled only after durable process-stop proof arrives',async()=>
+{
+    let calls=0;
+    const pending=fixture([{execution_id:'unknown',execution_state:'unknown',process_state:'running',response:{error:'timeout'}}]);
+    await recoverTaskPublications(pending.pool,async()=>calls++);
+    assert.equal(calls,0);
+    assert.equal(pending.queries.filter(q=>q.sql.startsWith('UPDATE')).length,0);
+    const stopped=fixture([{execution_id:'unknown',execution_state:'unknown',process_state:'failed',job:{executionId:'unknown'},response:{error:'timeout'}}]);
+    await recoverTaskPublications(stopped.pool,async()=>calls++);
+    assert.equal(calls,1);
+});
+
 test('restart imports spooled response but missing output never starts a new Agent',async()=>
 {
     const job={executionId:'spooled'};

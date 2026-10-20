@@ -41,7 +41,7 @@ namespace GameCLI.Services.UiLibrary
         public static JsonArray Diff(JsonNode? before, JsonNode? after, string path = "")
         {
             JsonArray changes = new();
-            if (JsonNode.DeepEquals(before, after))
+            if (JsonValueEquality.Equal(before, after))
             {
                 return changes;
             }
@@ -91,7 +91,9 @@ namespace GameCLI.Services.UiLibrary
             {
                 throw new InvalidDataException("Unexpected or missing approval fields.");
             }
-            JsonArray changes = Diff(Normalize(JsonNode.Parse(baseline)!.AsObject()), Normalize(JsonNode.Parse(candidate)!.AsObject()));
+            JsonObject source = Normalize(JsonNode.Parse(baseline)!.AsObject());
+            JsonObject target = Normalize(JsonNode.Parse(candidate)!.AsObject());
+            JsonArray changes = Diff(source, target);
             if ((string?)approval["schemaVersion"] != "ui-change-approval/1"
                 || (string?)approval["sourceSha256"] != AssemblyPlanCompiler.Hash(baseline)
                 || string.IsNullOrWhiteSpace((string?)approval["authorizationReference"]))
@@ -99,7 +101,8 @@ namespace GameCLI.Services.UiLibrary
                 throw new InvalidDataException("Approval must pin the source hash and reference the user's instruction.");
             }
             JsonArray allowed = approval["changes"]?.AsArray() ?? throw new InvalidDataException("Missing exact change list.");
-            if (!JsonNode.DeepEquals(changes, allowed))
+            JsonArray effective = EffectiveChanges(allowed, source, target);
+            if (!JsonValueEquality.Equal(changes, effective))
             {
                 throw new InvalidDataException("Candidate differs from the authorized change list. Run audit; do not auto-approve its output.");
             }
@@ -123,6 +126,55 @@ namespace GameCLI.Services.UiLibrary
                 ["approvalSha256"] = AssemblyPlanCompiler.Hash(approval.ToJsonString()),
                 ["outputPrefab"] = output
             };
+        }
+
+        private static JsonArray EffectiveChanges(JsonArray allowed, JsonObject source, JsonObject target)
+        {
+            JsonArray result = new();
+            HashSet<string> paths = new(StringComparer.Ordinal);
+            foreach (JsonNode? item in allowed)
+            {
+                JsonObject change = item?.AsObject() ?? throw new InvalidDataException("Invalid approval change.");
+                string path = (string?)change["path"] ?? "";
+                if (change.Count != 5 || !paths.Add(path))
+                {
+                    throw new InvalidDataException("Duplicate or invalid approval change.");
+                }
+                bool beforeExists = change["beforeExists"]!.GetValue<bool>();
+                bool afterExists = change["afterExists"]!.GetValue<bool>();
+                // Historical approvals may contain a number spelling change. Ignore it only
+                // when both immutable snapshots prove that the exact field already has that value.
+                if (beforeExists && afterExists && JsonValueEquality.Equal(change["before"], change["after"]))
+                {
+                    if (!TryResolve(source, path, out JsonNode? before) || !TryResolve(target, path, out JsonNode? after)
+                        || !JsonValueEquality.Equal(before, change["before"]) || !JsonValueEquality.Equal(after, change["after"]))
+                    {
+                        throw new InvalidDataException("No-op approval does not match the pinned snapshots.");
+                    }
+                    continue;
+                }
+                result.Add(change.DeepClone());
+            }
+            return result;
+        }
+
+        private static bool TryResolve(JsonNode root, string path, out JsonNode? value)
+        {
+            value = root;
+            if (!path.StartsWith('/'))
+            {
+                return false;
+            }
+            foreach (string part in path[1..].Split('/'))
+            {
+                string key = part.Replace("~1", "/").Replace("~0", "~");
+                if (value is not JsonObject obj || !obj.ContainsKey(key))
+                {
+                    return false;
+                }
+                value = obj[key];
+            }
+            return true;
         }
     }
 }
