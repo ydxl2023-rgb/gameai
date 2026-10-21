@@ -1,6 +1,6 @@
 import {digest,canonical} from '../database/ui-production-contract.js';
 import {projectRoot,platformRoot,tempRoot} from '../paths.js';
-import { mkdir,writeFile } from 'node:fs/promises';
+import { mkdir,writeFile,readFile } from 'node:fs/promises';
 import {saveTaskResponse,publishTaskResponse} from './task-publication.js';
 import { join } from 'node:path';
 import { createHash } from 'node:crypto';
@@ -65,9 +65,29 @@ export async function runTaskDispatch(pool,job,execute=runPmCli)
 
 export async function finishReceivedTask(pool,job,response)
 {
-    const result=structuredClone(response.result);
+    let result=structuredClone(response.result);
     let error=response.error;
     let failure=response.failure ?? null;
+    if (!result && error)
+    {
+        try
+        {
+            const checkpoint=JSON.parse(await readFile(join(tempRoot,'agent-checkpoints',job.executionId.replaceAll('-','')+'.json'),'utf8'));
+            if (checkpoint.InputSha256===createHash('sha256').update(job.prompt).digest('hex'))
+            {
+                const content=parseTaskResult(JSON.parse(checkpoint.Text));
+                result=checkpoint;
+                try { if (content.files.length) result.artifacts=await inspectTaskFiles(content.files); }
+                catch (cause) { result.checkpoint_error=cause.message; }
+                // A final message is a checkpoint, not completed cloud proof. Keep
+                // the failure and let the original Agent verify/reuse it on recovery.
+            }
+        }
+        catch (cause)
+        {
+            if (cause.code!=='ENOENT') console.error('执行检查点未通过读取或格式校验',job.executionId);
+        }
+    }
     if (!error)
     {
         try

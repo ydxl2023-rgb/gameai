@@ -1,4 +1,6 @@
 using System.Net.Http.Json;
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 
 namespace GameCLI.Services
@@ -13,6 +15,7 @@ namespace GameCLI.Services
         private readonly CancellationTokenSource lifetime;
         private Task heartbeat = Task.CompletedTask;
         private bool completed;
+        private Func<bool>? processStopped;
 
         public string AgentKey
         { get; }
@@ -27,6 +30,11 @@ namespace GameCLI.Services
         { get; }
 
         public CancellationToken Token => lifetime.Token;
+
+        internal void TrackProcessStop(Func<bool> probe)
+        {
+            processStopped = probe;
+        }
 
         private CloudAgentRun(HttpClient http, string workerKey, string executionId, JsonElement claim, CancellationToken cancellation)
         {
@@ -151,8 +159,33 @@ namespace GameCLI.Services
         {
             heartbeatStop.Cancel();
             await heartbeat;
-            if (!completed)
+            if (!completed && (processStopped == null || processStopped()))
             {
+                // No registered process means startup failed before ownership.
+                // Otherwise CodexRpcClient is disposed before this lease. Persist a signed
+                // failure-only receipt after its owned process has actually stopped.
+                // A disconnected service can recover capacity without inventing success.
+                try
+                {
+                    string payload = JsonSerializer.Serialize(new
+                    {
+                        execution_id = executionId,
+                        worker_key = workerKey,
+                        state = "failed",
+                        stopped_at = DateTimeOffset.UtcNow
+                    });
+                    string key = http.DefaultRequestHeaders.Authorization?.Parameter ?? throw new InvalidOperationException("Worker authentication missing.");
+                    string signature = Convert.ToHexString(HMACSHA256.HashData(Encoding.UTF8.GetBytes(key), Encoding.UTF8.GetBytes(payload))).ToLowerInvariant();
+                    string directory = ProductionPaths.DirectoryFor("agent-stops");
+                    Directory.CreateDirectory(directory);
+                    string path = Path.Combine(directory, executionId + ".json");
+                    await File.WriteAllTextAsync(path + ".tmp", JsonSerializer.Serialize(new { payload, signature }));
+                    File.Move(path + ".tmp", path, overwrite: true);
+                }
+                catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or InvalidOperationException)
+                {
+                    Console.Error.WriteLine("Unable to persist process-stop receipt: " + exception.GetType().Name);
+                }
                 using CancellationTokenSource cleanup = new(TimeSpan.FromSeconds(10));
                 try
                 {

@@ -29,13 +29,13 @@ namespace GameAI.Validation
         private static void RunRequested()
         {
             string repository = Path.GetFullPath(Path.Combine(Application.dataPath, "../../.."));
-            string request = Path.Combine(repository, "game-cli/temp/224c072293cc41299e2de45f0808e679/run-validation.json");
+            string request = Path.Combine(repository, "game-cli/temp/task-jobs/08deda3c-08ac-4f85-9d22-2cd0c0f59443/run-validation.json");
             if (!File.Exists(request))
             {
                 return;
             }
             File.Move(request, request + "." + Guid.NewGuid().ToString("N") + ".consumed");
-            string directory = Path.Combine(repository, "deliveries/F-0001036/assembly-224c0722");
+            string directory = Path.Combine(repository, "deliveries/F-0001359/assembly-08deda3c");
             JObject report = new JObject
             {
                 ["utc"] = DateTime.UtcNow.ToString("O"),
@@ -84,7 +84,7 @@ namespace GameAI.Validation
                 EventSystem.current = events;
                 StandaloneInputModule module = eventsObject.GetComponent<StandaloneInputModule>();
                 SimulatedTouchModule.InitializeForEditor(module);
-                JObject frozen = JObject.Parse(File.ReadAllText(Path.Combine(repository, "game-cli/temp/task-jobs/224c0722-93cc-4129-9e2d-e45f0808e679/production-input.json")));
+                JObject frozen = JObject.Parse(File.ReadAllText(Path.Combine(repository, "game-cli/temp/task-jobs/08deda3c-08ac-4f85-9d22-2cd0c0f59443/production-input.json")));
                 JObject paths = (JObject)JObject.Parse(File.ReadAllText(Path.Combine(directory, "verification-contract.json")))["nodes"];
                 JArray fonts = new JArray();
                 foreach (Text text in root.GetComponentsInChildren<Text>(true))
@@ -381,6 +381,11 @@ namespace GameAI.Validation
                 results.Add(new JObject
                 {
                     ["path"] = RelativePath(target, root.transform),
+                    ["screenCorners"] = new JArray(corners.Select(corner =>
+                    {
+                        Vector3 point = camera.WorldToScreenPoint(corner);
+                        return new JArray(point.x, point.y);
+                    })),
                     ["inside"] = corners.All(corner => safe.Contains(camera.WorldToScreenPoint(corner)))
                 });
             }

@@ -19,7 +19,7 @@ description: 提供流水线共用的结构化结果、文件哈希与 Trace 约
 
 平台服务使用 PostgreSQL 作为任务状态、审批、重试与执行记录的唯一可信来源。Git、文件和对象存储保存产物与证据，不保存第二套权威流程状态。
 
-正式角色调用只使用当前命令提供的结果 schema，不存在通用备用外层。Design draft 返回 title、summary、html、windowsJson、questions；PM 使用 outcome、summary、issues、tasks；专业 execute 使用 verdict、summary、deliverables、files、questions、checks、defects、retests。分析、自检等命令采用各自 schema，不互相套用。未获得调用 schema 时报告接口缺失，不自行构造 status/data/artifacts 包装。
+正式角色调用只使用当前命令提供的结果 schema，不存在通用备用外层。Design draft 返回 title、summary、html、windowsJson、questions；PM 使用 outcome、summary、issues、tasks；专业 execute 使用 verdict、summary、deliverables、files、questions、checks、failure、defects、retests。分析、自检等命令采用各自 schema，不互相套用。未获得调用 schema 时报告接口缺失，不自行构造 status/data/artifacts 包装。
 
 对实际文件字节计算 SHA-256；记录输入版本、UTC 时间、耗时和工具结果。日志不含密钥或令牌。区分未执行、桩执行和真实验证；缺失字段使用 null，不猜测链接、编号或结果。报告可落盘，状态仍回写 平台。
 
@@ -55,3 +55,11 @@ description: 提供流水线共用的结构化结果、文件哈希与 Trace 约
 ## 中间文件目录
 
 平台生产过程的输入提示词、临时分析、诊断日志、Agent 结果及上传重试文件统一放平台根目录的 `temp/`（本仓库为 `game-cli/temp/`），按执行编号分目录，自动创建。不得把中间文件散落到源码或正式交付目录。正式 HTML、资源、代码及验收证据仍按任务交付目录保存；连接配置不属于中间产物，保留原配置位置。
+
+## 全角色恢复
+
+- 宿主在固定角色 claim 时加载版本化恢复协议并记录其哈希；已批准的需求及角色规则快照保持原样。恢复协议管理执行生命周期，不修改批准范围。
+- 每个有意义步骤完成后保存检查点：输入版本、完成步骤、实际产物、验证证据、剩余步骤及下一动作。恢复先复现故障，核验已有文件，复用未变成果，重做失败及受影响检查，最终仍通过原完整验收。
+- 专业 execute 成功时 failure=null。失败时填写 code、step、evidence_path、repair；证据必须列入 files。上游缺陷使用 UPSTREAM_INVALID，source_task_key 指向输入 dependencies 的实际任务编号，其他故障该字段为 null。服务核验后交回原任务、原固定 Agent，不自行派发或代做其他角色。
+- Design/PM 沿用自身 schema；技术故障不转成需求提问。确定性文档修订仍提交新的待人工审批版本，不能自动审批。已有可验证结果优先恢复发布，不重新调用模型。
+- 状态未知不代表停止。宿主核实停止凭据后才恢复执行；暂停、撤权、原 Agent 改绑和真实业务决定仍须明确处理。次数或无进展限制触发后，保留证据和维护责任，不清零计数或原样无限重跑。

@@ -41,7 +41,11 @@ export async function enqueueTaskRepair(c,task,executionId,decision,{error,failu
 export function diagnoseRepair(row)
 {
     const decision=recoveryDecision({state:row.execution_state,error:row.error,failure:row.failure,attempts:recoveryAttempts(row.attempts,row.context),authorized:row.authorized});
-    if (!row.authorized || row.execution_state!=='failed')
+    if (!row.authorized)
+    {
+        return {action:'attention',retry:false,code:'awaiting_authorization',reason:'原任务或原 Agent 的自动执行授权不可用；恢复原授权后重新核验'};
+    }
+    if (row.execution_state!=='failed')
     {
         return {action:'attention',...decision};
     }

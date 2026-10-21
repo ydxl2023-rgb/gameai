@@ -35,6 +35,7 @@ namespace GameCLI.Agents
             progress("Skill snapshot: " + instructionHash + "\n");
             using LiveRun liveRun = new(project, executionId, role, taskTitle: executeTask ? "执行已派发任务" : "需求文档分析", mode: executeTask ? "execute" : "draft");
             await using CodexRpcClient rpc = new(executable, project);
+            cloud?.TrackProcessStop(() => rpc.HasStopped);
             progress("Codex started; initializing protocol.\n");
             await rpc.RequestAsync("initialize", new
             {
@@ -135,12 +136,25 @@ namespace GameCLI.Agents
                         }
 
                         string result = finalText ?? throw new JsonException("Codex returned no final result.");
+                        AgentRunResult checkpoint = new(threadId, turnId, inputHash, result);
+                        try
+                        {
+                            string directory = ProductionPaths.DirectoryFor("agent-checkpoints");
+                            Directory.CreateDirectory(directory);
+                            string path = Path.Combine(directory, executionId + ".json");
+                            await File.WriteAllTextAsync(path + ".tmp", JsonSerializer.Serialize(checkpoint));
+                            File.Move(path + ".tmp", path, overwrite: true);
+                        }
+                        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+                        {
+                            progress("Unable to preserve the final-message checkpoint; cloud validation still applies.\n");
+                        }
                         if (cloud != null)
                         {
                             await cloud.CompleteAsync();
                         }
                         progress("\nAgent turn completed.\n");
-                        return new AgentRunResult(threadId, turnId, inputHash, result);
+                        return checkpoint;
                     }
                 }
 

@@ -159,11 +159,17 @@ export async function startPmJob(pool, projectKey, userId, raw)
         {
             throw new ReviewError('本阶段需要启用并绑定当前服务器所在工作站的固定 PM Agent。');
         }
-        const job = (await client.query(`INSERT INTO gameai.pm_jobs(project_id,requirement_version_id,execution_id,requested_by,revision,document_hash,state)
-            VALUES($1,$2,$3,$4,$5,$6,'running') ON CONFLICT(requirement_version_id) DO UPDATE SET
+        if (prior?.recovery_agent_id && prior.recovery_agent_id!==pm.id)
+        {
+            throw new ReviewError('原固定 PM 绑定已改变，不能静默转交恢复任务。');
+        }
+        const job = (await client.query(`INSERT INTO gameai.pm_jobs(project_id,requirement_version_id,execution_id,requested_by,revision,document_hash,recovery_agent_id,state)
+            VALUES($1,$2,$3,$4,$5,$6,$7,'running') ON CONFLICT(requirement_version_id) DO UPDATE SET
             execution_id=EXCLUDED.execution_id,requested_by=EXCLUDED.requested_by,state='running',attempts=gameai.pm_jobs.attempts+1,
+            recovery_history=gameai.pm_jobs.recovery_history||jsonb_build_array(jsonb_build_object('execution_id',gameai.pm_jobs.execution_id,'error',gameai.pm_jobs.error,'state',gameai.pm_jobs.state)),
+            recovery_code='',recover_publication=false,publication_result=NULL,publication_attempts=0,
             error='',started_at=now(),expires_at=now()+interval '20 minutes',finished_at=null RETURNING *`,
-        [version.project_id,version.id,randomUUID().replaceAll('-',''),userId,input.revision,input.document_hash])).rows[0];
+        [version.project_id,version.id,randomUUID().replaceAll('-',''),userId,input.revision,input.document_hash,pm.id])).rows[0];
         await client.query("INSERT INTO gameai.audit_events(project_id,actor,event,payload) VALUES($1,$2,'人工启动 PM 拆分',$3)",[version.project_id,'human:'+userId,{job_id:job.id,execution_id:job.execution_id,version_id:version.id}]);
         return { job, created:true, document:version };
     });

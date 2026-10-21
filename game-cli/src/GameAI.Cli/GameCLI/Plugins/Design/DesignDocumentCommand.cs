@@ -41,7 +41,7 @@ namespace GameCLI.Plugins.Design
                 Dictionary<string, string> values = new(StringComparer.Ordinal);
                 for (int i = 0; i < args.Length; i += 2)
                 {
-                    if (i + 1 >= args.Length || args[i] is not ("--draft-file" or "--window-spec" or "--source-document" or "--review-prompt-file" or "--project-id" or "--project" or "--prompt-file" or "--key" or "--version" or "--server" or "--codex" or "--skills" or "--model" or "--timeout" or "--submission") || !values.TryAdd(args[i], args[i + 1]))
+                    if (i + 1 >= args.Length || args[i] is not ("--execution-id" or "--draft-file" or "--window-spec" or "--source-document" or "--review-prompt-file" or "--project-id" or "--project" or "--prompt-file" or "--key" or "--version" or "--server" or "--codex" or "--skills" or "--model" or "--timeout" or "--submission") || !values.TryAdd(args[i], args[i + 1]))
                     {
                         throw new ArgumentException(usage);
                     }
@@ -53,6 +53,7 @@ namespace GameCLI.Plugins.Design
                 }
                 timeout.CancelAfter(TimeSpan.FromSeconds(seconds));
                 string submissionPath = "";
+                string checkpointDirectory = "";
                 if (submitOnly)
                 {
                     submissionPath = Path.GetFullPath(values["--submission"]);
@@ -101,9 +102,14 @@ namespace GameCLI.Plugins.Design
                     using JsonDocument schema = JsonDocument.Parse("""
                     {"type":"object","properties":{"title":{"type":"string"},"summary":{"type":"string"},"html":{"type":"string"},"windowsJson":{"type":"string"},"questions":{"type":"array","items":{"type":"string"}}},"required":["title","summary","html","windowsJson","questions"],"additionalProperties":false}
                     """);
+                    string operationId = values.TryGetValue("--execution-id", out string? providedExecutionId)
+                        ? Guid.Parse(providedExecutionId).ToString("N")
+                        : Guid.NewGuid().ToString("N");
+                    checkpointDirectory = Path.Combine(GameCLI.Services.ProductionPaths.DirectoryFor("design"), operationId);
+                    Directory.CreateDirectory(checkpointDirectory);
                     for (int revisionAttempt = 0; revisionAttempt < 3; revisionAttempt++)
                     {
-                        string executionId = Guid.NewGuid().ToString("N");
+                        string executionId = StageExecutionId(operationId, revisionAttempt, "draft");
                         string draftText;
                         if (revisionAttempt == 0 && values.TryGetValue("--draft-file", out string? draftFile))
                         {
@@ -115,10 +121,12 @@ namespace GameCLI.Plugins.Design
                             AgentRunResult draftRun = await CodexAgentRunner.RunAsync(values.GetValueOrDefault("--codex", "codex"), project, "Design", instructions.ToString(), schema.RootElement.Clone(), prompt, values.GetValueOrDefault("--model"), Guid.NewGuid().ToString("N"), executionId, text => Console.Error.Write(text), timeout.Token, values["--key"]);
                             draftText = draftRun.Text;
                         }
+                        await File.WriteAllTextAsync(Path.Combine(checkpointDirectory, $"{revisionAttempt}-draft.json"), draftText, timeout.Token);
                         using JsonDocument result = JsonDocument.Parse(draftText);
                         JsonElement output = result.RootElement;
                         if (output.GetProperty("questions").GetArrayLength() != 0)
                         {
+                            await File.WriteAllTextAsync(Path.Combine(checkpointDirectory, "response.json"), draftText, timeout.Token);
                             Console.WriteLine(draftText);
                             return 3;
                         }
@@ -136,7 +144,7 @@ namespace GameCLI.Plugins.Design
                         using JsonDocument reviewSchema = JsonDocument.Parse("""
                         {"type":"object","properties":{"passed":{"type":"boolean"},"issues":{"type":"array","items":{"type":"string"}},"summary":{"type":"string"}},"required":["passed","issues","summary"],"additionalProperties":false}
                         """);
-                        string reviewExecutionId = Guid.NewGuid().ToString("N");
+                        string reviewExecutionId = StageExecutionId(operationId, revisionAttempt, "review");
                         AgentRunResult reviewed = await CodexAgentRunner.RunAsync(values.GetValueOrDefault("--codex", "codex"), project, "Design",
                             "Review the compiled document against the original requirement. Check scope, every node/control, dimensions, resource slots, animation/effect bindings and style. Do not approve for the human or invoke tools. Return passed=false with concrete issues if any facts are missing or contradictory.",
                             reviewSchema.RootElement.Clone(), "Original requirement:\n" + reviewRequirements + "\nCompiled document (lossless packed attachment):\n" + prepared.RootElement.GetProperty("reviewHtml").GetString(),
@@ -195,7 +203,9 @@ namespace GameCLI.Plugins.Design
                         {
                             throw new ArgumentException("--server is required for submit.");
                         }
-                        Console.WriteLine(JsonSerializer.Serialize(new { status = "draft_saved", submission = submissionPath }));
+                        string response = JsonSerializer.Serialize(new { status = "draft_saved", submission = submissionPath });
+                        await File.WriteAllTextAsync(Path.Combine(checkpointDirectory, "response.json"), response, timeout.Token);
+                        Console.WriteLine(response);
                         return 0;
                     }
                     string receipt = await SubmitAsync(server, submissionPath, timeout.Token);
@@ -212,6 +222,14 @@ namespace GameCLI.Plugins.Design
                 {
                     Console.CancelKeyPress -= cancel;
                 }
+            }
+
+            private static string StageExecutionId(string operationId, int attempt, string stage)
+            {
+                // The server can enumerate every stage after a restart, without inferring
+                // process death from a timeout or mixing unrelated Design conversations.
+                byte[] bytes = Encoding.UTF8.GetBytes($"{operationId}:{attempt}:{stage}");
+                return Convert.ToHexString(SHA256.HashData(bytes)).ToLowerInvariant()[..32];
             }
 
             private static async Task<string> SubmitAsync(string server, string file, CancellationToken cancellation)

@@ -22,6 +22,9 @@ import {recoverTaskPublications} from './task-publication.js';
 import {finishReceivedTask} from './task-dispatch.js';
 import {recoverPmPublications} from './pm-publication.js';
 import {resumeTaskRepairs} from './task-repair-flow.js';
+import {inspectInterruptedTasks} from './recovery-watchdog.js';
+import {resumeRoleJobs} from './role-job-recovery.js';
+import {recoverStoppedAgents} from './agent-stop-recovery.js';
 
 let writer: ReturnType<typeof createPool> | undefined;
 let config: Record<string,string | undefined> | undefined;
@@ -52,6 +55,9 @@ export function initializeWorkflowRecovery(): Promise<void>
                 publications:()=>recoverTaskPublications(revisionWriter,finishReceivedTask),
                 pmPublications:()=>recoverPmPublications(revisionWriter),
                 repairs:()=>resumeTaskRepairs(revisionWriter),
+                watchdog:()=>inspectInterruptedTasks(revisionWriter),
+                roleRecovery:()=>resumeRoleJobs(revisionWriter),
+                stoppedAgents:()=>recoverStoppedAgents(revisionWriter),
                 notifications:()=>drainWorkflowOutbox(revisionWriter,continueTaskFlow),
                 revisions:()=>resumeRequirementRevisions(revisionWriter),
                 approvals:()=>resumeApprovalWorkflows(revisionWriter),

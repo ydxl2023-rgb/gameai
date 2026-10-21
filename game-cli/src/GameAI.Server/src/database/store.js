@@ -53,7 +53,20 @@ export async function readWorkbench(pool, projectKey)
         const repairs=(await client.query(`SELECT DISTINCT ON(task_id) task_id,state,code,decision->>'reason' reason,next_attempt_at,probes
             FROM task_repairs WHERE project_id=$1 ORDER BY task_id,updated_at DESC`,params)).rows;
         const repairByTask=new Map(repairs.map(repair=>[repair.task_id,repair]));
-        for (const task of tasks) task.recovery_detail=repairByTask.get(task.id) ?? null;
+        const handoffs=(await client.query(`SELECT u.*,s.task_key source_key,q.task_key requesting_key FROM upstream_repairs u
+            JOIN tasks s ON s.id=u.source_task_id JOIN tasks q ON q.id=u.requesting_task_id
+            WHERE u.project_id=$1 AND u.state IN ('open','repaired') ORDER BY u.updated_at DESC`,params)).rows;
+        for (const task of tasks)
+        {
+            const priorRepair=repairByTask.get(task.id);
+            const sourceHandoff=handoffs.find(h=>h.source_task_id===task.id && h.state==='open');
+            const repair=sourceHandoff && ['resolved','cancelled'].includes(priorRepair?.state) ? null : priorRepair;
+            task.recovery_detail=repair ? {...repair,
+                owner:['awaiting_decision','awaiting_authorization','awaiting_device'].includes(repair.code) ? '人工处理' : repair.state==='attention' ? '平台维护' : '流程服务 / 原角色 Agent',
+                next_action:repair.state==='attention' ? '依据故障证据提供针对性修复；验证后继续原任务，保留原验收和历史' : '核验恢复条件后自动继续原任务及下游'}
+                : sourceHandoff ? {state:'pending',code:'upstream_repair',reason:'收到 '+sourceHandoff.requesting_key+' 的返修交接：'+sourceHandoff.details.repair,
+                    owner:'原角色 Agent',next_action:'修复原任务并通过原验收，再唤醒下游复验',next_attempt_at:sourceHandoff.updated_at,probes:0} : null;
+        }
         const audit = (await client.query('SELECT id::text,actor,event,created_at FROM audit_events WHERE project_id=$1 ORDER BY id DESC LIMIT 200', params)).rows;
         const activity = await readActivity(client, project.id);
         await client.query('COMMIT');

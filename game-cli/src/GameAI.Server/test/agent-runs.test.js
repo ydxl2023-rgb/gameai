@@ -80,6 +80,8 @@ test('fixed identity, capacity, lease and conversation recovery', async () =>
         await c.query("UPDATE gameai.agent_runs SET expires_at=now()-interval '1 second' WHERE execution_id=$1",[otherInput.execution_id]);
         await assert.rejects(call({...update,execution_id:otherInput.execution_id,action:'finish',state:'completed'}), /已失效/);
         await assert.rejects(call({...input,execution_id:randomUUID().replaceAll('-','')}), /忙碌/);
+        await call({...update,execution_id:otherInput.execution_id,action:'finish',state:'failed',error:'Owner confirmed the process stopped after lease expiry'});
+        assert.equal((await c.query('SELECT state FROM gameai.agent_runs WHERE execution_id=$1',[otherInput.execution_id])).rows[0].state,'failed');
         await c.query('UPDATE gameai.agents SET enabled=false WHERE id=$1',[a]);
         await assert.rejects(call({...input,execution_id:randomUUID().replaceAll('-','')}), /固定 Agent/);
     }

@@ -1,7 +1,7 @@
 import {buildProductionSkeleton,validateDesignDocument} from '../database/design-contract.js';
 import {mkdir,readFile,writeFile} from 'node:fs/promises';
 import {resolve,join,relative,isAbsolute} from 'node:path';
-import {createHash} from 'node:crypto';
+import {createHash,randomUUID} from 'node:crypto';
 import {hostname} from 'node:os';
 import {projectRoot,platformRoot,tempRoot} from '../paths.js';
 import {runPmCli} from './pm-dispatch.js';
@@ -32,13 +32,15 @@ export async function runRequirementRevision(pool, job, execute=runPmCli)
         let payload = job.submission;
         if (!payload)
         {
-            const directory=join(tempRoot,'requirement-revisions',job.id);
+            const directory=join(tempRoot,'requirement-revisions',job.id,job.recovery_execution_id ?? 'legacy');
             await mkdir(directory,{recursive:true});
             const sourceDocument=join(directory,'source.html');
             await writeFile(sourceDocument,source.bytes);
             const prompt=join(directory,'prompt.txt');
             await writeFile(prompt,`这是编排器退回的确定性文档修订，沿用已批准的业务范围，无需重新调研。原需求 ${source.requirement_key}，标题必须原样为 ${source.title}。新版本必须为 ${job.target_version}。\n只修正以下明确问题，保留窗口、控件、资源、交互规则、HTML线框与完整内容。不得修改功能范围，不得自行审批、建单或派工。需要用户决策时返回 questions，不能猜测。自检正文计数、名称、内部编号与清单完全一致，summary逐项说明修复证据；新版本状态待人工审批。\nPM问题报告：${JSON.stringify(job.report)}\n已校验原文 SHA256：${source.sha256}\n原始完整HTML：\n${source.bytes.toString('utf8')}`,'utf8');
-            const run=await execute(['--project',projectRoot,'--project-id',source.project_id,'--source-document',sourceDocument,'--prompt-file',prompt,'--key',source.requirement_key,'--version',job.target_version,'--skills',join(platformRoot,'skills'),'--timeout','900'],['design','draft']);
+            await writeFile(prompt,`\n上次执行故障（如有）：${job.error}\n修复执行故障并继续本次确定性修订；不扩大业务范围，不把技术失败转为需求提问。`,{encoding:'utf8',flag:'a'});
+            const operation=job.recovery_execution_id ? ['--execution-id',job.recovery_execution_id] : [];
+            const run=await execute(['--project',projectRoot,'--project-id',source.project_id,'--source-document',sourceDocument,'--prompt-file',prompt,'--key',source.requirement_key,'--version',job.target_version,'--skills',join(platformRoot,'skills'),'--timeout','900',...operation],['design','draft']);
             await writeFile(join(directory,'diagnostics.txt'),run.diagnostics??'','utf8');
             await writeFile(join(directory,'output.json'),run.output??'','utf8');
             let response;
@@ -68,6 +70,8 @@ export async function runRequirementRevision(pool, job, execute=runPmCli)
     catch (error)
     {
         await finish(pool,job,'failed',error.message);
+        await pool.query(`UPDATE gameai.requirement_revisions SET recovery_code='technical_failure',recovery_at=now()+interval '30 seconds'
+            WHERE id=$1 AND state='failed' AND recovery_execution_id=$2`,[job.id,job.recovery_execution_id]);
     }
 }
 
@@ -100,7 +104,8 @@ export async function resumeRequirementRevisions(pool, execute=runPmCli)
         {
             if (!(await c.query("SELECT 1 FROM gameai.requirement_revisions WHERE project_id=$1 AND state IN ('running','unknown')",[candidate.project_id])).rowCount)
             {
-                job=(await c.query("UPDATE gameai.requirement_revisions SET state='running',started_at=now() WHERE id=$1 AND state='queued' RETURNING *",[candidate.id])).rows[0];
+                job=(await c.query(`UPDATE gameai.requirement_revisions SET state='running',started_at=now(),
+                    recovery_execution_id=$2,recovery_attempts=recovery_attempts+1 WHERE id=$1 AND state='queued' RETURNING *`,[candidate.id,randomUUID().replaceAll('-','')])).rows[0];
                 await c.query("INSERT INTO gameai.audit_events(project_id,actor,event,payload) VALUES($1,'orchestrator','原 Design 开始修订需求',$2)",[job.project_id,{revision_id:job.id,version_id:job.source_version_id,target_version:job.target_version}]);
             }
         }

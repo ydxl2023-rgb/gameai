@@ -3,7 +3,7 @@ import {ReviewError} from './requirements.js';
 import {DeliveryError} from './delivery-errors.js';
 const text=z.string().trim().min(1).max(12000);
 const defect=z.object({case_key:text.max(100),source_task_key:text.max(50),title:text.max(200),preconditions:text,steps:text,expected:text,actual:text,evidence_path:text,fix_acceptance:text}).strict();
-const failure=z.object({code:z.enum(['ENVIRONMENT_UNAVAILABLE','CONTRACT_CONFLICT','TASK_VALIDATION_FAILED','UPSTREAM_INVALID','DECISION_REQUIRED','TOOL_FAILURE','UNKNOWN_FAILURE']),step:text.max(200),evidence_path:text,repair:text}).strict();
+const failure=z.object({code:z.enum(['ENVIRONMENT_UNAVAILABLE','CONTRACT_CONFLICT','TASK_VALIDATION_FAILED','UPSTREAM_INVALID','DECISION_REQUIRED','TOOL_FAILURE','UNKNOWN_FAILURE']),step:text.max(200),evidence_path:text,repair:text,source_task_key:text.max(50).nullable().optional()}).strict();
 const schema=z.object({verdict:z.enum(['pass','fail','blocked']),summary:text,deliverables:z.array(z.string()),files:z.array(text).max(100),questions:z.array(z.string()),checks:z.array(z.object({name:text,passed:z.boolean(),evidence_path:text}).strict()),failure:failure.nullable().optional(),defects:z.array(defect).max(50).default([]),retests:z.array(z.object({defect_id:z.uuid(),passed:z.boolean(),evidence_path:text}).strict()).max(100).default([])}).strict();
 export function parseTaskResult(raw)
 {

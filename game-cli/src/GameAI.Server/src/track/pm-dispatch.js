@@ -82,10 +82,11 @@ export function runPmCli(args, command = ['pm','plan'], options = {})
     });
 }
 
-export async function dispatchPmJob(pool, projectKey, started, execute = runPmCli)
+export async function dispatchPmJob(pool, projectKey, started, execute = runPmCli, {recoverPublication=false}={})
 {
     const { job,document } = started;
     const directory = join(tempRoot,'pm-jobs',job.execution_id);
+    let phase='input';
     try
     {
         await mkdir(directory,{recursive:true});
@@ -98,6 +99,8 @@ export async function dispatchPmJob(pool, projectKey, started, execute = runPmCl
         const approvedDocument = await prepareApprovedDocument(job.requirement_version_id,job.document_hash,document.html);
         await writeFile(input,`权威文档信息：${JSON.stringify(approvedDocument)}\n需求：${document.requirement_key} / ${document.title}\n版本：${document.version}\n修订：${job.revision}\n文档 SHA256：${job.document_hash}\n由 RodFergusson 按 UI 与 Art 模块拆分，每个独立窗口为白模、资源包、最终装配三项，当前不拆程序与 QA 子任务，来源引用需包含原文章节或交付项编号。不得扩展已批准范围。\n以下是已批准的原始 HTML 数据：\n${prepareUiDocumentPrompt(document.html,approvedDocument)}`,'utf8');
         await writeFile(input,`\n服务端固定骨架（最高优先级结构约束）：\n${JSON.stringify(skeleton)}\n逐项输出相同 id、role、source_refs、depends_on，仅补充 title、description、acceptance 以及 summary。phase 由固定 id 表示，不增加输出字段。原文与清单矛盾时停止并报告，不修补结构、不生成替代计划。完整窗口原文位于上方 HTML 的对应 section。\n`,{encoding:'utf8',flag:'a'});
+        await writeFile(input,`\n上次执行错误（如有）：${JSON.stringify(job.recovery_history ?? [])}\n恢复同一需求拆分：先诊断错误，复用有效工作，不生成重复任务或降低骨架检查。`,{encoding:'utf8',flag:'a'});
+        phase='execution';
         const run=await execute(['--project',repository,'--key',document.requirement_key,'--execution-id',job.execution_id,'--prompt-file',input,'--skills',join(platformRoot,'skills')]);
         await writeFile(join(directory,'diagnostics.txt'),run.diagnostics,'utf8');
         if(run.timedOut || run.overflow || run.code!==0)
@@ -107,6 +110,7 @@ export async function dispatchPmJob(pool, projectKey, started, execute = runPmCl
             throw new ReviewError('RodFergusson 拆分失败或超时，未创建任务。');
         }
         await writeFile(join(directory,'agent-output.json'),run.output,'utf8');
+        phase='validation';
         const result=JSON.parse(run.output);
         if(result.execution_id!==job.execution_id || !Array.isArray(result.plan?.tasks) || result.plan.tasks.some(t=>!['Prefab','Art'].includes(t.role))) throw new ReviewError('当前只允许 UI 白模、美术资源和预制装配任务。');
         const outcome = parsePmOutcome(result.plan);
@@ -122,7 +126,8 @@ export async function dispatchPmJob(pool, projectKey, started, execute = runPmCl
         result.plan = validateUiDeliveryPlan(validatePmPlan(result.plan),skeleton);
         await writeFile(join(directory,'result.json'),JSON.stringify(result),'utf8');
         await pool.query('UPDATE gameai.pm_jobs SET publication_result=$2 WHERE id=$1',[job.id,result]);
-        await publishPmPlan(pool,projectKey,job,result);
+        phase='publication';
+        await publishPmPlan(pool,projectKey,job,result,{recoverPublication});
         console.info('PM 拆分已入库', { execution_id:job.execution_id });
     }
     catch (error)
@@ -130,5 +135,7 @@ export async function dispatchPmJob(pool, projectKey, started, execute = runPmCl
         const message = error instanceof ReviewError ? error.message : 'PM 处理或发布失败，请检查服务日志；未发布不完整任务。';
         console.error('PM 拆分失败', { execution_id:job.execution_id, error:error instanceof Error ? error.message : String(error) });
         await failPmJob(pool,job,message);
+        await pool.query(`UPDATE gameai.pm_jobs SET recovery_code=$3,recovery_at=now()+interval '30 seconds'
+            WHERE id=$1 AND execution_id=$2 AND state IN ('failed','unknown')`,[job.id,job.execution_id,phase==='publication' ? 'publication' : 'technical_failure']);
     }
 }

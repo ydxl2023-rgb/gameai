@@ -3,6 +3,7 @@ import {repairGuardPreflight,probeUnity,repairToolFingerprint} from './task-pref
 import {loadTaskContext,contextBlockReason} from '../database/qa-context.js';
 import {isDeepStrictEqual} from 'node:util';
 import {recoveryAttempts} from '../database/task-recovery.js';
+import {requestUpstreamRepair} from '../database/upstream-repairs.js';
 
 async function probeDependencies(pool,row)
 {
@@ -16,8 +17,9 @@ async function probeDependencies(pool,row)
     return true;
 }
 
-export async function resumeTaskRepairs(pool,{guard=repairGuardPreflight,environment=probeUnity,dependency=probeDependencies,projectId=null}={})
+export async function resumeTaskRepairs(pool,{guard=repairGuardPreflight,environment=probeUnity,dependency=probeDependencies,handoff=requestUpstreamRepair,projectId=null}={})
 {
+    await requeueGrantedRepairs(pool,projectId);
     if (guard===repairGuardPreflight) await requeueToolRepairs(pool,projectId);
     // Atomic leases prevent another server or a restarted pump from diagnosing the same row.
     const rows=(await pool.query(`UPDATE gameai.task_repairs r SET state='diagnosing',lease_until=now()+interval '2 minutes',probes=probes+1,updated_at=now()
@@ -28,8 +30,11 @@ export async function resumeTaskRepairs(pool,{guard=repairGuardPreflight,environ
     {
         try
         {
-            const current=(await pool.query(`SELECT e.state execution_state,e.result->>'error' error,e.result->'failure' failure,j.context,
+            const current=(await pool.query(`SELECT e.state execution_state,e.result,e.result->>'error' error,e.result->'failure' failure,j.context,
                 t.status,t.dispatch_allowed,f.reason flow_reason,f.state flow_state,
+                EXISTS(SELECT 1 FROM gameai.task_repairs other WHERE other.plan_version_id=f.plan_version_id
+                    AND other.execution_id<>e.id AND other.state IN ('pending','diagnosing','waiting','ready','attention')
+                    AND f.reason IN (other.decision->>'reason','自动恢复处理中：'||(other.decision->>'reason'),'自动修复需要处理：'||(other.decision->>'reason'))) other_repair_owns_pause,
                 (SELECT id FROM gameai.executions WHERE task_id=t.id ORDER BY started_at DESC LIMIT 1) latest_execution_id,
                 (SELECT count(*)::int FROM gameai.executions WHERE task_id=t.id) attempts,
                 (a.auto_execute AND a.enabled AND t.dispatch_allowed AND (f.agent_policy IS NULL OR EXISTS(SELECT 1 FROM jsonb_array_elements(f.agent_policy) policy WHERE policy->>'id'=a.id::text AND policy->>'role_code'=t.role_code))) authorized
@@ -40,7 +45,13 @@ export async function resumeTaskRepairs(pool,{guard=repairGuardPreflight,environ
                 await updateRepair(pool,row,'cancelled','已被后续执行替代或任务已完成');
                 continue;
             }
-            if (!['active','paused'].includes(current.flow_state) || (current.flow_state==='paused' && !current.flow_reason.startsWith('自动恢复处理中：') && current.flow_reason!==row.decision.reason))
+            const ownsPause=[row.decision.reason,'自动恢复处理中：'+row.decision.reason].includes(current.flow_reason);
+            if (current.flow_state==='paused' && !ownsPause && current.other_repair_owns_pause)
+            {
+                await updateRepair(pool,row,'waiting',row.decision.reason,null,30);
+                continue;
+            }
+            if (!['active','paused'].includes(current.flow_state) || (current.flow_state==='paused' && !ownsPause && !current.flow_reason.startsWith('自动恢复处理中：')))
             {
                 await updateRepair(pool,row,'attention','流程由其他操作暂停，不自动覆盖该操作');
                 continue;
@@ -81,14 +92,17 @@ export async function resumeTaskRepairs(pool,{guard=repairGuardPreflight,environ
             {
                 if (!await dependency(pool,{...row,...current}))
                 {
-                    await updateRepair(pool,row,'waiting','等待前置任务完成并通过交付核验；条件满足后自动继续',null,30);
+                    const receipt=current.failure?.items?.[0]?.source_task_key
+                        ? await handoff(pool,{...row,...current})
+                        : {reason:'等待前置任务完成并通过交付核验；条件满足后自动继续'};
+                    await updateRepair(pool,row,receipt.attention ? 'attention' : 'waiting',receipt.reason,{handoff:receipt},30);
                     continue;
                 }
                 receipt={handler:'dependency-check',available:true};
             }
             if (decision.action==='attention')
             {
-                await updateRepair(pool,row,'attention',decision.reason);
+                await updateRepair(pool,row,'attention',decision.reason,null,30,decision);
                 continue;
             }
             // Ready is a dispatch permit for this failed execution only. All normal
@@ -115,6 +129,26 @@ export async function resumeTaskRepairs(pool,{guard=repairGuardPreflight,environ
     }
 }
 
+async function requeueGrantedRepairs(pool,projectId)
+{
+    // Restoring the original grant is a concrete recovery condition. It cannot
+    // override a manual pause or silently adopt a replacement fixed Agent.
+    await pool.query(`WITH revived AS (
+        UPDATE gameai.task_repairs r SET state='pending',next_attempt_at=now(),lease_until=NULL,updated_at=now()
+        FROM gameai.executions e,gameai.tasks t,gameai.agents a,gameai.fixed_agents fixed,gameai.plan_dispatch_flows f
+        WHERE r.state='attention' AND r.code='awaiting_authorization' AND ($1::uuid IS NULL OR r.project_id=$1)
+        AND e.id=r.execution_id AND e.state='failed' AND t.id=r.task_id AND t.status='failed'
+        AND e.agent_id=a.id AND a.enabled AND a.auto_execute AND t.dispatch_allowed
+        AND fixed.project_id=t.project_id AND fixed.role_code=t.role_code AND fixed.agent_id=a.id
+        AND f.plan_version_id=r.plan_version_id
+        AND (f.agent_policy IS NULL OR EXISTS(SELECT 1 FROM jsonb_array_elements(f.agent_policy) p WHERE p->>'id'=a.id::text AND p->>'role_code'=t.role_code))
+        AND (f.state='active' OR (f.state='paused' AND f.reason IN (r.decision->>'reason','自动修复需要处理：'||(r.decision->>'reason'))))
+        AND NOT EXISTS(SELECT 1 FROM gameai.executions n WHERE n.task_id=t.id AND n.started_at>e.started_at)
+        RETURNING r.plan_version_id,r.decision)
+        UPDATE gameai.plan_dispatch_flows f SET reason='自动恢复处理中：'||(r.decision->>'reason'),updated_at=now()
+        FROM revived r WHERE f.plan_version_id=r.plan_version_id AND f.state='paused'`,[projectId]);
+}
+
 async function requeueToolRepairs(pool,projectId)
 {
     const fingerprint=await repairToolFingerprint();
@@ -139,10 +173,11 @@ async function requeueToolRepairs(pool,projectId)
     }
 }
 
-async function updateRepair(pool,row,state,reason,evidence=null,delay=30)
+async function updateRepair(pool,row,state,reason,evidence=null,delay=30,classification=null)
 {
-    await pool.query(`UPDATE gameai.task_repairs SET state=$2,decision=decision||jsonb_build_object('reason',$3::text),evidence=evidence||$4::jsonb,
-        lease_until=NULL,next_attempt_at=now()+$5*interval '1 second',updated_at=now() WHERE execution_id=$1`,[row.execution_id,state,reason,JSON.stringify(evidence ?? {}),delay]);
-    await pool.query(`UPDATE gameai.plan_dispatch_flows SET reason=$2,updated_at=now() WHERE plan_version_id=$1 AND state='paused' AND (reason LIKE '自动恢复处理中：%' OR reason=$3)`,[row.plan_version_id,(state==='attention' ? '自动修复需要处理：' : '自动恢复处理中：')+reason,row.decision.reason]);
+    await pool.query(`UPDATE gameai.task_repairs SET state=$2,code=COALESCE($7,code),decision=decision||$6::jsonb||jsonb_build_object('reason',$3::text),evidence=evidence||$4::jsonb,
+        lease_until=NULL,next_attempt_at=now()+$5*interval '1 second',updated_at=now() WHERE execution_id=$1`,[row.execution_id,state,reason,JSON.stringify(evidence ?? {}),delay,JSON.stringify(classification ?? {}),classification?.code ?? null]);
+    await pool.query(`UPDATE gameai.plan_dispatch_flows SET reason=$2,updated_at=now() WHERE plan_version_id=$1 AND state='paused'
+        AND reason IN ($3,'自动恢复处理中：'||$3,'自动修复需要处理：'||$3)`,[row.plan_version_id,(state==='attention' ? '自动修复需要处理：' : '自动恢复处理中：')+reason,row.decision.reason]);
     if (state==='attention') await pool.query(`INSERT INTO gameai.audit_events(project_id,actor,event,payload) VALUES($1,'orchestrator','自动修复需要处理',$2)`,[row.project_id,{execution_id:row.execution_id,task_id:row.task_id,reason}]);
 }

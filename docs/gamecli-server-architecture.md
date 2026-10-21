@@ -284,3 +284,23 @@ prepareUiDocumentPrompt 对 guard 封装的嵌套 JSON 字符串使用完整解�
 GameCLI ui-library guard --manifest <已验收Art的ui-template/1快照> 是明确的执行适配选项，只能与 --approval 一起使用。保留原baselineJson、snapshotJson、approvalJson和各自哈希；另附resourceManifestJson及其哈希。两侧guard均要求全部实际节点、组件、属性、根信息完全相同，所选贴图逐项与原批准记录一致，不能增加/修改贴图或漏掉任何实际绑定。已展开实例的导出provenance不改变扁平节点；实际装配仍消费原节点表。服务端另按冻结resourceSlots核对复用来源哈希、数量、交付尺寸和已验收Art文件哈希，确保历史未绑定清单不是新增生产要求。
 
 最终装配预检使用非whitebox restore --dry-run，确认没有延后绑定且资源完整；白模或Art阶段使用白模预检。实际执行输入目录中的execution-preflight.json提供本轮验证后的assemblyPath，生产Agent读取此封装并继续原阶段全部验收。预检本身不写资产，也不代替最终触屏、动画、四态截图和安全区检查。
+
+### 全角色恢复协议与交接（2026-10-20）
+
+六个固定角色的每次 claim 都由服务加载 agent-recovery/1，并把协议哈希写入审计。它约束检查点、故障证据、复用、职责交接和原标准复验，不替换审批绑定的需求/技能快照。专业 failure 新增可空 source_task_key；旧结果仍兼容。Model 不持有恢复许可或重置计数权。
+
+有证据的 UPSTREAM_INVALID 可以交回输入 dependencies 中的直接上游。事务核对最新批准计划、当前原执行、证据文件 SHA、原上游 Agent、固定绑定和两侧自动执行授权；保留原任务、冻结输入、交付路径、验收和总次数。upstream_repairs 记录 open -> repaired -> verified：上游完整交付通过才 repaired，原下游复验通过才 verified。已知缺陷使原图中已完成的后续产物重新等待复验；不创建循环依赖。嵌套失败时，各恢复记录不得覆盖其他修复或人工持有的暂停。
+
+Design 的服务端确定性修订有可枚举的 draft/review 执行编号、分步骤草稿与最终提交凭据。PM 恢复原作业及原人工工作流策略；新尝试保存旧执行号和错误，清理前次待发布缓存，不能将旧结果绑定新执行。两者优先对原结果补做原验证/发布；停止确认后才允许重新入队，默认总三次，原 Agent 改绑、撤权、新需求版本及真实决定不自动越过。过期/被替换的旧操作不能迟到 claim。
+
+独立 watchdog 每十秒与发布、修复等 lane 并行巡检。它回收过期且未 claim 的预约、恢复已经停止且保存结果的原执行、补发恢复通知；没有停止证明时不释放占用。CLI 仅在其拥有的 Codex 进程实际关闭后产生失败停止回报，并用节点凭据 HMAC 签名保存输出凭据。服务重连核验签名、执行号、节点和时间，经原节点接口回报 failed。已过期的完成结果仍不能因该凭据变成成功；服务端只接受迟到失败释放。凭据没有令牌，且不是第二套权威状态。
+
+Track 详情显示处理责任和下一动作。真实 PostgreSQL 故障演练包含四专业角色同队列、六角色签名停止回收、伪造凭据拒绝、下游交接与嵌套故障、Design/PM 原作业续跑、暂停和撤权保护、原结果无模型重跑恢复。
+
+范围限制：首次手工 Design draft 尚未登记为服务器后台作业，不能宣称服务能自动重启整个手工调用；它支持草稿/提交检查点与停止回收。任意平台代码的自动生成、部署、新账号凭据和新业务决定不在当前修复器能力内。此类情况保留明确维护/人工责任和下一步，不能用无限重试、假验收或清除历史声称完成。
+
+### Readable UI asset names and historical paths
+
+Project-facing UI PNG files use short purpose names such as RepairIcon.png. Full SHA256 values remain in manifests and internal content-addressed blob caches. The server supplies a deterministic per-slot naming plan, with short stable suffixes for duplicate names.
+
+Identity-preserving migrations are recorded in app/client/ProjectSettings/UnityCliAssetAliases.json (unity-asset-path-aliases/1): from, to, guid, sha256 and metaSha256. Same-directory UI PNG and TTF/OTF/TTC font renames are supported; changing the file format is rejected. Unity resolves old bindings/import manifests after the original approval guard succeeds; PostgreSQL delivery verification resolves old PNG/.meta references against the same registered bytes and GUID. Missing or changed targets and recreated old hash files fail closed. Old approvals, frozen inputs and delivery records are not rewritten. Current Unity exports show the actual readable asset paths. Art delivering against an old approval retains the original logical paths in resource-snapshot.json for guard compatibility and uses the registered physical paths for operations. New requirements can pin the new paths normally.

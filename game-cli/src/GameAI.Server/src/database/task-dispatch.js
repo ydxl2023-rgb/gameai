@@ -19,6 +19,10 @@ import {readRequirementRules} from './requirement-rules.js';
 import {deliveryFailure} from './delivery-errors.js';
 import {registerContractAssets} from './delivery-registration.js';
 import {enqueueTaskRepair,repairScopeHash} from './task-repairs.js';
+import {finishUpstreamRepair} from './upstream-repairs.js';
+import {resourceNamingPlan} from './ui-asset-naming.js';
+import {loadAssetAliases} from './asset-path-aliases.js';
+import {projectRoot} from '../paths.js';
 
 const request = z.object({tasks:z.array(z.object({task_id:z.uuid(),revision:z.number().int().nonnegative()}).strict()).min(1).max(100),auto_continue:z.boolean().optional(),recovery_cycle:z.boolean().optional(),retry:z.boolean().optional(),retry_override:z.object({attempts:z.number().int().min(3),reason:z.string().trim().min(1).max(1000)}).strict().optional()}).strict();
 
@@ -88,6 +92,12 @@ export async function dispatchTasks(pool,projectKey,userId,raw,commit=false,auto
                 AND NOT EXISTS(SELECT 1 FROM gameai.requirement_versions n WHERE n.requirement_id=v.requirement_id AND n.ordinal>v.ordinal)`,[t.plan_version_id]);
             if (!reason && !approved.rowCount) reason='需求未批准或计划版本已过期';
             let context=await loadTaskContext(c,t);
+            const upstreamRepairs=(await c.query("SELECT * FROM gameai.upstream_repairs WHERE source_task_id=$1 AND state='open' ORDER BY created_at",[t.id])).rows;
+            if (!reason && automaticDispatch && upstreamRepairs.length)
+            {
+                const attempts=(await c.query('SELECT count(*)::int n FROM gameai.executions WHERE task_id=$1',[t.id])).rows[0].n;
+                if (attempts>=3) reason='原上游任务修复预算已用尽，需要可验证的新修复方案';
+            }
             let dependencies=context.dependencies;
             if (!reason) reason=await contextBlockReason(context,t);
             if (!reason && automaticDispatch)
@@ -163,6 +173,11 @@ export async function dispatchTasks(pool,projectKey,userId,raw,commit=false,auto
                 WHERE l.task_id=$1 AND a.storage_key LIKE 'deliveries/%/task-%.html' ORDER BY a.verified_at DESC LIMIT 1`,[t.id])).rows[0] : null;
             if (taskDoc && createHash('sha256').update(taskDoc.bytes).digest('hex') !== taskDoc.sha256) throw new ReviewError('预制任务 HTML 校验失败。');
             const humanNotes=(await c.query('SELECT body,created_at FROM gameai.comments WHERE task_id=$1 AND user_id IS NOT NULL ORDER BY created_at DESC LIMIT 10',[t.id])).rows;
+            for (const request of upstreamRepairs)
+            {
+                humanNotes.unshift({body:'服务端核验的下游返修交接：'+JSON.stringify(request)+
+                    '\n沿用本任务原冻结契约、交付路径和原验收；先复现证据，只修复职责范围内的问题，必须重新通过本任务完整验收。不得自行改需求、审批或替代下游验收。',created_at:request.created_at});
+            }
             const feedback=previous ? (await c.query(`SELECT id::text,event,body,role,created_at FROM gameai.collaboration_messages
                 WHERE project_id=$1 AND task_id=$2 ORDER BY id DESC LIMIT 8`,[project.id,t.id])).rows.reverse() : [];
             const repairContext=previous ? (await c.query('SELECT code,decision,evidence FROM gameai.task_repairs WHERE execution_id=(SELECT id FROM gameai.executions WHERE task_id=$1 ORDER BY started_at DESC LIMIT 1)',[t.id])).rows[0] : null;
@@ -174,6 +189,12 @@ export async function dispatchTasks(pool,projectKey,userId,raw,commit=false,auto
             const productionContract=await readTaskInput(c,t.id);
             if (['Prefab','Art'].includes(t.role_code) && !productionContract) throw new ReviewError('UI task requires a frozen production contract; recreate through contract task submission.');
             if (productionContract) productionContract.path=`game-cli/temp/task-jobs/${executionId}/production-input.json`;
+            if (productionContract)
+            {
+                const assetAliases=await loadAssetAliases(projectRoot);
+                humanNotes.unshift({body:JSON.stringify({assetNaming:{schemaVersion:'ui-asset-naming/1',resources:resourceNamingPlan(productionContract.content.window,assetAliases),migrations:assetAliases,
+                    rules:'新项目资源文件用简短用途名（例如 RepairIcon.png）；字体采用可识别的字体族与字重名（例如 MicrosoftYaHeiRegular.ttc），保留原字体格式，不以完整哈希或文本节点名命名字体，完整SHA256只放清单和内部blob缓存；重名加稳定短后缀。已有迁移资源必须使用登记的新路径，禁止重建旧哈希文件。旧冻结契约/快照仍保留原路径原文，由Unity桥接按登记的内容哈希和GUID解析迁移；不改写批准JSON或历史交付。沿用旧审批时 resource-snapshot.json 保留原逻辑路径以通过原 guard，实际导出快照可另存；只有新需求的目标快照使用实际新路径。'}}),created_at:new Date().toISOString()});
+            }
             if (productionContract?.content.taskAmendments?.length)
             {
                 humanNotes.unshift({body:'本轮 production_contract 已由服务组合原冻结输入与人工授权的 taskAmendments；其 window 是增补后的唯一制作目标。增补项仅覆盖明确列出的旧属性约束，不修改旧 HTML 或审批历史。读取 taskAmendments.evidenceDirectory 中已修复资产、guard 和证据，优先复核并交付，禁止用旧 assembly 覆盖现有修复。按 simulation 配置进行四态模拟验收，不声称真机通过。',created_at:new Date().toISOString()});
@@ -182,7 +203,7 @@ export async function dispatchTasks(pool,projectKey,userId,raw,commit=false,auto
             {
                 humanNotes.unshift({body:`宿主在启动本次Agent前将完成真实正式装配预检，并保存 game-cli/temp/task-jobs/${executionId}/execution-preflight.json。读取该凭据；applicable=true 时使用其中 assemblyPath 指向的已双侧核验封装进行正式装配，不从历史35项清单重新派生参数。资源投影只允许保留原批准条目和全部实际绑定，源、目标及批准原文哈希保持不变；不得删改批准目标或以whitebox模式代替最终装配。原节点、组件、最终九项验收仍全部执行。`,created_at:new Date().toISOString()});
             }
-            const prompt=JSON.stringify({production_contract:productionContract,stage_responsibility:artVisualScope,failure_context:failureContext,human_task_notes:humanNotes,task_document:taskDoc ? {path:taskDoc.storage_key,sha256:taskDoc.sha256,content_source:'完整窗口原文和附件可从 approved_document 路径按 source_refs 读取；独立 HTML 原件也可通过本路径读取。'} : null,approved_document:approvedDocument,platform_context:{authoritative:true,validated_at:new Date().toISOString(),requirement_version_id:t.version_id,plan_version_id:t.plan_version_id,approval:'approved',dispatch_allowed:true,executor:'GameCLIServer',human_retry_context:parsed.data.retry_override ? {actor:'human:'+userId,reason:parsed.data.retry_override.reason,prior_attempts:parsed.data.retry_override.attempts} : null},task:t.task_key,title:t.title,description:t.description,criteria:t.delivery_criteria,source_refs:t.source_refs,dependencies,repair:context.repair,retests:context.retests,approved_html:prepareUiDocumentPrompt(doc.bytes.toString('utf8'),approvedDocument)});
+            const prompt=JSON.stringify({production_contract:productionContract,stage_responsibility:t.role_code==='Art' ? artVisualScope : t.role_code==='Prefab' ? 'Prefab 只负责 production_contract 中指定的白模或最终装配阶段；白模按冻结目标建立结构与占位，最终装配消费已验收 Art 资产并执行原完整验收，不代做美术资产。' : null,failure_context:failureContext,human_task_notes:humanNotes,task_document:taskDoc ? {path:taskDoc.storage_key,sha256:taskDoc.sha256,content_source:'完整窗口原文和附件可从 approved_document 路径按 source_refs 读取；独立 HTML 原件也可通过本路径读取。'} : null,approved_document:approvedDocument,platform_context:{authoritative:true,validated_at:new Date().toISOString(),requirement_version_id:t.version_id,plan_version_id:t.plan_version_id,approval:'approved',dispatch_allowed:true,executor:'GameCLIServer',human_retry_context:parsed.data.retry_override ? {actor:'human:'+userId,reason:parsed.data.retry_override.reason,prior_attempts:parsed.data.retry_override.attempts} : null},task:t.task_key,title:t.title,description:t.description,criteria:t.delivery_criteria,source_refs:t.source_refs,dependencies,repair:context.repair,retests:context.retests,approved_html:prepareUiDocumentPrompt(doc.bytes.toString('utf8'),approvedDocument)});
             const inputHash=createHash('sha256').update(prompt).digest('hex');
             await c.query(`INSERT INTO gameai.executions(id,project_id,task_id,agent_id,state,started_at) VALUES($1,$2,$3,$4,'assigned',clock_timestamp())`,[executionId,project.id,t.id,a.id]);
             await c.query(`INSERT INTO gameai.task_dispatch_jobs(execution_id,project_id,requested_by,requirement_key,input_hash,context) VALUES($1,$2,$3,$4,$5,$6)`,[executionId,project.id,userId,t.requirement_key,inputHash,JSON.stringify(context)]);
@@ -275,6 +296,7 @@ export async function finishTaskDispatch(pool,job,result,error,{recoverPublicati
         const completed=success && !context.repair && flow?.state==='active' && ['Prefab','Art','Development'].includes(task.role_code);
         await c.query('UPDATE gameai.tasks SET status=$2,progress=$3 WHERE id=$1',[job.taskId,success ? completed ? 'completed' : 'review' : unknown ? 'running' : 'failed',success ? 100 : 0]);
         if (success && context.repair) await finishRepair(c,task,context.repair);
+        if (success && (completed || (task.role_code==='QA' && content.verdict==='pass'))) await finishUpstreamRepair(c,task,job.executionId);
         if (success) await c.query(`UPDATE gameai.task_repairs SET state='resolved',updated_at=now() WHERE task_id=$1 AND state NOT IN ('resolved','cancelled')`,[task.id]);
         if (success && task.role_code==='QA') await applyQaReport(c,task,execution,context,content);
         if (!success)

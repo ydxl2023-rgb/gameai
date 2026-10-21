@@ -28,6 +28,9 @@ namespace GameCLI.Services
 
         private readonly Func<string, JsonElement, CancellationToken, Task<object>>? serverRequest;
 
+        internal bool HasStopped
+        { get; private set; }
+
         /// <summary>
         /// Starts an owned Codex app-server process and immediately drains both output pipes.
         /// </summary>
@@ -279,6 +282,7 @@ namespace GameCLI.Services
             }
 
             await process.WaitForExitAsync();
+            HasStopped = true;
             lifetime.Cancel();
             await Task.WhenAll(reader, diagnostics);
             process.Dispose();

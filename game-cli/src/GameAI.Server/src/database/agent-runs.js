@@ -6,6 +6,8 @@ import {isDeepStrictEqual} from 'node:util';
 import { ReviewError } from './requirements.js';
 import {loadProjectSkills} from './project-skills.js';
 import {readRequirementRules} from './requirement-rules.js';
+import {recoveryInstructions,recoveryProtocolHash} from './recovery-protocol.js';
+import {validateRoleOperationClaim} from './role-operation-claims.js';
 
 const roles = z.enum(['Design','PM','Prefab','Art','Development','QA']);
 const claim = z.object({ action:z.literal('claim'), execution_id:z.string().regex(/^[a-f0-9]{32}$/), role:roles,
@@ -50,6 +52,7 @@ export async function agentRunRequest(pool, projectKey, raw)
             {
                 throw new ReviewError('该角色没有当前节点可用的固定 Agent。');
             }
+            await validateRoleOperationClaim(c,project.id,input,agent.id);
             const reservation = (await c.query(`SELECT j.*,e.agent_id,e.task_id,e.state FROM gameai.task_dispatch_jobs j JOIN gameai.executions e ON e.id=j.execution_id
                 WHERE replace(j.execution_id::text,'-','')=$1`,[input.execution_id])).rows[0];
             if (reservation && (reservation.project_id!==project.id || reservation.agent_id!==agent.id || reservation.requirement_key!==input.requirement_key ||
@@ -97,6 +100,7 @@ export async function agentRunRequest(pool, projectKey, raw)
             const recorded=(await c.query(`SELECT payload->'project_skills' snapshot FROM gameai.audit_events WHERE project_id=$1 AND event='固定 Agent 开始执行' AND payload->>'execution_id'=$2 ORDER BY id DESC LIMIT 1`,[project.id,input.execution_id])).rows[0];
             const projectSkills=pinned?.projectSkills ?? (recorded ? (recorded.snapshot ?? []) : await loadProjectSkills(projectKey));
             instructions+='\n\nProject-specific skill snapshot (does not override approved requirements or permissions):\n'+JSON.stringify(projectSkills);
+            instructions+='\n\n'+recoveryInstructions;
             const session = (await c.query(`INSERT INTO gameai.agent_conversations(project_id,requirement_key,role_code,agent_id,worker_id)
                 VALUES($1,$2,$3,$4,$5) ON CONFLICT(project_id,requirement_key,agent_id) DO UPDATE SET requirement_key=EXCLUDED.requirement_key RETURNING *`,
                 [project.id,input.requirement_key,input.role,agent.id,worker.id])).rows[0];
@@ -126,7 +130,7 @@ export async function agentRunRequest(pool, projectKey, raw)
                     throw new ReviewError('固定 Agent 或节点忙碌；状态未知的执行必须先核实。');
                 }
                 await c.query('INSERT INTO gameai.agent_runs(execution_id,conversation_id,request_hash,state) VALUES($1,$2,$3,\'running\')',[input.execution_id,session.id,requestHash]);
-                await c.query(`INSERT INTO gameai.audit_events(project_id,actor,event,payload) VALUES($1,$2,'固定 Agent 开始执行',$3)`,[project.id,agent.agent_key,{execution_id:input.execution_id,requirement_key:input.requirement_key,project_skills:projectSkills,rule_snapshot_hash:pinned?.sha256 ?? null}]);
+                await c.query(`INSERT INTO gameai.audit_events(project_id,actor,event,payload) VALUES($1,$2,'固定 Agent 开始执行',$3)`,[project.id,agent.agent_key,{execution_id:input.execution_id,requirement_key:input.requirement_key,project_skills:projectSkills,rule_snapshot_hash:pinned?.sha256 ?? null,recovery_protocol_hash:recoveryProtocolHash}]);
             }
             if (reservation) await c.query("UPDATE gameai.executions SET state='running' WHERE id=$1",[reservation.execution_id]);
             result = { agent_key:agent.agent_key, conversation_id:session.id, thread_id:session.thread_id, instructions, workspace_write:!!reservation };
@@ -145,7 +149,8 @@ export async function agentRunRequest(pool, projectKey, raw)
             }
             else
             {
-                if (run.state !== 'running' || new Date(run.expires_at).getTime() <= Date.now())
+                const confirmedFailure=input.action==='finish' && input.state==='failed' && ['running','unknown'].includes(run.state);
+                if (!confirmedFailure && (run.state !== 'running' || new Date(run.expires_at).getTime() <= Date.now()))
                 {
                     throw new ReviewError('执行授权已失效，不接受迟到结果。');
                 }
