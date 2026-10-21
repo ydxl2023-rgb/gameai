@@ -89,3 +89,9 @@ description: 将多轮游戏需求对话整理为简短初稿，并在用户批�
 ## UI 正式文档生产入口
 
 批准初稿后，宿主调用 GameCLI design draft 时传递 --project-id 对应 Track 项目 UUID；模板复用提供完整固定数据，可用 --source-document 指定含 ui-template-context 的来源 HTML。Design 返回 windowsJson 与正文，CLI 编译校验、Design 独立自检并有限修订后才提交人工审批。不要让 Design 跳过编译直接上传，旧文档无契约不能沿用审批。未决业务选择继续留在初稿对话。
+
+## 资源名称交接
+
+对话初稿和 Design 提示词执行公共 UI 交付契约的“需求文档资源可读名称”：交接用途名称、实际字体信息及已验证的资源别名映射，完整模板来源仍原样携带。用户阅读的资源名称不使用哈希；原始标识保留用于来源追踪。
+
+正式首次文档生产优先使用 `GameCLI design start --server <Track地址> --request-id <固定UUID> --key <编号> --version <版本> --prompt-file <精准提示词> --approval-file <已确认初稿依据>`；可附 source-document/window-spec。服务端持久保存输入、固定 Design 与最多三次执行授权，重启后继续同一请求。响应丢失时使用同一 request-id 查询 `--action status`，不得换编号重复发起；取消后续执行使用 `--action cancel`。本请求授权不修改角色全局自动配置，也不代替正式 HTML 人工审批。`design draft` 保留为服务端内部执行及手动诊断入口，单独运行不会自动变成持久队列。

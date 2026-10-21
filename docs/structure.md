@@ -25,10 +25,16 @@
 - `migrations/033_all_role_recovery.sql`：上游交接记录与 Design/PM 恢复历史；已应用迁移不修改。
 - `test/all-role-recovery.test.js`：真实 PostgreSQL 故障演练，覆盖六角色停止、四专业角色恢复、嵌套上游失败、Design/PM 原作业续跑与人工暂停/撤权。
 
-独立手工调用的首次 Design 草稿尚无服务端作业意图；它可以保存草稿检查点、恢复提交和回收停止占用，但不等同于服务器能自动重启该整条手工作业。未知进程无停止凭据、凭据失效、业务决定及没有匹配修复器的平台故障仍保留明确处理责任；不会把无限重跑写成自动修复。
+正式初稿由 design start 创建 design_draft_jobs 持久作业，服务端恢复原输入与结果；独立手工 design draft 仍属于不登记队列的诊断/执行入口。未知进程无停止凭据、凭据失效、业务决定及没有匹配修复器的平台故障仍保留明确处理责任；不会把无限重跑写成自动修复。
 
 ## UI 资源用途命名（2026-10-21）
 
 `src/database/ui-asset-naming.js` 为任务提供稳定用途名称；`asset-path-aliases.js` 按显式登记的 PNG/.meta 哈希与 GUID 解析历史路径。项目登记位于 app/client/ProjectSettings/UnityCliAssetAliases.json。UnityCLI 的 UnityCliAssetAliases 在原 guard 通过后解析导入及绑定路径；不改写审批或历史记录。UILogin 本次迁移15张PNG，证据见 deliveries/ui-readable-names-20261021/verification.json。
 
 字体同样使用可读名称：从字体族/字重元数据命名（例如 MicrosoftYaHeiRegular.ttc、MicrosoftYaHeiBold.ttc），不能从文本控件名猜测字体族。路径兼容现支持 png、ttf、otf、ttc，并强制迁移前后扩展名相同。UILogin 两个字体的字节、meta 和 GUID 全部保留。
+
+- `game-cli/src/GameAI.Server/src/database/readable-resource-document.js`：按已验证资源别名生成需求阅读副本，仅修改可见文本，保留机器契约及原始链接。公共 UI 契约、Design 自检与对话交接统一资源可读命名规则。
+
+- DesignStartCommand / database/design-draft-jobs.js / track/design-draft-flow.js / migrations/034_design_draft_jobs.sql：首次 Design 持久队列、同请求幂等、固定 Agent、停止凭据门禁、有限恢复及提交回放。
+- Design 自检输入在原需求与编译文档之间共享完整附件，保留双方正文及编译契约；输入超限保留真实错误并停止盲重试。技术恢复优先读取已有 draft 检查点，再编译和独立自检。宿主核验工具修复后可对原请求显式授予一次额外尝试，累计次数与审计不清零；默认后台不授予该额度。
+- scripts/verify-readable-resources.mjs：只读核验资源别名与已提交 UI 文件字节，列出现存客户端改动，不移动或清理用户文件。

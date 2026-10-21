@@ -3,6 +3,9 @@ import workbench from './workbench.json' with { type: 'json' };
 import { createPool, databaseEnabled } from '../database/connection.js';
 import { readLinkedHtml } from '../database/documents.js';
 import { readWorkbench } from '../database/store.js';
+import {loadAssetAliases, resolveAssetAlias} from '../database/asset-path-aliases.js';
+import {readableResourceDocument} from '../database/readable-resource-document.js';
+import {projectRoot} from '../paths.js';
 const pool = databaseEnabled() ? createPool() : null;
 export async function createSnapshot()
 {
@@ -30,7 +33,14 @@ export async function createSnapshot()
     };
 }
 
-export async function readDocument(id: string)
+export async function readDocument(id: string, readable = false)
 {
-    return pool ? readLinkedHtml(pool, process.env.GAMEAI_PROJECT_KEY ?? 'DEMO', id) : null;
+    const bytes = pool ? await readLinkedHtml(pool, process.env.GAMEAI_PROJECT_KEY ?? 'DEMO', id) : null;
+    if (!bytes || !readable) return bytes;
+    const aliases = await loadAssetAliases(projectRoot);
+    for (const alias of aliases)
+    {
+        await resolveAssetAlias(projectRoot, 'app/client/' + alias.from, aliases);
+    }
+    return Buffer.from(readableResourceDocument(bytes.toString('utf8'), aliases).html);
 }

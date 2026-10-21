@@ -73,7 +73,7 @@ export function TaskDetail({task, tasks, bridge, select, dispatch, dispatchDisab
         setLoading(false);
         if (!task.requirement_version_id || !bridge) return;
         setLoading(true);
-        void bridge.document(task.requirement_version_id, task.task_document_url ?? task.document_url).then(html => {
+        void bridge.document(task.requirement_version_id, task.task_document_url ?? task.document_url, true).then(html => {
             if (active) setWire(task.task_document_url ? {html,count:1,fallback:false} : taskWireframes(html, JSON.parse(references)));
         }).catch(e => {if (active) setError(e.message);}).finally(()=>{if(active)setLoading(false);});
         return () => {active=false;};
@@ -89,7 +89,7 @@ export function TaskDetail({task, tasks, bridge, select, dispatch, dispatchDisab
             <span>Agent：<strong>{task.agent ?? '未分配'}</strong></span>
             <span className="task-detail-deps">依赖：<TaskLinks ids={task.dependencies} tasks={tasks} select={select}/>{pencil("dependencies",task.dependencies.map(id=>tasks.find(t=>t.id===id)?.task_uuid).filter((id):id is string=>!!id))}</span>
         </div>
-        {task.recovery_detail && !["resolved","cancelled"].includes(task.recovery_detail.state) && <Alert type={task.recovery_detail.state==="attention" ? "warning" : "info"} title={task.recovery_detail.state==="attention" ? "自动修复需要处理" : "自动恢复记录"} description={<>{task.recovery_detail.reason}{task.recovery_detail.owner && <div>负责处理：{task.recovery_detail.owner}</div>}{task.recovery_detail.next_action && <div>下一步：{task.recovery_detail.next_action}</div>}{task.recovery_detail.state==="waiting" && <div>下一次检查：{new Date(task.recovery_detail.next_attempt_at).toLocaleString()}</div>}</>}/>}
+        {task.recovery_detail && !["resolved","cancelled"].includes(task.recovery_detail.state) && <Alert type={task.recovery_detail.state==="attention" ? "warning" : "info"} title={task.recovery_detail.state==="attention" ? "自动修复需要处理" : "自动恢复记录"} description={<>{task.recovery_detail.reason}{task.recovery_detail.remaining_attempts !== undefined && <div>累计执行：{task.recovery_detail.attempts} 次 · 当前恢复预算剩余：{task.recovery_detail.remaining_attempts} 次</div>}{task.recovery_detail.owner && <div>负责处理：{task.recovery_detail.owner}</div>}{task.recovery_detail.next_action && <div>下一步：{task.recovery_detail.next_action}</div>}{["waiting","pending","ready"].includes(task.recovery_detail.state) && <div>下一次检查：{new Date(task.recovery_detail.next_attempt_at).toLocaleString()}</div>}</>}/>}
         {editor("dependencies")}
         <Progress percent={task.progress} size="small"/>
         {task.repair && <Alert type="warning" title="返修任务" description={<><TaskLinks ids={[task.repair.source_task,task.repair.qa_task]} tasks={tasks} select={select}/><div>绑定 Agent：{task.bound_agent ?? '未记录'} · 第 {task.repair.rounds} 轮</div>{task.repair.details.actual}</>}/>}

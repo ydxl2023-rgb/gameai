@@ -46,6 +46,8 @@ export function WorkbenchApp()
     const [review, setReview] = useState<RequirementRow>();
     const [documentPreview, setDocumentPreview] = useState<RequirementRow>();
     const [documentHtml, setDocumentHtml] = useState<string>();
+    const [readableDocument, setReadableDocument] = useState(true);
+    const showReadableDocument = readableDocument && documentPreview?.status !== '待审批';
     const [documentError, setDocumentError] = useState('');
     const [reviewUrl, setReviewUrl] = useState('http://127.0.0.1:18090/track');
     const [detail, setDetail] = useState<Task | Agent>();
@@ -65,9 +67,9 @@ export function WorkbenchApp()
         setDocumentHtml(undefined); setDocumentError('');
         if (!context.embedded || !documentPreview?.version_id) return;
         let active = true;
-        void bridge.current?.document(documentPreview.version_id).then(html => { if (active) setDocumentHtml(html); }).catch(e => { if (active) setDocumentError(e.message); });
+        void bridge.current?.document(documentPreview.version_id, documentPreview.document_url, showReadableDocument).then(html => { if (active) setDocumentHtml(html); }).catch(e => { if (active) setDocumentError(e.message); });
         return () => { active = false; };
-    }, [documentPreview?.version_id, context.embedded]);
+    }, [documentPreview?.version_id, documentPreview?.document_url, context.embedded, showReadableDocument]);
     const bridge = useRef<TrackBridge | null>(null);
     const mounted = useRef(true);
     const refreshing = useRef(false);
@@ -387,6 +389,7 @@ export function WorkbenchApp()
         if (tab === 'collaboration' && bridge.current) return <CollaborationChat bridge={bridge.current} openTask={id=>{const task=data.tasks.find(t=>t.task_uuid===id);if(task)setDetail(task);else message.info('该任务已清理，历史反馈仍保留。');}} openDocument={m=>setDocumentPreview({id:m.requirement_key??'历史记录',title:m.requirement_title??m.event,version:m.version??'',version_id:m.version_id??undefined,revision:'',status:'历史版本',document_path:'协作记录文档',document_url:'/api/track/documents/'+m.artifact_id,created_at:m.created_at,summary:'',rules:[],changes:[]})} />;
         if (tab === 'overview') return <Section title="Agent" extra={<Button type="primary" size="small" aria-label="添加 Agent" title="添加 Agent" icon={<span aria-hidden="true" style={{fontSize:18,lineHeight:1}}>+</span>} disabled={!persistent || context.embedded} onClick={() => setAddingAgent(true)} />}><AgentTable agents={data.agents} select={agent=>{setHistoryRequirement(undefined);setDetail(agent);}} addSkills={persistent && !context.embedded ? setSkillAgent : undefined} /></Section>;
         if (tab === 'requirements') return <Section title="需求审批" extra={<Input.Search aria-label="搜索需求" placeholder="需求编号 / 名称" value={requirementQuery} allowClear onChange={e => setRequirementQuery(e.target.value)} style={{ width: 200 }} />}>
+            {data.design_jobs?.map(job=><Alert key={job.id} type={['attention','needs_input','unknown'].includes(job.state)?'warning':'info'} title={'Design 初稿：'+job.requirement_key+' / '+job.version+' · '+({queued:'等待执行',running:'编写与自检',failed:'等待自动恢复',unknown:'等待原进程停止凭据',needs_input:'需要补充需求',attention:'需要针对性修复'} as Record<string,string>)[job.state]} description={<>{job.error && <div>{job.error}</div>}<div>已执行 {job.attempts} 次，剩余 {job.remaining_attempts} 次</div>{['queued','failed'].includes(job.state) && <div>下一次检查：{new Date(job.next_attempt_at).toLocaleString()}</div>}</>}/>)}
             <ResizableTable<RequirementRow> storageKey="gameai.track.requirements-widths.v1" size="small" rowKey="id" tableLayout="fixed" pagination={{ pageSize: 10, hideOnSinglePage: true }} scroll={{ x: 600 }}
                 dataSource={(data.requirements ?? [{ ...data.requirement, id: 'DEMO-REQ-1', document_path: null, created_at: null }]).filter(item => [item.id, item.title].join(' ').toLowerCase().includes(requirementQuery.toLowerCase()))}
                 columns={[
@@ -416,13 +419,13 @@ export function WorkbenchApp()
             <Drawer title={documentPreview ? documentPreview.id + ' / ' + documentPreview.title + ' / ' + documentPreview.version : '需求原文'} open={!!documentPreview} onClose={() => setDocumentPreview(undefined)} placement="right" size="100%" getContainer={false} rootStyle={{ position: 'absolute' }} styles={{ body: { padding: 0, overflow: 'hidden' } }} destroyOnHidden footer={
                 <div className="document-review-footer">
                     <div><Space><Typography.Text strong>{documentPreview?.version}</Typography.Text><StateTag value={documentPreview?.status ?? '待审批'} /></Space><Typography.Text type="secondary" className="document-review-hint">{persistent ? reviewSession.authenticated ? '审批绑定当前版本与原始 HTML；确认后写入数据库。' : context.embedded ? '内嵌面板只读；点击审批人登录，在本机页面阅读并完成审批。' : '请先通过顶部按钮登录人工审批账户。' : approvalAllowed ? '请阅读全文后确认此版本；当前为模拟审批。' : '当前身份或版本不可审批。'}</Typography.Text></div>
-                    <Space>{documentPreview && pmButton(documentPreview)}<Button danger disabled={!approvalAllowed} onClick={() => { form.resetFields(); setDialog('revise'); }}>拒绝</Button><Button type="primary" disabled={!approvalAllowed} onClick={() => setDialog('approve')}>同意</Button></Space>
+                    <Space>{documentPreview?.status !== '待审批' && <Checkbox checked={readableDocument} onChange={event => setReadableDocument(event.target.checked)}>可读资源名称</Checkbox>}{documentPreview && pmButton(documentPreview)}<Button danger disabled={!approvalAllowed} onClick={() => { form.resetFields(); setDialog('revise'); }}>拒绝</Button><Button type="primary" disabled={!approvalAllowed} onClick={() => setDialog('approve')}>同意</Button></Space>
                 </div>
             }>
                 {context.embedded && !documentHtml && !documentError && <Spin description="正在读取原始 HTML…" />}
                 {documentError && <Alert type="error" showIcon title={documentError} />}
                 {context.embedded && documentHtml && <iframe className="requirement-original" title="需求原始 HTML" srcDoc={'<meta http-equiv="Content-Security-Policy" content="default-src &#39;none&#39;; script-src &#39;none&#39;; style-src &#39;unsafe-inline&#39;; img-src data:; base-uri &#39;none&#39;; form-action &#39;none&#39;">' + documentHtml} sandbox="" referrerPolicy="no-referrer" />}
-                {!context.embedded && documentPreview?.document_url && <iframe className="requirement-original" title="需求原始 HTML" src={documentPreview.document_url} sandbox="" referrerPolicy="no-referrer" />}
+                {!context.embedded && documentPreview?.document_url && <iframe className="requirement-original" title={showReadableDocument ? '需求可读名称版' : '需求原始 HTML'} src={documentPreview.document_url + (showReadableDocument ? '?view=readable' : '')} sandbox="" referrerPolicy="no-referrer" />}
             </Drawer>
         </div>
         <Modal title="人工审批登录" open={loginOpen} confirmLoading={savingReview} onCancel={() => { if (!savingReview) setLoginOpen(false); }} onOk={() => void login()} okText="登录" cancelText="取消" getContainer={false}>

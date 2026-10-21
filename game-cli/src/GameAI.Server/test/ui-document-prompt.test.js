@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {packContext,prepareUiDocumentPrompt} from '../src/database/ui-document-prompt.js';
+import {packContext,prepareUiDocumentPrompt,prepareDesignReviewPrompt} from '../src/database/ui-document-prompt.js';
 import {embedUiTemplateContext,readUiTemplateContext} from '../src/database/ui-template-context.js';
 
 function unpack(packed)
@@ -13,6 +13,24 @@ function unpack(packed)
     }
     return expand(packed.data);
 }
+
+test('review shares evidence losslessly while retaining both texts and the compiled contract',()=>
+{
+    const context={nodes:[{name:'中文',value:'a"}\\b'.repeat(300)}],enabled:false};
+    const evidence=JSON.stringify(packContext(context));
+    const contract={nodes:context.nodes,version:1};
+    const original='approved\n'+evidence+'\nauthorization';
+    const document='<html>candidate<script id="ui-production-contract" type="application/json">'+JSON.stringify(contract)+'</script></html>\n'+evidence;
+    const prompt=prepareDesignReviewPrompt(original,document);
+    const result=unpack(JSON.parse(prompt.slice(prompt.indexOf('\n')+1)));
+    assert.deepEqual(result.originalRequirements.context,context);
+    assert.deepEqual(result.compiledDocument.context,context);
+    assert.deepEqual(result.compiledDocument.contracts,[contract]);
+    assert.ok(result.originalRequirements.text.startsWith('approved'));
+    assert.ok(result.originalRequirements.text.endsWith('authorization'));
+    assert.ok(result.compiledDocument.text.includes('candidate'));
+    assert.ok(prompt.length<original.length+document.length);
+});
 test('tool-enabled specialist input references full immutable context without expanding it',()=>
 {
     const payload={nodes:Array.from({length:1000},(_,id)=>({id,text:'unique-'+id+'x'.repeat(100)}))};

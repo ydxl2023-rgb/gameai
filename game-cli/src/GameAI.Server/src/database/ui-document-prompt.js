@@ -45,6 +45,52 @@ export function packContext(payload)
     return {encoding:'json-object-references-v1',definitions,data};
 }
 
+// Share identical evidence across the original brief and compiled document.
+// Both texts and all decoded values remain available; no requirement is summarized.
+export function prepareDesignReviewPrompt(requirements, document)
+{
+    function extract(text)
+    {
+        const contracts=[];
+        text=text.replace(/<script\b[^>]*\bid=["']ui-production-contract["'][^>]*>([\s\S]*?)<\/script>/gi,(block,json)=>
+        {
+            contracts.push(JSON.parse(json));
+            return '[Complete ui-production-contract: see this record.contracts]';
+        });
+        const marker='{"encoding":"json-object-references-v1","definitions":';
+        const start=text.indexOf(marker);
+        if (start<0) return {text,contracts};
+        let depth=0,quoted=false,escaped=false,end=start;
+        for (;end<text.length;end++)
+        {
+            const ch=text[end];
+            if (quoted)
+            {
+                if (escaped) escaped=false;
+                else if (ch==='\\') escaped=true;
+                else if (ch==='"') quoted=false;
+            }
+            else if (ch==='"') quoted=true;
+            else if (ch==='{') depth++;
+            else if (ch==='}' && --depth===0) {end++;break;}
+        }
+        const packed=JSON.parse(text.slice(start,end));
+        function expand(value,seen=new Set())
+        {
+            if (!value || typeof value!=='object') return value;
+            if (Object.keys(value).length===1 && Object.hasOwn(value,'$contextRef'))
+            {
+                const key=value.$contextRef;
+                if (seen.has(key) || !Object.hasOwn(packed.definitions,key)) throw new Error('Invalid context reference');
+                return expand(packed.definitions[key],new Set([...seen,key]));
+            }
+            return Array.isArray(value)?value.map(v=>expand(v,seen)):Object.fromEntries(Object.entries(value).map(([k,v])=>[k,expand(v,seen)]));
+        }
+        return {text:text.slice(0,start)+'[Complete attachment: see this record.context]'+text.slice(end),contracts,context:expand(packed.data)};
+    }
+    return 'Review originalRequirements against compiledDocument. This is lossless shared JSON: expand each sole $contextRef field from definitions recursively. Each text and complete attachment context is retained.\n'+JSON.stringify(packContext({originalRequirements:extract(requirements),compiledDocument:extract(document)}));
+}
+
 export function prepareUiDocumentPrompt(html, documentReference = null)
 {
     const context = readUiTemplateContext(html);

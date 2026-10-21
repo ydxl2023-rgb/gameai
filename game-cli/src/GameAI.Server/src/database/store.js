@@ -1,3 +1,4 @@
+import {recoveryAttempts} from './task-recovery.js';
 import {taskDisplayState} from './task-display-state.js';
 import { readActivity } from './activity.js';
 
@@ -50,7 +51,9 @@ export async function readWorkbench(pool, projectKey)
             COALESCE((SELECT jsonb_agg(jsonb_build_object('key',s.skill_key,'primary',s.is_primary,'hash',s.content_hash) ORDER BY s.is_primary DESC,s.skill_key) FROM agent_skills s WHERE s.agent_id=a.id),'[]') skills
             FROM agents a JOIN workers w ON w.id=a.worker_id WHERE a.project_id=$1 ORDER BY a.agent_key`, params)).rows;
         const flows=(await client.query('SELECT f.state,f.reason,r.requirement_key FROM plan_dispatch_flows f JOIN plan_versions pv ON pv.id=f.plan_version_id JOIN requirement_versions v ON v.id=pv.requirement_version_id JOIN requirements r ON r.id=v.requirement_id WHERE f.project_id=$1',params)).rows;
-        const repairs=(await client.query(`SELECT DISTINCT ON(task_id) task_id,state,code,decision->>'reason' reason,next_attempt_at,probes
+        const repairs=(await client.query(`SELECT DISTINCT ON(task_id) task_id,state,code,decision->>'reason' reason,next_attempt_at,probes,
+            (SELECT count(*)::int FROM executions e WHERE e.task_id=task_repairs.task_id) attempts,
+            (SELECT j.context FROM task_dispatch_jobs j WHERE j.execution_id=task_repairs.execution_id) context
             FROM task_repairs WHERE project_id=$1 ORDER BY task_id,updated_at DESC`,params)).rows;
         const repairByTask=new Map(repairs.map(repair=>[repair.task_id,repair]));
         const handoffs=(await client.query(`SELECT u.*,s.task_key source_key,q.task_key requesting_key FROM upstream_repairs u
@@ -61,12 +64,13 @@ export async function readWorkbench(pool, projectKey)
             const priorRepair=repairByTask.get(task.id);
             const sourceHandoff=handoffs.find(h=>h.source_task_id===task.id && h.state==='open');
             const repair=sourceHandoff && ['resolved','cancelled'].includes(priorRepair?.state) ? null : priorRepair;
-            task.recovery_detail=repair ? {...repair,
+            task.recovery_detail=repair ? {task_id:repair.task_id,state:repair.state,code:repair.code,reason:repair.reason,next_attempt_at:repair.next_attempt_at,probes:repair.probes,attempts:repair.attempts,remaining_attempts:Math.max(0,Math.min(3-recoveryAttempts(repair.attempts,repair.context),9-repair.attempts)),
                 owner:['awaiting_decision','awaiting_authorization','awaiting_device'].includes(repair.code) ? '人工处理' : repair.state==='attention' ? '平台维护' : '流程服务 / 原角色 Agent',
                 next_action:repair.state==='attention' ? '依据故障证据提供针对性修复；验证后继续原任务，保留原验收和历史' : '核验恢复条件后自动继续原任务及下游'}
                 : sourceHandoff ? {state:'pending',code:'upstream_repair',reason:'收到 '+sourceHandoff.requesting_key+' 的返修交接：'+sourceHandoff.details.repair,
                     owner:'原角色 Agent',next_action:'修复原任务并通过原验收，再唤醒下游复验',next_attempt_at:sourceHandoff.updated_at,probes:0} : null;
         }
+        const designJobs=(await client.query(`SELECT id,input->>'requirement_key' requirement_key,input->>'version' version,state,attempts,GREATEST(0,3-attempts) remaining_attempts,error,next_attempt_at FROM design_draft_jobs WHERE project_id=$1 AND state NOT IN ('completed','cancelled') ORDER BY created_at DESC LIMIT 20`,params)).rows;
         const audit = (await client.query('SELECT id::text,actor,event,created_at FROM audit_events WHERE project_id=$1 ORDER BY id DESC LIMIT 200', params)).rows;
         const activity = await readActivity(client, project.id);
         await client.query('COMMIT');
@@ -77,6 +81,7 @@ export async function readWorkbench(pool, projectKey)
             is_test: project.is_test,
             workbench: {
                 flows,
+                design_jobs:designJobs,
                 activity,
                 project: { key: project.project_key, name: project.name },
                 requirement: latest ? { title: latest.title, version: latest.version, revision: latest.content_hash, status: state(latest.decision), ...latest.content } : { title: '', version: '', revision: '', status: '暂无需求', summary: '', rules: [], changes: [] },

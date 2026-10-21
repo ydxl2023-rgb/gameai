@@ -25,6 +25,8 @@ import {resumeTaskRepairs} from './task-repair-flow.js';
 import {inspectInterruptedTasks} from './recovery-watchdog.js';
 import {resumeRoleJobs} from './role-job-recovery.js';
 import {recoverStoppedAgents} from './agent-stop-recovery.js';
+import {designDraftRequest} from '../database/design-draft-jobs.js';
+import {resumeDesignDrafts} from './design-draft-flow.js';
 
 let writer: ReturnType<typeof createPool> | undefined;
 let config: Record<string,string | undefined> | undefined;
@@ -60,6 +62,7 @@ export function initializeWorkflowRecovery(): Promise<void>
                 stoppedAgents:()=>recoverStoppedAgents(revisionWriter),
                 notifications:()=>drainWorkflowOutbox(revisionWriter,continueTaskFlow),
                 revisions:()=>resumeRequirementRevisions(revisionWriter),
+                drafts:()=>resumeDesignDrafts(revisionWriter),
                 approvals:()=>resumeApprovalWorkflows(revisionWriter),
                 tasks:()=>resumeTaskFlows(revisionWriter)
             },(name:string,error:Error)=>console.error(`流程恢复失败 (${name})`,error.message));
@@ -112,7 +115,7 @@ export async function handleReviewRequest(request: IncomingMessage, response: Se
             reply(response,415,{error:'需要 JSON。'});
             return;
         }
-        const isSubmission = path === '/api/track/requirements' || path === '/api/track/agent-runs';
+        const isSubmission = path === '/api/track/requirements' || path === '/api/track/agent-runs' || path === '/api/track/design-jobs';
         if (isSubmission)
         {
             const supplied = Buffer.from(request.headers.authorization ?? '');
@@ -201,7 +204,7 @@ export async function handleReviewRequest(request: IncomingMessage, response: Se
         }
         if (isSubmission)
         {
-            reply(response,200,path === '/api/track/agent-runs' ? await agentRunRequest(writer,project,input) : await submitRequirement(writer,project,input));
+            reply(response,200,path === '/api/track/design-jobs' ? await designDraftRequest(writer,project,input) : path === '/api/track/agent-runs' ? await agentRunRequest(writer,project,input) : await submitRequirement(writer,project,input));
             return;
         }
         if (path === '/api/track/review-decisions')

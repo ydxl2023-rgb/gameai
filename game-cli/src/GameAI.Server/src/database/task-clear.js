@@ -15,6 +15,7 @@ export async function clearProjectTasks(pool, projectKey, userId, {preserveRequi
             WHERE u.id=$1 AND u.enabled AND ur.project_id=$2 AND rp.permission_code='requirement.approve'`, [userId, project.id]);
         if (!permission.rowCount) throw new ReviewError('请先登录有审批权限的人工账户。');
         const active = await c.query(`SELECT 1 WHERE
+            EXISTS(SELECT 1 FROM gameai.design_draft_jobs WHERE project_id=$1 AND state IN ('queued','running','unknown')) OR
             EXISTS(SELECT 1 FROM gameai.requirement_revisions WHERE project_id=$1 AND state IN ('queued','running','unknown')) OR
             EXISTS(SELECT 1 FROM gameai.executions WHERE project_id=$1 AND state IN ('assigned','running','unknown')) OR
             EXISTS(SELECT 1 FROM gameai.pm_jobs WHERE project_id=$1 AND state IN ('running','unknown')) OR
@@ -33,7 +34,7 @@ export async function clearProjectTasks(pool, projectKey, userId, {preserveRequi
         }
         // Deleting workflow intents prevents restart recovery from recreating the cleared tasks.
         // Explicit ordering avoids CASCADE reaching configuration.
-        for (const table of ['requirement_revisions','approval_workflows','plan_dispatch_flows','task_edits','qa_defects','task_leases','task_dispatch_jobs','comments','task_dependencies'])
+        for (const table of ['design_draft_jobs','requirement_revisions','approval_workflows','plan_dispatch_flows','task_edits','qa_defects','task_leases','task_dispatch_jobs','comments','task_dependencies'])
         {
             await c.query(`DELETE FROM gameai.${table} WHERE project_id=$1`, [project.id]);
         }

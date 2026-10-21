@@ -297,10 +297,15 @@ Design 的服务端确定性修订有可枚举的 draft/review 执行编号、�
 
 Track 详情显示处理责任和下一动作。真实 PostgreSQL 故障演练包含四专业角色同队列、六角色签名停止回收、伪造凭据拒绝、下游交接与嵌套故障、Design/PM 原作业续跑、暂停和撤权保护、原结果无模型重跑恢复。
 
-范围限制：首次手工 Design draft 尚未登记为服务器后台作业，不能宣称服务能自动重启整个手工调用；它支持草稿/提交检查点与停止回收。任意平台代码的自动生成、部署、新账号凭据和新业务决定不在当前修复器能力内。此类情况保留明确维护/人工责任和下一步，不能用无限重试、假验收或清除历史声称完成。
+首次正式 Design 使用 design start 登记持久作业：保存已确认初稿、来源附件、固定 Agent 和三次执行授权，断连或重启后先恢复原结果，未确认停止时不重复执行。独立手工 design draft 保留为执行器入口，不自动登记后台作业。任意平台代码的自动生成、部署、新账号凭据和新业务决定不在当前修复器能力内。此类情况保留明确维护/人工责任和下一步，不能用无限重试、假验收或清除历史声称完成。
 
 ### Readable UI asset names and historical paths
 
 Project-facing UI PNG files use short purpose names such as RepairIcon.png. Full SHA256 values remain in manifests and internal content-addressed blob caches. The server supplies a deterministic per-slot naming plan, with short stable suffixes for duplicate names.
 
 Identity-preserving migrations are recorded in app/client/ProjectSettings/UnityCliAssetAliases.json (unity-asset-path-aliases/1): from, to, guid, sha256 and metaSha256. Same-directory UI PNG and TTF/OTF/TTC font renames are supported; changing the file format is rejected. Unity resolves old bindings/import manifests after the original approval guard succeeds; PostgreSQL delivery verification resolves old PNG/.meta references against the same registered bytes and GUID. Missing or changed targets and recreated old hash files fail closed. Old approvals, frozen inputs and delivery records are not rewritten. Current Unity exports show the actual readable asset paths. Art delivering against an old approval retains the original logical paths in resource-snapshot.json for guard compatibility and uses the registered physical paths for operations. New requirements can pin the new paths normally.
+
+需求资源名称：公共 UI 交付契约统一要求 Design 正文与自检使用用途名及实际字体家族/字重，模板原始引用保留于契约和来源附件。readable-resource-document.js 可生成仅替换可见文本的阅读副本，保持脚本、链接及内嵌来源原样；副本不替代正式审批版本，不自动触发生产修订。
+
+2026-10-21：新增 design_draft_jobs（迁移034）和 design start/status/cancel 请求入口；审批仍绑定真实 Design 自检后的 HTML，启动初稿不授予正式审批或 PM 派发。初稿恢复授权仅属于该请求，不修改全局 Agent 配置；变更固定 Agent、停用 Agent/worker 或用户取消会阻止后续启动。Track 展示初稿状态、错误与剩余次数；专业任务展示原恢复预算和下一次检查。
+需求编译在签名与自检前规范已验证的资源名称，并拒绝正文未映射哈希文件名，来源附录可显式标记 data-resource-provenance。Track 的已批准需求与任务支持可读展示，HTTP ?view=readable / MCP document_readable 使用相同处理；原文接口保持逐字节校验，待审批阅读始终使用原文。

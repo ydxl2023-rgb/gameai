@@ -15,6 +15,7 @@ namespace GameCLI.Plugins.Design
         public override IReadOnlyList<ICommand> Commands
         { get; } = Array.AsReadOnly(new ICommand[]
         {
+            new DesignStartCommand(),
             new DesignDocumentCommand(),
             new DesignDocumentCommand(submitOnly: true)
         });

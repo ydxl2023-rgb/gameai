@@ -33,7 +33,17 @@ test('business reset is authorized, scoped, idle-only and preserves configuratio
         await assert.rejects(clearProjectTasks(service,key,user),/执行中/);
         assert.equal((await c.query('SELECT count(*) FROM gameai.tasks WHERE project_id=$1',[p])).rows[0].count,'2');
         await c.query("UPDATE gameai.approval_workflows SET state='dispatched' WHERE project_id=$1",[p]);
+        const worker = (await c.query("INSERT INTO gameai.workers(project_id,worker_key,name,capacity) VALUES($1,'reset-test','reset-test',1) RETURNING id",[p])).rows[0].id;
+        const agent = (await c.query("INSERT INTO gameai.agents(project_id,agent_key,display_name,role_code,worker_id) VALUES($1,'reset-design','Reset Design','Design',$2) RETURNING id",[p,worker])).rows[0].id;
+        await c.query("INSERT INTO gameai.design_draft_jobs(project_id,request_id,input_hash,input,design_agent_id) VALUES($1,$2,'hash','{}',$3)",[p,randomUUID(),agent]);
+        for (const state of ['queued','running','unknown'])
+        {
+            await c.query('UPDATE gameai.design_draft_jobs SET state=$2 WHERE project_id=$1',[p,state]);
+            await assert.rejects(clearProjectTasks(service,key,user),/执行中/);
+        }
+        await c.query("UPDATE gameai.design_draft_jobs SET state='completed' WHERE project_id=$1",[p]);
         assert.deepEqual(await clearProjectTasks(service,key,user),{cleared:2,requirements:1});
+        assert.equal((await c.query('SELECT count(*) FROM gameai.design_draft_jobs WHERE project_id=$1',[p])).rows[0].count,'0');
         assert.equal((await c.query('SELECT count(*) FROM gameai.tasks WHERE project_id<>$1',[p])).rows[0].count,otherCount);
         for (const table of ['projects','user_roles'])
         {

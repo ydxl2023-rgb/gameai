@@ -97,6 +97,7 @@ export async function resumeRequirementRevisions(pool, execute=runPmCli)
             JOIN gameai.fixed_agents f ON f.project_id=r.project_id AND f.role_code='Design' AND f.agent_id=r.design_agent_id
             JOIN gameai.agents a ON a.id=f.agent_id JOIN gameai.workers w ON w.id=a.worker_id
             WHERE r.state='queued' AND a.enabled AND w.enabled AND lower(w.worker_key)=lower($1)
+            AND NOT EXISTS(SELECT 1 FROM gameai.design_draft_jobs d WHERE d.design_agent_id=r.design_agent_id AND d.state IN ('running','unknown'))
             AND NOT EXISTS(SELECT 1 FROM gameai.requirement_revisions active WHERE active.project_id=r.project_id AND active.state IN ('running','unknown'))
             AND NOT EXISTS(SELECT 1 FROM gameai.agent_runs ar JOIN gameai.agent_conversations ac ON ac.id=ar.conversation_id WHERE ac.agent_id=r.design_agent_id AND ar.state IN ('running','unknown'))
             ORDER BY r.created_at FOR UPDATE OF r SKIP LOCKED LIMIT 1`,[hostname()])).rows[0];

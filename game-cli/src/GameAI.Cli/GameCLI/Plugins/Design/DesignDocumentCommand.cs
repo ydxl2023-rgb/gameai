@@ -132,12 +132,23 @@ namespace GameCLI.Plugins.Design
                         }
                         string html = output.GetProperty("html").GetString() ?? "";
                         using JsonDocument windows = JsonDocument.Parse(frozenWindows ?? output.GetProperty("windowsJson").GetString() ?? "[]");
-                        using JsonDocument prepared = await DesignContractBridge.ExecuteAsync(project, "prepare", new
+                        JsonDocument preparedResult;
+                        try
                         {
-                            html,
-                            sourceHtml = values.TryGetValue("--source-document", out string? sourceDocument) ? await File.ReadAllTextAsync(sourceDocument, timeout.Token) : null,
-                            spec = new { schemaVersion = "ui-design-spec/1", id = contractId, version = 1, projectId, requirementVersionId, windows = windows.RootElement }
-                        }, timeout.Token);
+                            preparedResult = await DesignContractBridge.ExecuteAsync(project, "prepare", new
+                            {
+                                html,
+                                sourceHtml = values.TryGetValue("--source-document", out string? sourceDocument) ? await File.ReadAllTextAsync(sourceDocument, timeout.Token) : null,
+                                spec = new { schemaVersion = "ui-design-spec/1", id = contractId, version = 1, projectId, requirementVersionId, windows = windows.RootElement }
+                            }, timeout.Token);
+                        }
+                        catch (InvalidOperationException exception) when (revisionAttempt < 2)
+                        {
+                            // Feed concrete compiler diagnostics into the same bounded revision loop.
+                            prompt += "\nRepair these compiler findings within the approved scope:\n" + exception.Message;
+                            continue;
+                        }
+                        using JsonDocument prepared = preparedResult;
                         html = prepared.RootElement.GetProperty("html").GetString()!;
                         string contractHash = prepared.RootElement.GetProperty("contractHash").GetString()!;
                         string documentHash = prepared.RootElement.GetProperty("documentHash").GetString()!;
@@ -145,9 +156,14 @@ namespace GameCLI.Plugins.Design
                         {"type":"object","properties":{"passed":{"type":"boolean"},"issues":{"type":"array","items":{"type":"string"}},"summary":{"type":"string"}},"required":["passed","issues","summary"],"additionalProperties":false}
                         """);
                         string reviewExecutionId = StageExecutionId(operationId, revisionAttempt, "review");
+                        using JsonDocument reviewInput = await DesignContractBridge.ExecuteAsync(project, "review-input", new
+                        {
+                            requirements = reviewRequirements,
+                            document = prepared.RootElement.GetProperty("reviewHtml").GetString()
+                        }, timeout.Token);
                         AgentRunResult reviewed = await CodexAgentRunner.RunAsync(values.GetValueOrDefault("--codex", "codex"), project, "Design",
                             "Review the compiled document against the original requirement. Check scope, every node/control, dimensions, resource slots, animation/effect bindings and style. Do not approve for the human or invoke tools. Return passed=false with concrete issues if any facts are missing or contradictory.",
-                            reviewSchema.RootElement.Clone(), "Original requirement:\n" + reviewRequirements + "\nCompiled document (lossless packed attachment):\n" + prepared.RootElement.GetProperty("reviewHtml").GetString(),
+                            reviewSchema.RootElement.Clone(), reviewInput.RootElement.GetProperty("prompt").GetString()!,
                             values.GetValueOrDefault("--model"), Guid.NewGuid().ToString("N"), reviewExecutionId, text => Console.Error.Write(text), timeout.Token, values["--key"]);
                         using JsonDocument review = JsonDocument.Parse(reviewed.Text);
                         if (!review.RootElement.GetProperty("passed").GetBoolean() || review.RootElement.GetProperty("issues").GetArrayLength() != 0)
@@ -179,7 +195,7 @@ namespace GameCLI.Plugins.Design
                         Directory.CreateDirectory(directory);
                         string htmlPath = Path.Combine(directory, "策划需求-" + executionId + ".html");
                         await File.WriteAllBytesAsync(htmlPath, bytes, timeout.Token);
-                        submissionPath = Path.Combine(GameCLI.Services.ProductionPaths.DirectoryFor("design"), executionId + ".submission.json");
+                        submissionPath = Path.Combine(checkpointDirectory, executionId + ".submission.json");
                         var payload = new
                         {
                             request_id = Guid.NewGuid().ToString(),

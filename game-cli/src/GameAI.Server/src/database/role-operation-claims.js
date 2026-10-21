@@ -17,6 +17,16 @@ export async function validateRoleOperationClaim(c,projectId,input,agentId)
     }
     if (input.role==='Design')
     {
+        const drafts=(await c.query('SELECT * FROM gameai.design_draft_jobs WHERE project_id=$1 AND execution_id IS NOT NULL',[projectId])).rows;
+        for (const job of drafts)
+        {
+            const matched=[job.execution_id,...job.history.map(h=>h.execution_id)].find(id=>designExecutionIds(id).includes(input.execution_id));
+            if (matched && (matched!==job.execution_id || job.state!=='running' || job.design_agent_id!==agentId ||
+                new Date(job.started_at).getTime()+20*60*1000<=Date.now()))
+            {
+                throw new ReviewError('Design 初稿操作已结束或被恢复执行替代，拒绝迟到 claim。');
+            }
+        }
         const revisions=(await c.query('SELECT * FROM gameai.requirement_revisions WHERE project_id=$1 AND recovery_execution_id IS NOT NULL',[projectId])).rows;
         for (const job of revisions)
         {

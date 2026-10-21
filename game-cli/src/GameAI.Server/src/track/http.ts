@@ -21,7 +21,7 @@ export function createMcpServer(html: string)
         contents: [{ uri: resourceUri, mimeType, text: html, _meta: { 'openai/ui': { availableDisplayModes: ['inline', 'fullscreen'] }, ui: { prefersBorder: true, csp: { connectDomains: [], resourceDomains: [] } } } }]
     }));
     const annotations = { readOnlyHint: true, destructiveHint: false, openWorldHint: false };
-    const reply = async (input: { document_version?: string; document_artifact?: string } = {}) =>
+    const reply = async (input: { document_version?: string; document_artifact?: string; document_readable?: boolean } = {}) =>
     {
         try
         {
@@ -33,7 +33,7 @@ export function createMcpServer(html: string)
                 const linkedTasks = taskRows.flatMap((task: any) => [task.document_url,task.task_document_url].filter(Boolean).map(url => ({version_id:task.requirement_version_id,document_url:url})));
                 const row = [...rows, ...linkedTasks].find((item: {version_id: string; document_url?: string | null}) => item.version_id === input.document_version && (!input.document_artifact || item.document_url?.endsWith("/"+input.document_artifact)));
                 const artifactId = input.document_artifact ?? (row?.document_url ? /\/documents\/([0-9a-f-]{36})$/i.exec(row.document_url)?.[1] : null);
-                const bytes = artifactId ? await readDocument(artifactId) : null;
+                const bytes = artifactId ? await readDocument(artifactId, input.document_readable === true) : null;
                 if (!bytes) throw new Error('未找到关联的 HTML 文档。');
                 return { content: [], structuredContent: { ...snapshot, document: { version_id: input.document_version, html: bytes.toString('utf8') } } };
             }
@@ -51,7 +51,7 @@ export function createMcpServer(html: string)
     }, reply);
     server.registerTool('gameai_track_snapshot', {
         description: '刷新 GameAI Track 数据库或演示快照，返回数据来源及测试数据标记。',
-        inputSchema: { document_version: z.uuid().optional(), document_artifact:z.uuid().optional() }, annotations
+        inputSchema: { document_version: z.uuid().optional(), document_artifact:z.uuid().optional(), document_readable:z.boolean().optional() }, annotations
     }, reply);
     server.registerTool('gameai_agent_history', {
         description: '读取当前项目 Agent 已绑定会话的用户消息与公开回复，不启动或恢复任务。',
@@ -89,7 +89,7 @@ export async function handleTrackRequest(request: IncomingMessage, response: Ser
 {
     const path = new URL(request.url ?? '/', 'http://localhost').pathname;
     const documentId = /^\/api\/track\/documents\/([0-9a-f-]{36})$/i.exec(path)?.[1];
-    if (!documentId && !['/mcp', '/track', '/api/track/demo', '/api/track/snapshot', '/api/track/collaboration', '/api/track/agent-history', '/api/track/agents', '/api/track/agent-skills', '/api/track/agent-options', '/api/track/agent-runs', '/api/track/requirements', '/api/track/review-session', '/api/track/review-login', '/api/track/review-logout', '/api/track/review-decisions', '/api/track/review-pm-split', '/api/track/review-agent-automation', '/api/track/review-task-clear', '/api/track/review-task-accept', '/api/track/review-task-edit', '/api/track/review-task-selection', '/api/track/review-task-preview', '/api/track/review-task-dispatch'].includes(path))
+    if (!documentId && !['/mcp', '/track', '/api/track/demo', '/api/track/snapshot', '/api/track/collaboration', '/api/track/agent-history', '/api/track/agents', '/api/track/agent-skills', '/api/track/agent-options', '/api/track/agent-runs', '/api/track/requirements', '/api/track/design-jobs', '/api/track/review-session', '/api/track/review-login', '/api/track/review-logout', '/api/track/review-decisions', '/api/track/review-pm-split', '/api/track/review-agent-automation', '/api/track/review-task-clear', '/api/track/review-task-accept', '/api/track/review-task-edit', '/api/track/review-task-selection', '/api/track/review-task-preview', '/api/track/review-task-dispatch'].includes(path))
     {
         return false;
     }
@@ -106,7 +106,7 @@ export async function handleTrackRequest(request: IncomingMessage, response: Ser
         json(response, 403, { error: '请求来源不允许。' });
         return true;
     }
-    if (path === '/api/track/agent-runs' || path === '/api/track/requirements' || path.startsWith('/api/track/review-'))
+    if (path === '/api/track/design-jobs' || path === '/api/track/agent-runs' || path === '/api/track/requirements' || path.startsWith('/api/track/review-'))
     {
         await handleReviewRequest(request, response);
         return true;
@@ -154,7 +154,8 @@ export async function handleTrackRequest(request: IncomingMessage, response: Ser
         }
         try
         {
-            const bytes = await readDocument(documentId);
+            const readable = new URL(request.url!, 'http://localhost').searchParams.get('view') === 'readable';
+            const bytes = await readDocument(documentId, readable);
             if (!bytes) json(response, 404, { error: '未找到关联的 HTML 文档。' });
             else
             {
