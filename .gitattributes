@@ -1,0 +1,6 @@
+
+# Preserve byte fingerprints used by the UILogin asset migration registry.
+app/client/Assets/UI/Widgets/UILogin/**/*.meta text eol=lf
+app/client/Assets/UI/Widgets/UILogin/**/*.prefab text eol=lf
+app/client/Assets/UI/Widgets/UILogin/**/*.anim text eol=lf
+app/client/Assets/UI/Widgets/UILogin/**/*.controller text eol=lf

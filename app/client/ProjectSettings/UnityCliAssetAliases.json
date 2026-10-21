@@ -1,0 +1,125 @@
+{
+  "schemaVersion": "unity-asset-path-aliases/1",
+  "authorization": "2026-10-21 用户要求按用途缩短资源名称，保留GUID与原批准内容",
+  "assets": [
+    {
+      "from": "Assets/UI/Widgets/UILogin/Art/1523e810a7513d7c2ca88389dddc5dc05b8c1a22e5aaeca9a51203de18dc9e77.png",
+      "to": "Assets/UI/Widgets/UILogin/Art/ServerStatusOnline.png",
+      "guid": "5ba87cce90646f841b21256914f03cd6",
+      "sha256": "1523e810a7513d7c2ca88389dddc5dc05b8c1a22e5aaeca9a51203de18dc9e77",
+      "metaSha256": "177ee48a6fe4b4bc95ba2c1378071a0e778aeb6ff8d8f95ebc60a26590271f32"
+    },
+    {
+      "from": "Assets/UI/Widgets/UILogin/Art/3bfce9f79e6f06993370d423a2709d566bc90555b821e5863154d7fbd05bbfc9.png",
+      "to": "Assets/UI/Widgets/UILogin/Art/DialogTitleDecoration.png",
+      "guid": "f0ae2dd5a160ff04590b48bdd3f611bd",
+      "sha256": "3bfce9f79e6f06993370d423a2709d566bc90555b821e5863154d7fbd05bbfc9",
+      "metaSha256": "990b64708ed85f13ce81837e8e7f873e32c69c66b560409839a391ad9da07f52"
+    },
+    {
+      "from": "Assets/UI/Widgets/UILogin/Art/41f63b23acd8397edac245eeab36bc26339fff1a80c6bd6d0f910e4461418a13.png",
+      "to": "Assets/UI/Widgets/UILogin/Art/NoticePanel.png",
+      "guid": "9a30a7688200c36499381afd8b3114fe",
+      "sha256": "41f63b23acd8397edac245eeab36bc26339fff1a80c6bd6d0f910e4461418a13",
+      "metaSha256": "11de93509df47b35a6599bada505cce131c50e3a1d1c2db4fb6629449db11ffe"
+    },
+    {
+      "from": "Assets/UI/Widgets/UILogin/Art/490b0f8d39d09cf83c9c03fbb3cafa30bb8e0143f92a6ba4110e43fab838408d.png",
+      "to": "Assets/UI/Widgets/UILogin/Art/VersionPanel.png",
+      "guid": "3162ddc94b9e7ca41b1a91e83a1f660a",
+      "sha256": "490b0f8d39d09cf83c9c03fbb3cafa30bb8e0143f92a6ba4110e43fab838408d",
+      "metaSha256": "092fe971c9055314fe3afca99146b1488d579a9c5ca3f09244751d3afeefb58f"
+    },
+    {
+      "from": "Assets/UI/Widgets/UILogin/Art/76d3715066d471a7d7ee81b80c0183119ab02bfebd6130d353fcfb4c88fbe01b.png",
+      "to": "Assets/UI/Widgets/UILogin/Art/LogoutIcon.png",
+      "guid": "1a2596e0cb10fb344bb8c69d399ef133",
+      "sha256": "76d3715066d471a7d7ee81b80c0183119ab02bfebd6130d353fcfb4c88fbe01b",
+      "metaSha256": "6f1d240bc70a11ee325dbcb39bcb58fe0ab73df52afc459e76179ebd57dfc76f"
+    },
+    {
+      "from": "Assets/UI/Widgets/UILogin/Art/7e24cbc2f72bc2b6a571572ebb571e8831e28276ac4cb2d5192d8f0fe730adec.png",
+      "to": "Assets/UI/Widgets/UILogin/Art/AnnouncementIcon.png",
+      "guid": "dc39f1b8f7ff13e46be782491bc5d6f6",
+      "sha256": "7e24cbc2f72bc2b6a571572ebb571e8831e28276ac4cb2d5192d8f0fe730adec",
+      "metaSha256": "ab2ed9a4b3987e0558451a65bb363724c2cf99d9c662423dab0e408a4748e5a9"
+    },
+    {
+      "from": "Assets/UI/Widgets/UILogin/Art/80462bceb61a944c839c428b718244afdd2f75e058fb143419bb7b9fbee0a0a3.png",
+      "to": "Assets/UI/Widgets/UILogin/Art/LoginPulse.png",
+      "guid": "c3c16149f8b0de744bf015663d21a41a",
+      "sha256": "80462bceb61a944c839c428b718244afdd2f75e058fb143419bb7b9fbee0a0a3",
+      "metaSha256": "c676a1ad5c00597a57a0d3a4c33d9ffdc067ef95499a926f4ab42eb4fffcef0a"
+    },
+    {
+      "from": "Assets/UI/Widgets/UILogin/Art/8c936864d7c911cf19735aa6c4f27a9398a56d93c69c5cffe9a647532dd8a1cf.png",
+      "to": "Assets/UI/Widgets/UILogin/Art/NotificationDot.png",
+      "guid": "a638896a05d014e419e8cb7d600bb27b",
+      "sha256": "8c936864d7c911cf19735aa6c4f27a9398a56d93c69c5cffe9a647532dd8a1cf",
+      "metaSha256": "f51bb459489c2225b3f5478fe6207d5e0350e456dae14fe674156c3445d5a1f7"
+    },
+    {
+      "from": "Assets/UI/Widgets/UILogin/Art/921e69c8a9b3eb2652d6a5b3a175b734907b6fc7b3bb4fd14cb50c9ced700769.png",
+      "to": "Assets/UI/Widgets/UILogin/Art/LoginGlowTrail.png",
+      "guid": "332854dc5194e3b44961e717485a3956",
+      "sha256": "921e69c8a9b3eb2652d6a5b3a175b734907b6fc7b3bb4fd14cb50c9ced700769",
+      "metaSha256": "6fd75d319ca4cba82b0b8ad2bb7b2bc4de3b87db0366c4c06c042b7a7697ba15"
+    },
+    {
+      "from": "Assets/UI/Widgets/UILogin/Art/93a32b4d8bef49d046bda9bdd1f1eeef602a74b878c790518112bf01942b71d4.png",
+      "to": "Assets/UI/Widgets/UILogin/Art/RepairIcon.png",
+      "guid": "700b06af1213e004bb370b13faf0af72",
+      "sha256": "93a32b4d8bef49d046bda9bdd1f1eeef602a74b878c790518112bf01942b71d4",
+      "metaSha256": "e02e747b8abdd5d529900f7d7f7958a7eb5654423e703e4bd97c7a1823f6a23b"
+    },
+    {
+      "from": "Assets/UI/Widgets/UILogin/Art/9981398578663413d91e268c3b101425fc2019ed8d3a8d877f7526dcbcfcc6f3.png",
+      "to": "Assets/UI/Widgets/UILogin/Art/LoginRing.png",
+      "guid": "baaa0cf0a14700c4ba709d292a7ddfc8",
+      "sha256": "9981398578663413d91e268c3b101425fc2019ed8d3a8d877f7526dcbcfcc6f3",
+      "metaSha256": "7e2cebf39c3c4fb1a86c23e934e623df8277ef0a0e5525d409f9cf3984add8e6"
+    },
+    {
+      "from": "Assets/UI/Widgets/UILogin/Art/c6c83c346fa753ee0661fdc03ee674f567bdfe98e5013dabd8b5797f5a610285.png",
+      "to": "Assets/UI/Widgets/UILogin/Art/UserCenterIcon.png",
+      "guid": "8f62d430969a148439e1c6aa64d6583c",
+      "sha256": "c6c83c346fa753ee0661fdc03ee674f567bdfe98e5013dabd8b5797f5a610285",
+      "metaSha256": "fdaa8885ace1708e7044bc55ae10ee748f090ce61e383f7a69eaea167d721fc7"
+    },
+    {
+      "from": "Assets/UI/Widgets/UILogin/Art/c79d0396bff34e944ce95a469814fba09a653e7b99af33a7292931bb0c1f22f1.png",
+      "to": "Assets/UI/Widgets/UILogin/Art/DialogHeader.png",
+      "guid": "9dbe50a112f258242a5a028baafc199b",
+      "sha256": "c79d0396bff34e944ce95a469814fba09a653e7b99af33a7292931bb0c1f22f1",
+      "metaSha256": "b5530778cec563961e158b2c38202e10f28583c6d647bdef1b90ff232c353ed7"
+    },
+    {
+      "from": "Assets/UI/Widgets/UILogin/Art/cc124122a0fba82a6584c4c13a04aa31a3f77d3943ee3eb16f94cfd22d751e40.png",
+      "to": "Assets/UI/Widgets/UILogin/Art/ServerDivider.png",
+      "guid": "c34b04ea832b2fa46894f25b19219a6c",
+      "sha256": "cc124122a0fba82a6584c4c13a04aa31a3f77d3943ee3eb16f94cfd22d751e40",
+      "metaSha256": "2b3e310e5f4abd4bf9d85c99440d6edd45cbb6b3b55a8ed28889dce09cf0daa5"
+    },
+    {
+      "from": "Assets/UI/Widgets/UILogin/Art/f5994c753dca009e49ef62207e7bc2439d16f98f461b5b5f3a36815ce91c582d.png",
+      "to": "Assets/UI/Widgets/UILogin/Art/CloseIcon.png",
+      "guid": "9658f8756ddfc6d4792791c07036c502",
+      "sha256": "f5994c753dca009e49ef62207e7bc2439d16f98f461b5b5f3a36815ce91c582d",
+      "metaSha256": "78c07aca1f7dc1e8b0ba885d7c7af328ce4a18b36da7e1f670cf3a385c828ba9"
+    },
+    {
+      "from": "Assets/UI/Widgets/UILogin/Art/e4b3b9d058750fb80899c24f68e35beda606ca92694eff0e9f7f91eec7a846aa.ttc",
+      "to": "Assets/UI/Widgets/UILogin/Art/MicrosoftYaHeiRegular.ttc",
+      "guid": "f4d02af9415fba344b49e6887e0ac03d",
+      "sha256": "e4b3b9d058750fb80899c24f68e35beda606ca92694eff0e9f7f91eec7a846aa",
+      "metaSha256": "944868fb4cb85761ff283acc859b875d31b0c0728ef9c1ea8d44bf3fc8703c89"
+    },
+    {
+      "from": "Assets/UI/Widgets/UILogin/Art/06e1a30f687ab7d39f533447b21e84d51e0cecdaa6bfa060c87136b168811bdc.ttc",
+      "to": "Assets/UI/Widgets/UILogin/Art/MicrosoftYaHeiBold.ttc",
+      "guid": "657c15469ae46674da8aa2ef34e5309b",
+      "sha256": "06e1a30f687ab7d39f533447b21e84d51e0cecdaa6bfa060c87136b168811bdc",
+      "metaSha256": "f9612b24fd29852891b9d6cfdd31ac58ba813b86a6f91708081da74086665a84"
+    }
+  ]
+}
